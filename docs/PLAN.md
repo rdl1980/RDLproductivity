@@ -14,9 +14,9 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 
 ## Milestone 1 — Autenticazione mono-utente
 
-- [ ] Auth.js con provider GitHub (o magic link), accesso consentito solo a `ALLOWED_EMAIL`
-- [ ] Middleware che protegge tutte le rotte tranne `/login`
-- [ ] Pagina di login minimale
+- [x] Auth.js con provider GitHub e Google, accesso consentito solo a `ALLOWED_EMAIL`
+- [x] Proxy (ex middleware) che protegge tutte le rotte tranne `/login`
+- [x] Pagina di login minimale
 
 ## Milestone 2 — Board, liste, card (nucleo)
 

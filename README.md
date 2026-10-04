@@ -31,4 +31,13 @@ pnpm db:seed                 # crea una board d'esempio
 pnpm dev
 ```
 
+### Login
+
+Crea le credenziali OAuth e mettile nel `.env`, insieme alla tua email in `ALLOWED_EMAIL` e a `AUTH_SECRET` (`pnpm dlx auth secret`).
+
+- **GitHub**: Settings → Developer settings → OAuth Apps. Callback URL: `http://localhost:3000/api/auth/callback/github`.
+- **Google**: Google Cloud Console → API e servizi → Credenziali → ID client OAuth (applicazione web). URI di reindirizzamento: `http://localhost:3000/api/auth/callback/google`.
+
+In produzione aggiungi gli stessi URL con il dominio Vercel.
+
 Controlli: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm format`.

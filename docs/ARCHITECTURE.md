@@ -7,6 +7,13 @@
 - **UI ottimistica**: il drag & drop aggiorna subito lo stato locale, poi persiste; in caso di errore si fa rollback.
 - **Semplice da deployare**: Vercel + Postgres gestito, nessun altro servizio.
 
+## Autenticazione
+
+- Auth.js v5 (`src/auth.ts`) con provider GitHub e Google, attivati solo se le rispettive credenziali sono nel `.env`.
+- Sessione JWT in cookie cifrato, nessun adapter e nessuna tabella utenti: l'app è mono-utente.
+- Il callback `signIn` accetta solo gli indirizzi in `ALLOWED_EMAIL` (uno o più, separati da virgola); per Google l'email deve essere verificata.
+- `src/proxy.ts` (il middleware di Next 16) reindirizza a `/login` chi non è autenticato. È un controllo ottimistico: Server Components e Server Actions chiamano comunque `requireSession()` da `src/server/session.ts`.
+
 ## Modello dati (Prisma)
 
 Schema definitivo in `prisma/schema.prisma`; quello sotto è il riferimento logico.
@@ -100,6 +107,7 @@ Le posizioni usano **fractional indexing** (libreria `fractional-indexing`): spo
 src/
   app/
     (auth)/login/          pagina di login
+    api/auth/[...nextauth]/ route handler di Auth.js
     boards/                elenco board
     boards/[boardId]/      vista board (kanban)
     calendar/              vista calendario
@@ -108,7 +116,10 @@ src/
     board/                 Board, List, Card, DnD
     card-detail/           modale dettaglio card
     ui/                    shadcn/ui
+  auth.ts                  configurazione Auth.js
+  proxy.ts                 protezione rotte (ex middleware)
   server/
+    session.ts             requireSession()
     actions/               Server Actions (board, list, card, label, checklist)
     db.ts                  client Prisma (adapter pg)
   lib/                     utilità (validazione zod, date, posizioni)

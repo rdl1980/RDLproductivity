@@ -28,6 +28,7 @@ pnpm format         # Prettier
 
 ## Convenzioni
 
+- Ogni Server Component o Server Action che tocca dati chiama `requireSession()` (`src/server/session.ts`): il proxy non basta.
 - Lettura dati nei Server Components; mutazioni tramite Server Actions in `src/server/actions/`, input validato con zod.
 - Ordinamento con fractional indexing (campo `position` stringa), mai rinumerare intere liste.
 - Drag & drop con aggiornamento ottimistico e rollback in caso di errore.

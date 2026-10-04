@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://rdl:rdl@localhost:5432/rdlproductivity
+      AUTH_SECRET: ci-only-auth-secret-not-used-in-production
     services:
       postgres:
         image: postgres:16
