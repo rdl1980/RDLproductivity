@@ -43,68 +43,6 @@ export type CardDetail = {
   checklists: ChecklistDetail[];
 };
 
-/** Full card data for the detail dialog. */
-export async function getCardDetail(id: string): Promise<ActionResult<CardDetail>> {
-  if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
-  const { data: cardId, error } = parse(idSchema, id);
-  if (error !== null) return fail(error);
-
-  const card = await db.card.findUnique({
-    where: { id: cardId },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      startDate: true,
-      dueDate: true,
-      completed: true,
-      archived: true,
-      list: {
-        select: {
-          id: true,
-          title: true,
-          board: {
-            select: {
-              id: true,
-              title: true,
-              labels: { orderBy: { name: "asc" }, select: { id: true, name: true, color: true } },
-            },
-          },
-        },
-      },
-      labels: { select: { labelId: true } },
-      checklists: {
-        orderBy: { position: "asc" },
-        select: {
-          id: true,
-          title: true,
-          position: true,
-          items: {
-            orderBy: { position: "asc" },
-            select: { id: true, text: true, done: true, position: true },
-          },
-        },
-      },
-    },
-  });
-  if (!card) return fail("Card non trovata.");
-
-  const { board, ...list } = card.list;
-  return ok({
-    id: card.id,
-    title: card.title,
-    description: card.description ?? "",
-    startDate: card.startDate?.toISOString() ?? null,
-    dueDate: card.dueDate?.toISOString() ?? null,
-    completed: card.completed,
-    archived: card.archived,
-    list,
-    board,
-    labelIds: card.labels.map((label) => label.labelId),
-    checklists: card.checklists,
-  });
-}
-
 const detailsSchema = z.object({
   id: idSchema,
   description: z.string().max(20_000, "La descrizione è troppo lunga.").nullable().optional(),

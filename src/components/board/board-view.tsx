@@ -22,7 +22,7 @@ import {
 } from "@dnd-kit/sortable";
 import { PlusIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -56,10 +56,12 @@ import {
 } from "@/lib/filters";
 import { positionAfter } from "@/lib/position";
 import { useIsClient } from "@/lib/use-is-client";
+import { useStableCallbacks } from "@/lib/use-stable-callbacks";
 import { createCard, moveCard, updateCard } from "@/server/actions/cards";
 import { createList, moveList, updateList } from "@/server/actions/lists";
 import type { ActionResult } from "@/server/actions/result";
 
+import type { BoardActions } from "./board-actions";
 import { BoardFiltersButton } from "./board-filters";
 import { BoardHeader } from "./board-header";
 import { CardPreview, isTempId } from "./card-item";
@@ -104,17 +106,20 @@ export function BoardView({
   const [labels, setLabels] = useState(initialLabels);
   const searchParams = useSearchParams();
   const openCardId = searchParams.get("card");
-  const filters = parseFilters(new URLSearchParams(searchParams.toString()));
+  const query = searchParams.toString();
+  const filters = useMemo(() => parseFilters(new URLSearchParams(query)), [query]);
   const filtering = activeFilterCount(filters) > 0;
   const isClient = useIsClient();
-  // Due filters depend on the browser clock: apply them after hydration.
-  const effectiveFilters = isClient ? filters : { ...filters, due: null };
-  const visibleLists = filtering
-    ? lists.map((list) => ({
-        ...list,
-        cards: list.cards.filter((card) => matchesFilters(card, effectiveFilters)),
-      }))
-    : lists;
+  // Memoized so unchanged lists keep their identity and memoized columns skip rendering.
+  const visibleLists = useMemo(() => {
+    if (!filtering) return lists;
+    // Due filters depend on the browser clock: apply them after hydration.
+    const effective = isClient ? filters : { ...filters, due: null };
+    return lists.map((list) => ({
+      ...list,
+      cards: list.cards.filter((card) => matchesFilters(card, effective)),
+    }));
+  }, [lists, filters, filtering, isClient]);
   const hiddenCount =
     lists.reduce((sum, list) => sum + list.cards.length, 0) -
     visibleLists.reduce((sum, list) => sum + list.cards.length, 0);
@@ -384,6 +389,20 @@ export function BoardView({
     setActive(null);
   }
 
+  const boardActions = useStableCallbacks<BoardActions>({
+    openCard: (card) => !isTempId(card.id) && setCardParam(card.id),
+    setComposer: (listId, open) =>
+      setComposerListId((current) => (open ? listId : current === listId ? null : current)),
+    hoverList: (listId) => {
+      hoveredListId.current = listId;
+    },
+    renameList,
+    archiveList,
+    addCard,
+    renameCard,
+    archiveCard,
+  });
+
   const activeCard =
     active?.type === "card"
       ? lists.flatMap((l) => l.cards).find((c) => c.id === active.id)
@@ -427,17 +446,10 @@ export function BoardView({
               <ListColumn
                 key={list.id}
                 list={list}
-                dragDisabled={filtering}
                 labels={labels}
-                onOpenCard={(card) => !isTempId(card.id) && setCardParam(card.id)}
+                dragDisabled={filtering}
                 composerOpen={composerListId === list.id}
-                onComposerOpenChange={(open) => setComposerListId(open ? list.id : null)}
-                onHover={() => (hoveredListId.current = list.id)}
-                onRename={(title) => renameList(list, title)}
-                onArchive={() => archiveList(list)}
-                onAddCard={(title) => addCard(list.id, title)}
-                onRenameCard={renameCard}
-                onArchiveCard={(card) => archiveCard(list.id, card)}
+                actions={boardActions}
               />
             ))}
           </SortableContext>

@@ -3,7 +3,7 @@
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { MoreHorizontalIcon, PlusIcon } from "lucide-react";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,9 +12,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { CardItem, LabelItem, ListItem } from "@/lib/board-state";
+import type { LabelItem, ListItem } from "@/lib/board-state";
 import { cn } from "@/lib/utils";
 
+import type { BoardActions } from "./board-actions";
 import { isTempId, SortableCard } from "./card-item";
 import { Composer } from "./composer";
 import { InlineTitle } from "./inline-title";
@@ -23,31 +24,19 @@ type Props = {
   list: ListItem;
   labels: LabelItem[];
   dragDisabled?: boolean;
-  onOpenCard: (card: CardItem) => void;
   composerOpen: boolean;
-  onComposerOpenChange: (open: boolean) => void;
-  onHover: () => void;
-  onRename: (title: string) => void;
-  onArchive: () => void;
-  onAddCard: (title: string) => void;
-  onRenameCard: (card: CardItem, title: string) => void;
-  onArchiveCard: (card: CardItem) => void;
+  actions: BoardActions;
 };
 
-export function ListColumn({
+// Memoized: with stable `actions`, a list re-renders only when its own data changes.
+export const ListColumn = memo(function ListColumn({
   list,
   labels,
   dragDisabled,
-  onOpenCard,
   composerOpen,
-  onComposerOpenChange,
-  onHover,
-  onRename,
-  onArchive,
-  onAddCard,
-  onRenameCard,
-  onArchiveCard,
+  actions,
 }: Props) {
+  const onComposerOpenChange = (open: boolean) => actions.setComposer(list.id, open);
   const [editing, setEditing] = useState(false);
   const pending = isTempId(list.id);
   const {
@@ -66,7 +55,7 @@ export function ListColumn({
     <section
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      onMouseEnter={onHover}
+      onMouseEnter={() => actions.hoverList(list.id)}
       aria-label={list.title}
       data-testid="list"
       className={cn(
@@ -86,13 +75,13 @@ export function ListColumn({
             label="Titolo della lista"
             editing={editing}
             onEditingChange={setEditing}
-            onSave={onRename}
+            onSave={(title) => actions.renameList(list, title)}
             className="w-full rounded px-2 py-1 text-sm font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
             triggerProps={{ ref: setActivatorNodeRef, ...attributes, onKeyDown }}
           />
         </div>
         {!pending && (
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
@@ -110,7 +99,7 @@ export function ListColumn({
                 Aggiungi una card
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setEditing(true)}>Rinomina</DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onSelect={onArchive}>
+              <DropdownMenuItem variant="destructive" onSelect={() => actions.archiveList(list)}>
                 Archivia lista
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -127,11 +116,10 @@ export function ListColumn({
             <SortableCard
               key={card.id}
               card={card}
+              listId={list.id}
               labels={labels}
               dragDisabled={dragDisabled}
-              onOpen={() => onOpenCard(card)}
-              onRename={(title) => onRenameCard(card, title)}
-              onArchive={() => onArchiveCard(card)}
+              actions={actions}
             />
           ))}
         </ol>
@@ -142,7 +130,7 @@ export function ListColumn({
           <Composer
             placeholder="Titolo della card"
             submitLabel="Aggiungi card"
-            onSubmit={onAddCard}
+            onSubmit={(title) => actions.addCard(list.id, title)}
             onClose={() => onComposerOpenChange(false)}
           />
         ) : (
@@ -160,7 +148,7 @@ export function ListColumn({
       </div>
     </section>
   );
-}
+});
 
 /** Static copy rendered in the drag overlay. */
 export function ListPreview({ list }: { list: ListItem }) {

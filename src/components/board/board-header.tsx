@@ -57,7 +57,7 @@ export function BoardHeader({
           inputClassName="text-lg font-semibold"
         />
       </h1>
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
