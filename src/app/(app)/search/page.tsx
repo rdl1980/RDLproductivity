@@ -4,6 +4,7 @@ import Link from "next/link";
 import { DueBadge } from "@/components/card-detail/card-badges";
 import { Highlighted } from "@/components/search/highlighted";
 import { DEFAULT_BOARD_COLOR } from "@/lib/board-colors";
+import { labelTextColor } from "@/lib/label-colors";
 import { snippet } from "@/lib/search";
 import { SEARCH_LIMIT, searchBoards, searchCards } from "@/server/queries/search";
 import { requireSession } from "@/server/session";
@@ -93,8 +94,11 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
                         {card.labels.map(({ label }) => (
                           <span
                             key={label.id}
-                            className="rounded px-1.5 text-[11px] leading-4 font-medium text-white"
-                            style={{ backgroundColor: label.color }}
+                            className="rounded px-1.5 text-[11px] leading-4 font-medium"
+                            style={{
+                              backgroundColor: label.color,
+                              color: labelTextColor(label.color),
+                            }}
                           >
                             {label.name || " "}
                           </span>

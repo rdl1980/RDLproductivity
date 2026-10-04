@@ -9,7 +9,7 @@ export const cardIn = (column: Locator, title: string) =>
   column.getByTestId("card").filter({ hasText: title });
 
 export const cardTitles = (column: Locator) =>
-  column.getByTestId("card").locator("p").allInnerTexts();
+  column.getByTestId("card").locator("[data-card-title]").allInnerTexts();
 
 /** Waits until optimistic items have been saved (temp items are not draggable). */
 export async function settle(page: Page) {

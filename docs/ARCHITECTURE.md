@@ -150,10 +150,24 @@ e2e/                       test Playwright
 - Le date sono salvate in UTC e mostrate nel fuso del browser. Il badge di scadenza viene renderizzato solo lato client per evitare differenze di idratazione; "in scadenza" significa entro 24 ore.
 - Nei campi di testo dentro la modale, Esc annulla l'editing senza chiudere la modale; un secondo Esc la chiude.
 
+## Archivio e backup
+
+- Board, liste e card si archiviano (flag `archived`) e si consultano in `/archive`, raggiungibile dal menu utente. Ripristinare una lista o una card ripristina anche i contenitori archiviati. L'eliminazione definitiva è possibile solo per elementi già archiviati e chiede conferma.
+- `GET /api/export` (menu utente → "Esporta backup") scarica un JSON con tutte le board, archiviate comprese: liste, card, etichette, checklist. Richiede la sessione.
+
+## Tema, mobile e accessibilità
+
+- Tema chiaro, scuro o di sistema con `next-themes` (classe `dark` su `<html>`); le superfici di liste e card usano i token `--list` e `--list-card`.
+- Su touch il drag parte con una pressione prolungata (250 ms), così lo scorrimento resta libero; la board scorre in orizzontale dentro il proprio contenitore.
+- Colori di board ed etichette con contrasto WCAG AA: il testo delle etichette è bianco o scuro in base allo sfondo (`labelTextColor`), verificato da test unitari.
+- Niente controlli annidati: card e header delle liste ricevono i listener di mouse e touch, mentre il drag da tastiera parte dal bottone del titolo (Spazio sposta, Invio apre o rinomina).
+- Gli e2e eseguono axe-core (WCAG 2 A/AA) sulle pagine principali, in tema chiaro e scuro, e falliscono su violazioni serie o critiche.
+
 ## Test
 
 - Vitest per la logica pura (`src/lib`).
-- Playwright per i flussi end-to-end. I test autenticati (`e2e/fixtures.ts`) creano un cookie di sessione Auth.js valido firmato con `AUTH_SECRET`, senza codice di test nell'app.
+- Playwright per i flussi end-to-end. I test autenticati (`e2e/fixtures.ts`) creano un cookie di sessione Auth.js valido firmato con `AUTH_SECRET`, senza codice di test nell'app. Coprono login e redirect, board, liste e card con drag & drop, dettaglio card, ricerca e filtri, calendario, archivio, export, tema, layout mobile e accessibilità.
+- La CI usa Postgres 16 con collation `en_US.utf8`, come Supabase.
 
 ## Deploy
 

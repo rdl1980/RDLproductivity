@@ -1,6 +1,15 @@
 # RDL Productivity
 
-Un Trello personale: board, liste e card con drag & drop, dettaglio card (descrizione, scadenze, etichette, checklist), ricerca e filtri, vista calendario.
+Un Trello personale: board, liste e card con drag & drop, dettaglio card (descrizione Markdown, date, etichette, checklist, sposta/copia), ricerca globale e filtri, vista calendario, archivio, backup JSON, tema chiaro/scuro.
+
+In produzione: https://rdlproductivity.vercel.app
+
+### Scorciatoie
+
+- `/` cerca
+- `n` nuova card nella lista sotto il mouse
+- `Esc` chiude
+- Sulla card: `Invio` apre il dettaglio, `Spazio` avvia il trascinamento da tastiera
 
 Progetto mono-utente, pensato per un solo proprietario.
 
