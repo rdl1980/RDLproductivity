@@ -8,7 +8,8 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    // Not required by `prisma generate`, so a fresh install works without a database.
-    url: process.env.DATABASE_URL ?? "",
+    // Migrations need a direct connection; hosted providers (e.g. Neon) expose it separately
+    // from the pooled DATABASE_URL used at runtime. Not required by `prisma generate`.
+    url: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL ?? "",
   },
 });

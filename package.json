@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "postinstall": "prisma generate",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "vercel-build": "sh scripts/vercel-build.sh"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
