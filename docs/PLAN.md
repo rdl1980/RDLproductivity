@@ -44,10 +44,10 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 
 ## Milestone 5 — Vista calendario
 
-- [ ] Pagina `/calendar` con vista mese e settimana, card con scadenza
-- [ ] Filtro per board ed etichetta
-- [ ] Drag di una card su un altro giorno per cambiarne la scadenza
-- [ ] Click su una card apre il dettaglio
+- [x] Pagina `/calendar` con vista mese e settimana, card con scadenza
+- [x] Filtro per board ed etichetta
+- [x] Drag di una card su un altro giorno per cambiarne la scadenza
+- [x] Click su una card apre il dettaglio
 
 ## Milestone 6 — Rifinitura e deploy
 
