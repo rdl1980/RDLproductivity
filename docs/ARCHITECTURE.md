@@ -176,4 +176,7 @@ e2e/                       test Playwright
 
 ## Calendario
 
-Vista mese e settimana delle card con `dueDate`. Trascinare una card su un altro giorno aggiorna la scadenza.
+- `/calendar?view=month|week&date=YYYY-MM-DD&board=…&label=…`: viste mese e settimana (lunedì come primo giorno) delle card con scadenza.
+- Il server non conosce il fuso del browser: carica le card in un intervallo UTC allargato di due giorni per lato rispetto alle settimane visibili (`serverRange`), mentre la griglia e il raggruppamento per giorno vengono calcolati nel browser dopo l'idratazione.
+- Trascinando una card su un altro giorno cambia la data e resta invariata l'ora locale (`moveToDay`), con aggiornamento ottimistico e rollback. Il server rifiuta lo spostamento se la scadenza finisce prima della data di inizio.
+- Il click su una card apre la stessa `CardDetailDialog` della board (`?card=`), sincronizzata con il calendario tramite le stesse callback.
