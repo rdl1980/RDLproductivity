@@ -3,7 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { MoreHorizontalIcon } from "lucide-react";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ import { CardBadges, LabelChips } from "@/components/card-detail/card-badges";
 import type { CardItem as Card, LabelItem } from "@/lib/board-state";
 import { cn } from "@/lib/utils";
 
+import type { BoardActions } from "./board-actions";
 import { InlineTitle } from "./inline-title";
 
 export function isTempId(id: string) {
@@ -24,14 +25,21 @@ export function isTempId(id: string) {
 
 type Props = {
   card: Card;
+  listId: string;
   labels: LabelItem[];
   dragDisabled?: boolean;
-  onOpen: () => void;
-  onRename: (title: string) => void;
-  onArchive: () => void;
+  actions: BoardActions;
 };
 
-export function SortableCard({ card, labels, dragDisabled, onOpen, onRename, onArchive }: Props) {
+// Memoized: with stable `actions`, a card re-renders only when its own data changes.
+export const SortableCard = memo(function SortableCard({
+  card,
+  listId,
+  labels,
+  dragDisabled,
+  actions,
+}: Props) {
+  const onOpen = () => actions.openCard(card);
   const [editing, setEditing] = useState(false);
   const pending = isTempId(card.id);
   const {
@@ -61,7 +69,6 @@ export function SortableCard({ card, labels, dragDisabled, onOpen, onRename, onA
       onClick={() => !editing && !pending && onOpen()}
       className={cn(
         "group relative cursor-pointer rounded-md bg-list-card px-3 py-2 text-sm text-foreground shadow-sm select-none [-webkit-touch-callout:none]",
-        "has-[[data-card-title]:focus-visible]:ring-[3px] has-[[data-card-title]:focus-visible]:ring-ring/50",
         isDragging && "opacity-40",
         pending && "opacity-60",
       )}
@@ -72,7 +79,7 @@ export function SortableCard({ card, labels, dragDisabled, onOpen, onRename, onA
           label="Titolo della card"
           editing
           onEditingChange={setEditing}
-          onSave={onRename}
+          onSave={(title) => actions.renameCard(card, title)}
         />
       ) : (
         <>
@@ -85,13 +92,13 @@ export function SortableCard({ card, labels, dragDisabled, onOpen, onRename, onA
             {...attributes}
             onKeyDown={onKeyDown}
             data-card-title
-            className="block w-full cursor-pointer pr-6 text-left break-words whitespace-pre-wrap outline-none"
+            className="block w-full cursor-pointer rounded-sm pr-6 text-left break-words whitespace-pre-wrap outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             {card.title}
           </button>
           <CardBadges card={card} />
           {!pending && (
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
@@ -107,7 +114,10 @@ export function SortableCard({ card, labels, dragDisabled, onOpen, onRename, onA
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" onClick={(event) => event.stopPropagation()}>
                 <DropdownMenuItem onSelect={() => setEditing(true)}>Rinomina</DropdownMenuItem>
-                <DropdownMenuItem variant="destructive" onSelect={onArchive}>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => actions.archiveCard(listId, card)}
+                >
                   Archivia
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -117,7 +127,7 @@ export function SortableCard({ card, labels, dragDisabled, onOpen, onRename, onA
       )}
     </li>
   );
-}
+});
 
 /** Static copy rendered in the drag overlay. */
 export function CardPreview({ card }: { card: Card }) {

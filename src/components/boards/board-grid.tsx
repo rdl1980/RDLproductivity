@@ -37,7 +37,7 @@ export function BoardGrid({ boards }: { boards: BoardSummary[] }) {
             >
               <span className="line-clamp-2 pr-6">{board.title}</span>
             </Link>
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"

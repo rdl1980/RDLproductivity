@@ -21,11 +21,11 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { CardItem, LabelItem } from "@/lib/board-state";
 import { isTypingTarget } from "@/lib/dom";
+import { fetchCardDetail } from "@/lib/fetch-card-detail";
 import { positionAfter } from "@/lib/position";
 import {
   type CardDetail,
   type ChecklistDetail,
-  getCardDetail,
   type MovedCard,
   restoreCard,
   updateCardDetails,
@@ -131,13 +131,11 @@ function CardDetailContent({
 
   useEffect(() => {
     let cancelled = false;
-    getCardDetail(cardId)
-      .catch((): ActionResult<CardDetail> => ({ ok: false, error: "Errore di rete." }))
-      .then((result) => {
-        if (cancelled) return;
-        if (result.ok) setDetail(result.data);
-        else setLoadError(result.error);
-      });
+    fetchCardDetail(cardId).then((result) => {
+      if (cancelled) return;
+      if (result.ok) setDetail(result.data);
+      else setLoadError(result.error);
+    });
     return () => {
       cancelled = true;
     };
@@ -649,7 +647,7 @@ function CardDetailContent({
           if (mode === "move") {
             toast.success("Card spostata");
             // Reload so list, board and labels reflect the new location.
-            getCardDetail(card.id).then((r) => r.ok && setDetail(r.data));
+            fetchCardDetail(card.id).then((r) => r.ok && setDetail(r.data));
           } else {
             toast.success("Copia creata");
           }
