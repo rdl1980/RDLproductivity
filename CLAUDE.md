@@ -17,6 +17,7 @@ pnpm test:e2e       # Playwright
 pnpm prisma migrate dev --name <nome>
 pnpm db:seed        # board d'esempio
 pnpm format         # Prettier
+pnpm smoke:live     # controlli in sola lettura sull'istanza in produzione
 ```
 
 ## Note tecniche

@@ -53,6 +53,10 @@ In produzione aggiungi gli stessi URL con il dominio Vercel (`https://rdlproduct
 
 Progetto Vercel `rdlproductivity` collegato al repo: ogni push su `main` va in produzione, gli altri branch creano preview. Il build (`scripts/vercel-build.sh`) applica le migrazioni Prisma solo nei deploy di produzione. Per le migrazioni usa `DATABASE_URL_UNPOOLED` se presente, altrimenti `DATABASE_URL`.
 
+### Verifica in produzione
+
+`pnpm smoke:live` esegue controlli in sola lettura sull'istanza pubblicata (`BASE_URL`, predefinito `https://rdlproductivity.vercel.app`): redirect al login, provider GitHub attivo, export negato senza sessione. Con `SESSION_TOKEN` (un JWT di sessione Auth.js firmato con `AUTH_SECRET` di produzione, salt `__Secure-authjs.session-token`) verifica anche board, calendario, ricerca, archivio ed export, che legge il database.
+
 Database di produzione: Supabase, progetto `RDLproductivity` (Francoforte). Dettagli in [Architettura](docs/ARCHITECTURE.md#deploy).
 
 Controlli: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm format`.
