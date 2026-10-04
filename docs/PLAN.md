@@ -20,12 +20,12 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 
 ## Milestone 2 — Board, liste, card (nucleo)
 
-- [ ] Pagina `/boards`: elenco, crea, rinomina, colore, archivia
-- [ ] Vista board: liste orizzontali scrollabili, crea/rinomina/archivia lista
-- [ ] Card: crea rapida in fondo alla lista, rinomina inline, archivia
-- [ ] Drag & drop con dnd-kit: card nella lista, card tra liste, riordino liste
-- [ ] Posizioni con fractional indexing, aggiornamenti ottimistici con rollback
-- [ ] Scorciatoie da tastiera di base (`n` nuova card, `Esc` chiudi)
+- [x] Pagina `/boards`: elenco, crea, rinomina, colore, archivia
+- [x] Vista board: liste orizzontali scrollabili, crea/rinomina/archivia lista
+- [x] Card: crea rapida in fondo alla lista, rinomina inline, archivia
+- [x] Drag & drop con dnd-kit: card nella lista, card tra liste, riordino liste
+- [x] Posizioni con fractional indexing, aggiornamenti ottimistici con rollback
+- [x] Scorciatoie da tastiera di base (`n` nuova card, `Esc` chiudi)
 
 ## Milestone 3 — Dettaglio card
 

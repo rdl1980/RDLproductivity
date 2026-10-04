@@ -101,6 +101,14 @@ model ChecklistItem {
 
 Le posizioni usano **fractional indexing** (libreria `fractional-indexing`): spostare una card aggiorna una sola riga, senza rinumerare la lista.
 
+Le chiavi vanno confrontate byte per byte: le colonne `position` hanno collation `"C"` (migrazione `position_c_collation`), perché con `en_US.UTF-8`, il default di Supabase, `"a0"` finirebbe prima di `"Zz"`. Nel codice il confronto usa `<` sulle stringhe, che è coerente.
+
+Le Server Actions di spostamento ricevono gli id dei vicini (`beforeId`, `afterId`) e calcolano la posizione dal database.
+
+### Aggiornamenti ottimistici
+
+Nella vista board lo stato client (`BoardView`) è la fonte di verità finché la pagina è aperta: le azioni su liste e card non rivalidano la pagina. Ogni mutazione applica subito una trasformazione funzionale dello stato e, se la Server Action fallisce, applica la trasformazione inversa (ripristino di titolo, posizione o elemento) e mostra un toast. Le trasformazioni sono funzionali, non snapshot, così due mutazioni concorrenti non si sovrascrivono. Gli elementi appena creati hanno id `temp-…` e non sono trascinabili finché il server non restituisce l'id reale.
+
 ## Struttura cartelle (prevista)
 
 ```
@@ -131,6 +139,17 @@ prisma/
 prisma.config.ts           config Prisma 7 (schema, migrazioni, seed)
 e2e/                       test Playwright
 ```
+
+## Test
+
+- Vitest per la logica pura (`src/lib`).
+- Playwright per i flussi end-to-end. I test autenticati (`e2e/fixtures.ts`) creano un cookie di sessione Auth.js valido firmato con `AUTH_SECRET`, senza codice di test nell'app.
+
+## Deploy
+
+- Vercel (progetto `rdlproductivity`, regione funzioni `fra1`) collegato al repo.
+- Database Supabase (progetto `RDLproductivity`, `eu-central-1`), con un utente `prisma` dedicato. `DATABASE_URL` punta al transaction pooler (porta 6543) per il runtime serverless; `DATABASE_URL_UNPOOLED` punta al session pooler (porta 5432) per `prisma migrate deploy`, eseguito dal build solo in produzione.
+- Le tabelle non sono esposte dalla Data API di Supabase: nessun permesso per i ruoli `anon` e `authenticated`.
 
 ## Ricerca
 

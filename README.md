@@ -44,4 +44,6 @@ In produzione aggiungi gli stessi URL con il dominio Vercel (`https://rdlproduct
 
 Progetto Vercel `rdlproductivity` collegato al repo: ogni push su `main` va in produzione, gli altri branch creano preview. Il build (`scripts/vercel-build.sh`) applica le migrazioni Prisma solo nei deploy di produzione. Per le migrazioni usa `DATABASE_URL_UNPOOLED` se presente, altrimenti `DATABASE_URL`.
 
+Database di produzione: Supabase, progetto `RDLproductivity` (Francoforte). Dettagli in [Architettura](docs/ARCHITECTURE.md#deploy).
+
 Controlli: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm format`.

@@ -13,3 +13,9 @@ export async function requireSession() {
   if (!session?.user) redirect("/login");
   return session;
 }
+
+/** For Server Actions: returns false instead of redirecting. */
+export async function isAuthenticated() {
+  const session = await auth();
+  return !!session?.user;
+}
