@@ -21,11 +21,29 @@ Progetto mono-utente, pensato per un solo proprietario.
 
 ## Avvio in locale
 
-> Disponibile dalla Milestone 0 (scaffolding).
+Requisiti: Node 22, pnpm 10, PostgreSQL 16.
 
 ```bash
-pnpm install
-cp .env.example .env    # imposta DATABASE_URL e le variabili di auth
-pnpm prisma migrate dev
+pnpm install                 # genera anche il client Prisma
+cp .env.example .env         # imposta DATABASE_URL e le variabili di auth
+pnpm prisma migrate dev      # applica le migrazioni
+pnpm db:seed                 # crea una board d'esempio
 pnpm dev
 ```
+
+### Login
+
+Crea le credenziali OAuth e mettile nel `.env`, insieme alla tua email in `ALLOWED_EMAIL` e a `AUTH_SECRET` (`pnpm dlx auth secret`).
+
+- **GitHub**: Settings → Developer settings → OAuth Apps. Callback URL: `http://localhost:3000/api/auth/callback/github`.
+- **Google**: Google Cloud Console → API e servizi → Credenziali → ID client OAuth (applicazione web). URI di reindirizzamento: `http://localhost:3000/api/auth/callback/google`.
+
+In produzione aggiungi gli stessi URL con il dominio Vercel (`https://rdlproductivity.vercel.app/api/auth/callback/...`).
+
+## Deploy
+
+Progetto Vercel `rdlproductivity` collegato al repo: ogni push su `main` va in produzione, gli altri branch creano preview. Il build (`scripts/vercel-build.sh`) applica le migrazioni Prisma solo nei deploy di produzione. Per le migrazioni usa `DATABASE_URL_UNPOOLED` se presente, altrimenti `DATABASE_URL`.
+
+Database di produzione: Supabase, progetto `RDLproductivity` (Francoforte). Dettagli in [Architettura](docs/ARCHITECTURE.md#deploy).
+
+Controlli: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm format`.

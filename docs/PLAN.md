@@ -4,28 +4,28 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 
 ## Milestone 0 — Scaffolding e infrastruttura
 
-- [ ] Creare app Next.js (App Router, TypeScript, ESLint, Tailwind, `src/`), gestore pacchetti pnpm
-- [ ] Prettier + regole ESLint, script `lint`, `typecheck`, `format`
-- [ ] Installare shadcn/ui e componenti base (button, input, dialog, dropdown, popover, calendar)
-- [ ] Prisma + schema iniziale da `docs/ARCHITECTURE.md`, prima migrazione, `seed.ts` con una board d'esempio
-- [ ] `.env.example` completo
-- [ ] Vitest per unit test, Playwright per un test e2e smoke
-- [ ] GitHub Actions: lint + typecheck + test su ogni PR
+- [x] Creare app Next.js (App Router, TypeScript, ESLint, Tailwind, `src/`), gestore pacchetti pnpm
+- [x] Prettier + regole ESLint, script `lint`, `typecheck`, `format`
+- [x] Installare shadcn/ui e componenti base (button, input, dialog, dropdown, popover, calendar)
+- [x] Prisma + schema iniziale da `docs/ARCHITECTURE.md`, prima migrazione, `seed.ts` con una board d'esempio
+- [x] `.env.example` completo
+- [x] Vitest per unit test, Playwright per un test e2e smoke
+- [x] GitHub Actions: lint + typecheck + test su ogni PR
 
 ## Milestone 1 — Autenticazione mono-utente
 
-- [ ] Auth.js con provider GitHub (o magic link), accesso consentito solo a `ALLOWED_EMAIL`
-- [ ] Middleware che protegge tutte le rotte tranne `/login`
-- [ ] Pagina di login minimale
+- [x] Auth.js con provider GitHub e Google, accesso consentito solo a `ALLOWED_EMAIL`
+- [x] Proxy (ex middleware) che protegge tutte le rotte tranne `/login`
+- [x] Pagina di login minimale
 
 ## Milestone 2 — Board, liste, card (nucleo)
 
-- [ ] Pagina `/boards`: elenco, crea, rinomina, colore, archivia
-- [ ] Vista board: liste orizzontali scrollabili, crea/rinomina/archivia lista
-- [ ] Card: crea rapida in fondo alla lista, rinomina inline, archivia
-- [ ] Drag & drop con dnd-kit: card nella lista, card tra liste, riordino liste
-- [ ] Posizioni con fractional indexing, aggiornamenti ottimistici con rollback
-- [ ] Scorciatoie da tastiera di base (`n` nuova card, `Esc` chiudi)
+- [x] Pagina `/boards`: elenco, crea, rinomina, colore, archivia
+- [x] Vista board: liste orizzontali scrollabili, crea/rinomina/archivia lista
+- [x] Card: crea rapida in fondo alla lista, rinomina inline, archivia
+- [x] Drag & drop con dnd-kit: card nella lista, card tra liste, riordino liste
+- [x] Posizioni con fractional indexing, aggiornamenti ottimistici con rollback
+- [x] Scorciatoie da tastiera di base (`n` nuova card, `Esc` chiudi)
 
 ## Milestone 3 — Dettaglio card
 

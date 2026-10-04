@@ -7,7 +7,16 @@
 - **UI ottimistica**: il drag & drop aggiorna subito lo stato locale, poi persiste; in caso di errore si fa rollback.
 - **Semplice da deployare**: Vercel + Postgres gestito, nessun altro servizio.
 
-## Modello dati (Prisma, bozza)
+## Autenticazione
+
+- Auth.js v5 (`src/auth.ts`) con provider GitHub e Google, attivati solo se le rispettive credenziali sono nel `.env`.
+- Sessione JWT in cookie cifrato, nessun adapter e nessuna tabella utenti: l'app è mono-utente.
+- Il callback `signIn` accetta solo gli indirizzi in `ALLOWED_EMAIL` (uno o più, separati da virgola); per Google l'email deve essere verificata.
+- `src/proxy.ts` (il middleware di Next 16) reindirizza a `/login` chi non è autenticato. È un controllo ottimistico: Server Components e Server Actions chiamano comunque `requireSession()` da `src/server/session.ts`.
+
+## Modello dati (Prisma)
+
+Schema definitivo in `prisma/schema.prisma`; quello sotto è il riferimento logico.
 
 ```prisma
 model Board {
@@ -92,12 +101,21 @@ model ChecklistItem {
 
 Le posizioni usano **fractional indexing** (libreria `fractional-indexing`): spostare una card aggiorna una sola riga, senza rinumerare la lista.
 
+Le chiavi vanno confrontate byte per byte: le colonne `position` hanno collation `"C"` (migrazione `position_c_collation`), perché con `en_US.UTF-8`, il default di Supabase, `"a0"` finirebbe prima di `"Zz"`. Nel codice il confronto usa `<` sulle stringhe, che è coerente.
+
+Le Server Actions di spostamento ricevono gli id dei vicini (`beforeId`, `afterId`) e calcolano la posizione dal database.
+
+### Aggiornamenti ottimistici
+
+Nella vista board lo stato client (`BoardView`) è la fonte di verità finché la pagina è aperta: le azioni su liste e card non rivalidano la pagina. Ogni mutazione applica subito una trasformazione funzionale dello stato e, se la Server Action fallisce, applica la trasformazione inversa (ripristino di titolo, posizione o elemento) e mostra un toast. Le trasformazioni sono funzionali, non snapshot, così due mutazioni concorrenti non si sovrascrivono. Gli elementi appena creati hanno id `temp-…` e non sono trascinabili finché il server non restituisce l'id reale.
+
 ## Struttura cartelle (prevista)
 
 ```
 src/
   app/
     (auth)/login/          pagina di login
+    api/auth/[...nextauth]/ route handler di Auth.js
     boards/                elenco board
     boards/[boardId]/      vista board (kanban)
     calendar/              vista calendario
@@ -106,14 +124,32 @@ src/
     board/                 Board, List, Card, DnD
     card-detail/           modale dettaglio card
     ui/                    shadcn/ui
+  auth.ts                  configurazione Auth.js
+  proxy.ts                 protezione rotte (ex middleware)
   server/
+    session.ts             requireSession()
     actions/               Server Actions (board, list, card, label, checklist)
-    db.ts                  client Prisma
+    db.ts                  client Prisma (adapter pg)
   lib/                     utilità (validazione zod, date, posizioni)
+  generated/prisma/        client Prisma generato (non versionato)
 prisma/
   schema.prisma
+  migrations/
   seed.ts
+prisma.config.ts           config Prisma 7 (schema, migrazioni, seed)
+e2e/                       test Playwright
 ```
+
+## Test
+
+- Vitest per la logica pura (`src/lib`).
+- Playwright per i flussi end-to-end. I test autenticati (`e2e/fixtures.ts`) creano un cookie di sessione Auth.js valido firmato con `AUTH_SECRET`, senza codice di test nell'app.
+
+## Deploy
+
+- Vercel (progetto `rdlproductivity`, regione funzioni `fra1`) collegato al repo.
+- Database Supabase (progetto `RDLproductivity`, `eu-central-1`), con un utente `prisma` dedicato. `DATABASE_URL` punta al transaction pooler (porta 6543) per il runtime serverless; `DATABASE_URL_UNPOOLED` punta al session pooler (porta 5432) per `prisma migrate deploy`, eseguito dal build solo in produzione.
+- Le tabelle non sono esposte dalla Data API di Supabase: nessun permesso per i ruoli `anon` e `authenticated`.
 
 ## Ricerca
 
