@@ -29,12 +29,12 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 
 ## Milestone 3 — Dettaglio card
 
-- [ ] Modale dettaglio aperta via URL (`/boards/[id]?card=[cardId]`)
-- [ ] Descrizione in markdown (editor + anteprima)
-- [ ] Date di inizio e scadenza, flag completato, badge sulla card (scaduta / in scadenza)
-- [ ] Etichette per board: crea, modifica colore/nome, assegna alle card
-- [ ] Checklist multiple con item, progresso mostrato sulla card
-- [ ] Sposta/copia card in altra lista o board
+- [x] Modale dettaglio aperta via URL (`/boards/[id]?card=[cardId]`)
+- [x] Descrizione in markdown (editor + anteprima)
+- [x] Date di inizio e scadenza, flag completato, badge sulla card (scaduta / in scadenza)
+- [x] Etichette per board: crea, modifica colore/nome, assegna alle card
+- [x] Checklist multiple con item, progresso mostrato sulla card
+- [x] Sposta/copia card in altra lista o board
 
 ## Milestone 4 — Ricerca e filtri
 

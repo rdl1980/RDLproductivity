@@ -8,9 +8,7 @@ import { positionAfter } from "@/lib/position";
 import { db } from "@/server/db";
 import { isAuthenticated } from "@/server/session";
 
-import { type ActionResult, fail, idSchema, ok, parse, titleSchema } from "./result";
-
-const UNAUTHORIZED = "Sessione scaduta, accedi di nuovo.";
+import { type ActionResult, fail, idSchema, ok, parse, titleSchema, UNAUTHORIZED } from "./result";
 
 const createSchema = z.object({ title: titleSchema, color: z.enum(BOARD_COLOR_VALUES) });
 

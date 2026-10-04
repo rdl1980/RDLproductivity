@@ -6,9 +6,7 @@ import { positionAfter, positionBetween } from "@/lib/position";
 import { db } from "@/server/db";
 import { isAuthenticated } from "@/server/session";
 
-import { type ActionResult, fail, idSchema, ok, parse, titleSchema } from "./result";
-
-const UNAUTHORIZED = "Sessione scaduta, accedi di nuovo.";
+import { type ActionResult, fail, idSchema, ok, parse, titleSchema, UNAUTHORIZED } from "./result";
 
 // Board pages keep client state as the source of truth while open, so these
 // actions return the persisted values instead of revalidating the page.

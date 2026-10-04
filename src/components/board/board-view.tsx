@@ -20,15 +20,22 @@ import {
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { PlusIcon } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  CardDetailDialog,
+  type CardDetailCallbacks,
+} from "@/components/card-detail/card-detail-dialog";
 import { Button } from "@/components/ui/button";
 import {
   type CardItem,
   findListOfCard,
+  type LabelItem,
   type ListItem,
   moveCardInState,
+  newCardSummary,
   moveListInState,
   patchCard,
   patchList,
@@ -38,13 +45,14 @@ import {
   upsertCard,
   upsertList,
 } from "@/lib/board-state";
+import { isTypingTarget } from "@/lib/dom";
 import { positionAfter } from "@/lib/position";
 import { createCard, moveCard, updateCard } from "@/server/actions/cards";
 import { createList, moveList, updateList } from "@/server/actions/lists";
 import type { ActionResult } from "@/server/actions/result";
 
 import { BoardHeader } from "./board-header";
-import { CardPreview } from "./card-item";
+import { CardPreview, isTempId } from "./card-item";
 import { Composer } from "./composer";
 import { ListColumn, ListPreview } from "./list-column";
 
@@ -72,22 +80,20 @@ const collisionDetection: CollisionDetection = (args) => {
   return closestCorners(args);
 };
 
-function isTypingTarget(target: EventTarget | null) {
-  return (
-    target instanceof HTMLElement &&
-    (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
-  );
-}
-
 export function BoardView({
   board: initialBoard,
   initialLists,
+  initialLabels,
 }: {
   board: Board;
   initialLists: ListItem[];
+  initialLabels: LabelItem[];
 }) {
   const [board, setBoard] = useState(initialBoard);
   const [lists, setLists] = useState(initialLists);
+  const [labels, setLabels] = useState(initialLabels);
+  const searchParams = useSearchParams();
+  const openCardId = searchParams.get("card");
   const [active, setActive] = useState<Active>(null);
   const [composerListId, setComposerListId] = useState<string | null>(null);
   const [addingList, setAddingList] = useState(false);
@@ -96,7 +102,11 @@ export function BoardView({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      // Enter opens the card, so only Space picks it up.
+      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] },
+    }),
   );
 
   /**
@@ -126,6 +136,7 @@ export function BoardView({
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target)) return;
+      if (openCardId) return;
       if (event.key === "n" && lists.length > 0) {
         event.preventDefault();
         const target = lists.find((l) => l.id === hoveredListId.current) ?? lists[0];
@@ -137,7 +148,46 @@ export function BoardView({
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [lists]);
+  }, [lists, openCardId]);
+
+  // --- Card detail (URL: ?card=<id>) -----------------------------------------
+
+  function setCardParam(cardId: string | null) {
+    const params = new URLSearchParams(window.location.search);
+    if (cardId) params.set("card", cardId);
+    else params.delete("card");
+    const query = params.toString();
+    window.history.pushState(null, "", query ? `?${query}` : window.location.pathname);
+  }
+
+  const detailCallbacks: CardDetailCallbacks = {
+    onCardChange: (cardId, patch) => setLists((current) => patchCard(current, cardId, patch)),
+    onLabelsChange: (boardId, next) => {
+      if (boardId !== board.id) return;
+      setLabels(next);
+      const valid = new Set(next.map((label) => label.id));
+      setLists((current) =>
+        current.map((list) =>
+          list.cards.some((card) => card.labelIds.some((id) => !valid.has(id)))
+            ? {
+                ...list,
+                cards: list.cards.map((card) => ({
+                  ...card,
+                  labelIds: card.labelIds.filter((id) => valid.has(id)),
+                })),
+              }
+            : list,
+        ),
+      );
+    },
+    onCardRemoved: (cardId) => setLists((current) => removeCard(current, cardId)),
+    onCardPlaced: ({ boardId, listId, card }) =>
+      setLists((current) =>
+        boardId === board.id && current.some((list) => list.id === listId)
+          ? upsertCard(current, listId, card)
+          : removeCard(current, card.id),
+      ),
+  };
 
   // --- Lists -----------------------------------------------------------------
 
@@ -173,7 +223,7 @@ export function BoardView({
   function addCard(listId: string, title: string) {
     const id = tempId();
     const last = lists.find((l) => l.id === listId)?.cards.at(-1);
-    const card = { id, title, position: positionAfter(last?.position ?? null) };
+    const card = newCardSummary(id, title, positionAfter(last?.position ?? null));
     mutate(
       (current) => upsertCard(current, listId, card),
       (current) => removeCard(current, id),
@@ -332,6 +382,8 @@ export function BoardView({
               <ListColumn
                 key={list.id}
                 list={list}
+                labels={labels}
+                onOpenCard={(card) => !isTempId(card.id) && setCardParam(card.id)}
                 composerOpen={composerListId === list.id}
                 onComposerOpenChange={(open) => setComposerListId(open ? list.id : null)}
                 onHover={() => (hoveredListId.current = list.id)}
@@ -372,6 +424,12 @@ export function BoardView({
           {activeList ? <ListPreview list={activeList} /> : null}
         </DragOverlay>
       </DndContext>
+
+      <CardDetailDialog
+        cardId={openCardId}
+        onClose={() => setCardParam(null)}
+        {...detailCallbacks}
+      />
     </main>
   );
 }
