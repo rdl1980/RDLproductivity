@@ -410,7 +410,12 @@ export function BoardView({
   const activeList = active?.type === "list" ? lists.find((l) => l.id === active.id) : undefined;
 
   return (
-    <main className="flex flex-1 flex-col" style={{ backgroundColor: board.color }}>
+    // Fixed to the viewport below the 3rem app header: lists scroll vertically
+    // inside themselves, so the horizontal scrollbar stays on screen.
+    <main
+      className="flex h-[calc(100dvh-3rem)] min-h-0 flex-col overflow-hidden"
+      style={{ backgroundColor: board.color }}
+    >
       <BoardHeader board={board} onChange={setBoard}>
         <BoardFiltersButton labels={labels} filters={filters} onChange={setFilters} />
       </BoardHeader>
@@ -440,14 +445,18 @@ export function BoardView({
           },
         }}
       >
-        <div className="flex flex-1 items-start gap-3 overflow-x-auto px-4 pb-4">
+        <div
+          data-testid="board-lists"
+          className="flex min-h-0 flex-1 [scrollbar-color:rgb(255_255_255/0.7)_rgb(0_0_0/0.2)] items-start gap-3 overflow-x-auto overflow-y-hidden px-4 pb-3"
+        >
           <SortableContext items={lists.map((l) => l.id)} strategy={horizontalListSortingStrategy}>
-            {visibleLists.map((list) => (
+            {visibleLists.map((list, index) => (
               <ListColumn
                 key={list.id}
                 list={list}
                 labels={labels}
                 dragDisabled={filtering}
+                totalCards={filtering ? lists[index].cards.length : undefined}
                 composerOpen={composerListId === list.id}
                 actions={boardActions}
               />

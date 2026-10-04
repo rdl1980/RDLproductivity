@@ -35,6 +35,9 @@ test("create a board, lists and cards, move a card and persist everything", asyn
   }
   await cardInput.press("Escape");
   await expect.poll(() => cardTitles(list(page, "Da fare"))).toEqual(["Uno", "Due", "Tre"]);
+  const count = (title: string) => list(page, title).getByTestId("list-card-count");
+  await expect(count("Da fare")).toHaveAttribute("title", "3 card");
+  await expect(count("Fatto")).toHaveAttribute("title", "0 card");
 
   await settle(page);
   await page.reload();
@@ -47,6 +50,8 @@ test("create a board, lists and cards, move a card and persist everything", asyn
     list(page, "Fatto"),
   );
   await expect.poll(() => cardTitles(list(page, "Fatto"))).toEqual(["Uno"]);
+  await expect(count("Da fare")).toHaveAttribute("title", "2 card");
+  await expect(count("Fatto")).toHaveAttribute("title", "1 card");
   await settle(page);
 
   // Reorder inside "Da fare": "Tre" above "Due".

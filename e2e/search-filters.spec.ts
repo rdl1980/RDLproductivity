@@ -77,6 +77,10 @@ test("board filters by label and status, persisted in the URL", async ({ page })
   await filtersButton.click();
   await page.getByRole("checkbox", { name: "Urgente" }).click();
   await expect.poll(visible).toEqual(["Rossa"]);
+  await expect(list(page, "Lista").getByTestId("list-card-count")).toHaveAttribute(
+    "title",
+    "1 di 3 card visibili",
+  );
   await expect(page).toHaveURL(/labels=/);
   await expect(page.getByRole("status").filter({ hasText: "Filtri attivi" })).toContainText(
     "2 card nascoste",

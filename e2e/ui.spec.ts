@@ -60,6 +60,37 @@ test("accessibility: no serious axe violations on the main pages", async ({ page
   }
 });
 
+test("the board fits the window: lists scroll inside, the horizontal scrollbar stays visible", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 600 });
+  await createBoard(page, `Scroll ${Date.now()}`);
+  await addLists(page, ["Lunga", "Due", "Tre", "Quattro", "Cinque"]);
+  await addCards(
+    page,
+    "Lunga",
+    Array.from({ length: 15 }, (_, i) => `Card ${i + 1}`),
+  );
+
+  // The page itself never scrolls vertically.
+  const pageOverflowY = () =>
+    page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
+  expect(await pageOverflowY()).toBeLessThanOrEqual(0);
+
+  // The lists container scrolls horizontally and its bottom edge is on screen.
+  const lists = page.getByTestId("board-lists");
+  const metrics = await lists.evaluate((el) => ({
+    overflowX: el.scrollWidth - el.clientWidth,
+    bottom: el.getBoundingClientRect().bottom,
+  }));
+  expect(metrics.overflowX).toBeGreaterThan(0);
+  expect(metrics.bottom).toBeLessThanOrEqual(600);
+
+  // The long list scrolls its own cards.
+  const cards = list(page, "Lunga").locator("ol");
+  expect(await cards.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+});
+
 test.describe("mobile", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 

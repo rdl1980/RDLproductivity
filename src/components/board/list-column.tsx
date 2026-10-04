@@ -24,15 +24,33 @@ type Props = {
   list: ListItem;
   labels: LabelItem[];
   dragDisabled?: boolean;
+  /** Cards in the list before filtering; set only while filters are active. */
+  totalCards?: number;
   composerOpen: boolean;
   actions: BoardActions;
 };
+
+function CardCounter({ shown, total }: { shown: number; total?: number }) {
+  const filtered = total !== undefined && total !== shown;
+  const label = filtered ? `${shown} di ${total} card visibili` : `${shown} card`;
+  return (
+    <span
+      className="relative shrink-0 rounded-full px-1.5 text-xs text-muted-foreground tabular-nums"
+      title={label}
+      data-testid="list-card-count"
+    >
+      <span aria-hidden>{filtered ? `${shown}/${total}` : shown}</span>
+      <span className="sr-only">{label}</span>
+    </span>
+  );
+}
 
 // Memoized: with stable `actions`, a list re-renders only when its own data changes.
 export const ListColumn = memo(function ListColumn({
   list,
   labels,
   dragDisabled,
+  totalCards,
   composerOpen,
   actions,
 }: Props) {
@@ -80,6 +98,7 @@ export const ListColumn = memo(function ListColumn({
             triggerProps={{ ref: setActivatorNodeRef, ...attributes, onKeyDown }}
           />
         </div>
+        <CardCounter shown={list.cards.length} total={totalCards} />
         {!pending && (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>

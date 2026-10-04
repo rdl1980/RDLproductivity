@@ -65,6 +65,11 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Pagina `/connections` con URL del connettore e revoca dei client
 - [x] Test unitari ed e2e del flusso OAuth + tool
 
+## Miglioramenti
+
+- [x] Contatore delle card nell'intestazione di ogni lista (`visibili/totali` con i filtri attivi)
+- [x] Board alta quanto la finestra: le liste scorrono al loro interno e la barra di scorrimento orizzontale resta sempre visibile
+
 ## Dopo l'MVP (idee)
 
 - Allegati (Vercel Blob / Supabase Storage)
