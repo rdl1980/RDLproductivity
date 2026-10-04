@@ -1,23 +1,13 @@
 "use client";
 
 import { CheckSquareIcon, ClockIcon, TextIcon } from "lucide-react";
-import { useSyncExternalStore } from "react";
 
 import type { CardItem, LabelItem } from "@/lib/board-state";
 import { DUE_STATUS_LABEL, dueStatus, formatDue } from "@/lib/due";
+import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
 
-// Dates are rendered in the browser's time zone; the server renders nothing
-// for them to avoid hydration mismatches.
-const subscribe = () => () => {};
-function useIsClient() {
-  return useSyncExternalStore(
-    subscribe,
-    () => true,
-    () => false,
-  );
-}
-
+// Dates depend on the browser's clock and time zone: render them after hydration.
 const DUE_STYLES = {
   none: "",
   upcoming: "text-muted-foreground",

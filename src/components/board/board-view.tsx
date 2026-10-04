@@ -46,11 +46,20 @@ import {
   upsertList,
 } from "@/lib/board-state";
 import { isTypingTarget } from "@/lib/dom";
+import {
+  activeFilterCount,
+  type BoardFilters,
+  matchesFilters,
+  parseFilters,
+  writeFilters,
+} from "@/lib/filters";
 import { positionAfter } from "@/lib/position";
+import { useIsClient } from "@/lib/use-is-client";
 import { createCard, moveCard, updateCard } from "@/server/actions/cards";
 import { createList, moveList, updateList } from "@/server/actions/lists";
 import type { ActionResult } from "@/server/actions/result";
 
+import { BoardFiltersButton } from "./board-filters";
 import { BoardHeader } from "./board-header";
 import { CardPreview, isTempId } from "./card-item";
 import { Composer } from "./composer";
@@ -94,6 +103,26 @@ export function BoardView({
   const [labels, setLabels] = useState(initialLabels);
   const searchParams = useSearchParams();
   const openCardId = searchParams.get("card");
+  const filters = parseFilters(new URLSearchParams(searchParams.toString()));
+  const filtering = activeFilterCount(filters) > 0;
+  const isClient = useIsClient();
+  // Due filters depend on the browser clock: apply them after hydration.
+  const effectiveFilters = isClient ? filters : { ...filters, due: null };
+  const visibleLists = filtering
+    ? lists.map((list) => ({
+        ...list,
+        cards: list.cards.filter((card) => matchesFilters(card, effectiveFilters)),
+      }))
+    : lists;
+  const hiddenCount =
+    lists.reduce((sum, list) => sum + list.cards.length, 0) -
+    visibleLists.reduce((sum, list) => sum + list.cards.length, 0);
+
+  function setFilters(next: BoardFilters) {
+    const params = writeFilters(new URLSearchParams(window.location.search), next);
+    const query = params.toString();
+    window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+  }
   const [active, setActive] = useState<Active>(null);
   const [composerListId, setComposerListId] = useState<string | null>(null);
   const [addingList, setAddingList] = useState(false);
@@ -360,7 +389,20 @@ export function BoardView({
 
   return (
     <main className="flex flex-1 flex-col" style={{ backgroundColor: board.color }}>
-      <BoardHeader board={board} onChange={setBoard} />
+      <BoardHeader board={board} onChange={setBoard}>
+        <BoardFiltersButton labels={labels} filters={filters} onChange={setFilters} />
+      </BoardHeader>
+      {filtering && (
+        <p
+          role="status"
+          className="mx-4 mb-3 w-fit rounded-md bg-black/25 px-3 py-1.5 text-sm text-white"
+        >
+          Filtri attivi
+          {hiddenCount > 0 &&
+            ` · ${hiddenCount} ${hiddenCount === 1 ? "card nascosta" : "card nascoste"}`}{" "}
+          · trascinamento disattivato
+        </p>
+      )}
 
       <DndContext
         sensors={sensors}
@@ -378,10 +420,11 @@ export function BoardView({
       >
         <div className="flex flex-1 items-start gap-3 overflow-x-auto px-4 pb-4">
           <SortableContext items={lists.map((l) => l.id)} strategy={horizontalListSortingStrategy}>
-            {lists.map((list) => (
+            {visibleLists.map((list) => (
               <ListColumn
                 key={list.id}
                 list={list}
+                dragDisabled={filtering}
                 labels={labels}
                 onOpenCard={(card) => !isTempId(card.id) && setCardParam(card.id)}
                 composerOpen={composerListId === list.id}

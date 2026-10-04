@@ -38,9 +38,9 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 
 ## Milestone 4 — Ricerca e filtri
 
-- [ ] Barra di ricerca globale (`/` per focus) su titolo e descrizione
-- [ ] Filtri nella vista board: etichette, scadenza, completate
-- [ ] Filtri persistiti nell'URL
+- [x] Barra di ricerca globale (`/` per focus) su titolo e descrizione
+- [x] Filtri nella vista board: etichette, scadenza, completate
+- [x] Filtri persistiti nell'URL
 
 ## Milestone 5 — Vista calendario
 
