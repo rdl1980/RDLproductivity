@@ -30,7 +30,7 @@ pnpm smoke:live     # controlli in sola lettura sull'istanza in produzione
 ## Convenzioni
 
 - Ogni Server Component o Server Action che tocca dati chiama `requireSession()` (`src/server/session.ts`): il proxy non basta.
-- Lettura dati nei Server Components; mutazioni tramite Server Actions in `src/server/actions/`, input validato con zod.
+- Lettura dati nei Server Components; mutazioni tramite Server Actions in `src/server/actions/`, input validato con zod. I tool MCP (`src/server/mcp/tools.ts`) riusano le stesse actions: una nuova funzionalità va esposta anche lì se utile a Claude.
 - Ordinamento con fractional indexing (campo `position` stringa, collation `"C"`), mai rinumerare intere liste. Ogni nuova colonna `position` va portata a `COLLATE "C"` nella migrazione.
 - Drag & drop e mutazioni con aggiornamento ottimistico tramite trasformazioni funzionali e rollback inverso in caso di errore (vedi `BoardView`).
 - Componenti UI da shadcn/ui in `src/components/ui/`; niente altre librerie di componenti.

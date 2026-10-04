@@ -194,3 +194,17 @@ e2e/                       test Playwright
 - Il server non conosce il fuso del browser: carica le card in un intervallo UTC allargato di due giorni per lato rispetto alle settimane visibili (`serverRange`), mentre la griglia e il raggruppamento per giorno vengono calcolati nel browser dopo l'idratazione.
 - Trascinando una card su un altro giorno cambia la data e resta invariata l'ora locale (`moveToDay`), con aggiornamento ottimistico e rollback. Il server rifiuta lo spostamento se la scadenza finisce prima della data di inizio.
 - Il click su una card apre la stessa `CardDetailDialog` della board (`?card=`), sincronizzata con il calendario tramite le stesse callback.
+
+## Server MCP (Claude)
+
+Claude (claude.ai, app desktop e mobile) si collega come connettore personalizzato all'URL `https://<dominio>/api/mcp`.
+
+- **Endpoint**: `src/app/api/mcp/route.ts` con `mcp-handler` 2.x e SDK MCP v2 (Streamable HTTP stateless, protocollo 2026-07-28 e fallback 2025). Tool in `src/server/mcp/tools.ts`.
+- **Riuso delle Server Actions**: ogni tool gira dentro `runAsMcpUser()` (`src/server/mcp-context.ts`, `AsyncLocalStorage`); `requireSession()` e `isAuthenticated()` accettano quel contesto, quindi validazione zod, fractional indexing e regole restano in un solo posto.
+- **Authorization server** (stesso dominio, issuer = origine pubblica):
+  - `/.well-known/oauth-protected-resource[/api/mcp]` (RFC 9728) e `/.well-known/oauth-authorization-server` (RFC 8414);
+  - `/oauth/register` (registrazione dinamica RFC 7591) e client ID metadata document (`client_id` = URL https, scaricato e validato);
+  - `/oauth/authorize`: pagina di consenso dietro il login Auth.js (GitHub), quindi solo `ALLOWED_EMAIL`; protetta da framing; la Server Action rivalida tutta la richiesta;
+  - `/oauth/token`: `authorization_code` con PKCE S256 obbligatorio, `refresh_token` con rotazione; `/oauth/revoke` (RFC 7009).
+- **Token**: opachi (256 bit), salvati solo come hash SHA-256 (`OAuthCode`, `OAuthToken`, `OAuthClient`, RLS attiva). Access token 1 h, refresh 60 giorni, codici 5 min monouso. Ogni token è legato alla risorsa `/api/mcp` (RFC 8707) e all'email, ricontrollata contro `ALLOWED_EMAIL` a ogni richiesta.
+- **Revoca**: pagina `/connections` (menu utente → Connessioni Claude).

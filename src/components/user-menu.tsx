@@ -6,6 +6,7 @@ import {
   LogOutIcon,
   MonitorIcon,
   MoonIcon,
+  PlugIcon,
   SunIcon,
   UserIcon,
 } from "lucide-react";
@@ -48,6 +49,12 @@ export function UserMenu({ name, signOut }: { name: string; signOut: () => Promi
             <DownloadIcon />
             Esporta backup (JSON)
           </a>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/connections">
+            <PlugIcon />
+            Connessioni Claude
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">

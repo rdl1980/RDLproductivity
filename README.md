@@ -49,6 +49,16 @@ Crea le credenziali OAuth e mettile nel `.env`, insieme alla tua email in `ALLOW
 
 In produzione aggiungi gli stessi URL con il dominio Vercel (`https://rdlproductivity.vercel.app/api/auth/callback/...`).
 
+## Claude (MCP)
+
+L'app espone un server MCP remoto: Claude può leggere e modificare board, liste, card, etichette e checklist.
+
+1. In Claude: Impostazioni → Connettori → Aggiungi connettore personalizzato.
+2. URL: `https://rdlproductivity.vercel.app/api/mcp` (lo trovi anche in Menu utente → Connessioni Claude).
+3. Al primo uso Claude apre la pagina di consenso: accedi con GitHub e clicca Consenti.
+
+I client autorizzati si revocano da `/connections`. Dettagli in `docs/ARCHITECTURE.md`.
+
 ## Deploy
 
 Progetto Vercel `rdlproductivity` collegato al repo: ogni push su `main` va in produzione, gli altri branch creano preview. Il build (`scripts/vercel-build.sh`) applica le migrazioni Prisma solo nei deploy di produzione. Per le migrazioni usa `DATABASE_URL_UNPOOLED` se presente, altrimenti `DATABASE_URL`.

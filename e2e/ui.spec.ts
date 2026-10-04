@@ -47,7 +47,13 @@ test("accessibility: no serious axe violations on the main pages", async ({ page
   await expectNoSeriousA11yIssues(page);
   await page.keyboard.press("Escape");
 
-  for (const path of ["/boards", "/calendar", "/search?q=accessibile", "/archive"]) {
+  for (const path of [
+    "/boards",
+    "/calendar",
+    "/search?q=accessibile",
+    "/archive",
+    "/connections",
+  ]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
     await expectNoSeriousA11yIssues(page);
@@ -81,7 +87,7 @@ test.describe("mobile", () => {
     expect(box.x + box.width).toBeLessThanOrEqual(390);
     await page.keyboard.press("Escape");
 
-    for (const path of ["/boards", "/calendar", "/archive"]) {
+    for (const path of ["/boards", "/calendar", "/archive", "/connections"]) {
       await page.goto(path);
       await page.waitForLoadState("networkidle");
       expect(await pageOverflow(), path).toBeLessThanOrEqual(0);
