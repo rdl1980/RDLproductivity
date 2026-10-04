@@ -163,7 +163,16 @@ e2e/                       test Playwright
 
 ## Ricerca
 
-MVP: `ILIKE` su titolo e descrizione delle card, più filtri per etichetta, scadenza (scadute / oggi / settimana / nessuna) e stato completato. Full-text Postgres (`tsvector`) solo se le prestazioni lo richiedono.
+- Barra di ricerca nell'header (`/` per il focus) che porta a `/search?q=`.
+- `ILIKE` (Prisma `contains`, `mode: "insensitive"`) su titolo e descrizione delle card non archiviate di board e liste non archiviate, massimo 50 risultati, più le board il cui titolo corrisponde. I risultati evidenziano le occorrenze e aprono la card nella sua board (`?card=`).
+- Full-text Postgres (`tsvector`) solo se le prestazioni lo richiederanno.
+
+## Filtri della board
+
+- Etichette (OR, con l'opzione "Senza etichette"), scadenza (scadute, oggi, entro 7 giorni, senza scadenza) e stato (completate, da completare); le categorie si combinano in AND.
+- Lo stato è nell'URL (`?labels=…&due=…&status=…`), aggiornato con `history.replaceState`: sopravvive al reload e si può condividere.
+- Il filtro è solo lato client sulle card già caricate. I filtri di scadenza dipendono da orologio e fuso del browser, quindi si applicano dopo l'idratazione.
+- Con un filtro attivo il drag & drop è disattivato: le posizioni si calcolano dai vicini visibili, e con card nascoste sarebbero sbagliate.
 
 ## Calendario
 

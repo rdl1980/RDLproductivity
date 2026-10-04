@@ -24,9 +24,12 @@ type Board = { id: string; title: string; color: string };
 export function BoardHeader({
   board,
   onChange,
+  children,
 }: {
   board: Board;
   onChange: (board: Board) => void;
+  /** Extra controls on the right (filters). */
+  children?: React.ReactNode;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -97,6 +100,7 @@ export function BoardHeader({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <div className="ml-auto">{children}</div>
     </div>
   );
 }
