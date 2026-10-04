@@ -48,7 +48,7 @@ export function Composer({ placeholder, submitLabel, onSubmit, onClose }: Props)
             onClose();
           }
         }}
-        className="w-full resize-none rounded-md border border-input bg-white px-2 py-1.5 text-sm text-neutral-900 shadow-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="w-full resize-none rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground shadow-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       />
       <div className="flex items-center gap-1">
         <Button type="submit" size="sm">

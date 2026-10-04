@@ -70,7 +70,8 @@ test("board filters by label and status, persisted in the URL", async ({ page })
   await page.keyboard.press("Escape");
   await settle(page);
 
-  const visible = () => list(page, "Lista").getByTestId("card").locator("p").allInnerTexts();
+  const visible = () =>
+    list(page, "Lista").getByTestId("card").locator("[data-card-title]").allInnerTexts();
   const filtersButton = page.getByRole("button", { name: /^Filtri( \d+)?$/ });
 
   await filtersButton.click();

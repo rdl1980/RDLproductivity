@@ -51,11 +51,11 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 
 ## Milestone 6 — Rifinitura e deploy
 
-- [ ] Responsive e uso da mobile
-- [ ] Tema chiaro/scuro
-- [ ] Archivio consultabile e ripristino
-- [ ] Deploy su Vercel + database Neon/Supabase, migrazioni in produzione
-- [ ] Backup: export JSON di tutte le board
+- [x] Responsive e uso da mobile
+- [x] Tema chiaro/scuro
+- [x] Archivio consultabile e ripristino
+- [x] Deploy su Vercel + database Supabase, migrazioni in produzione
+- [x] Backup: export JSON di tutte le board
 
 ## Dopo l'MVP (idee)
 

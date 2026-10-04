@@ -12,6 +12,8 @@ type Props = {
   label: string;
   className?: string;
   inputClassName?: string;
+  /** Extra props and ref for the title button (e.g. a drag activator). */
+  triggerProps?: React.ComponentProps<"button">;
 };
 
 /** Text that turns into an input: Enter or blur saves, Esc cancels. */
@@ -23,11 +25,13 @@ export function InlineTitle({
   label,
   className,
   inputClassName,
+  triggerProps,
 }: Props) {
   if (!editing) {
     return (
       <button
         type="button"
+        {...triggerProps}
         onClick={() => onEditingChange(true)}
         className={cn("cursor-text truncate text-left", className)}
         title="Rinomina"
@@ -82,7 +86,7 @@ function TitleInput({
         }
       }}
       className={cn(
-        "w-full rounded-md border border-input bg-white px-2 py-1 text-sm text-neutral-900 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "w-full rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         className,
       )}
     />

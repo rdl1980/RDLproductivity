@@ -10,7 +10,8 @@ import {
   DragOverlay,
   type DragStartEvent,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -130,7 +131,9 @@ export function BoardView({
   const dragSnapshot = useRef<ListItem[] | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    // On touch screens a long press starts the drag, so swiping still scrolls.
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
       // Enter opens the card, so only Space picks it up.
@@ -414,7 +417,7 @@ export function BoardView({
         accessibility={{
           screenReaderInstructions: {
             draggable:
-              "Premi spazio o invio per prendere l'elemento, usa le frecce per spostarlo, spazio o invio per rilasciarlo, Esc per annullare.",
+              "Premi spazio per prendere l'elemento, usa le frecce per spostarlo, spazio o invio per rilasciarlo, Esc per annullare. Invio apre la card o rinomina la lista.",
           },
         }}
       >
@@ -439,9 +442,9 @@ export function BoardView({
             ))}
           </SortableContext>
 
-          <div className="w-72 shrink-0">
+          <div className="w-[min(20rem,85vw)] shrink-0 sm:w-72">
             {addingList ? (
-              <div className="rounded-xl bg-neutral-100 p-2">
+              <div className="rounded-xl bg-list p-2">
                 <Composer
                   placeholder="Titolo della lista"
                   submitLabel="Aggiungi lista"
@@ -452,7 +455,7 @@ export function BoardView({
             ) : (
               <Button
                 variant="ghost"
-                className="w-full justify-start bg-white/20 text-white hover:bg-white/30 hover:text-white"
+                className="w-full justify-start bg-black/20 text-white hover:bg-black/30 hover:text-white"
                 onClick={() => setAddingList(true)}
               >
                 <PlusIcon />

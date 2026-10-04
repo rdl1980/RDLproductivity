@@ -34,31 +34,34 @@ type Props = {
 export function SortableCard({ card, labels, dragDisabled, onOpen, onRename, onArchive }: Props) {
   const [editing, setEditing] = useState(false);
   const pending = isTempId(card.id);
-  const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
+  const {
+    setNodeRef,
+    setActivatorNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: card.id,
     data: { type: "card" },
     disabled: pending || editing || dragDisabled,
   });
+  const { onKeyDown: dragKeyDown, ...pointerListeners } = listeners ?? {};
+  const onKeyDown = dragKeyDown as React.KeyboardEventHandler<HTMLButtonElement> | undefined;
 
   return (
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      // While renaming, the input must not sit inside a disabled sortable button.
-      {...(editing ? {} : { ...attributes, ...listeners })}
-      aria-label={card.title}
+      // Mouse and touch drags start anywhere on the card; the keyboard uses the
+      // title button (Enter opens, Space drags), so no control is nested in another.
+      {...(editing ? {} : pointerListeners)}
       data-testid="card"
       onClick={() => !editing && !pending && onOpen()}
-      onKeyDown={(event) => {
-        if (!editing) listeners?.onKeyDown?.(event);
-        if (event.key === "Enter" && !editing && !pending && event.target === event.currentTarget) {
-          event.preventDefault();
-          onOpen();
-        }
-      }}
       className={cn(
-        "group relative cursor-pointer rounded-md bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none",
-        "focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "group relative cursor-pointer rounded-md bg-list-card px-3 py-2 text-sm text-foreground shadow-sm select-none [-webkit-touch-callout:none]",
+        "has-[[data-card-title]:focus-visible]:ring-[3px] has-[[data-card-title]:focus-visible]:ring-ring/50",
         isDragging && "opacity-40",
         pending && "opacity-60",
       )}
@@ -76,7 +79,16 @@ export function SortableCard({ card, labels, dragDisabled, onOpen, onRename, onA
           <div className="mb-1 empty:hidden">
             <LabelChips labelIds={card.labelIds} labels={labels} />
           </div>
-          <p className="pr-6 break-words whitespace-pre-wrap">{card.title}</p>
+          <button
+            ref={setActivatorNodeRef}
+            type="button"
+            {...attributes}
+            onKeyDown={onKeyDown}
+            data-card-title
+            className="block w-full cursor-pointer pr-6 text-left break-words whitespace-pre-wrap outline-none"
+          >
+            {card.title}
+          </button>
           <CardBadges card={card} />
           {!pending && (
             <DropdownMenu>
@@ -85,9 +97,9 @@ export function SortableCard({ card, labels, dragDisabled, onOpen, onRename, onA
                   variant="ghost"
                   size="icon"
                   aria-label={`Azioni per ${card.title}`}
-                  onPointerDown={(event) => event.stopPropagation()}
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onTouchStart={(event) => event.stopPropagation()}
                   onClick={(event) => event.stopPropagation()}
-                  onKeyDown={(event) => event.stopPropagation()}
                   className="absolute top-1 right-1 size-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
                 >
                   <MoreHorizontalIcon />
@@ -110,7 +122,7 @@ export function SortableCard({ card, labels, dragDisabled, onOpen, onRename, onA
 /** Static copy rendered in the drag overlay. */
 export function CardPreview({ card }: { card: Card }) {
   return (
-    <div className="rotate-2 rounded-md bg-white px-3 py-2 text-sm break-words whitespace-pre-wrap text-neutral-900 shadow-lg">
+    <div className="rotate-2 rounded-md bg-list-card px-3 py-2 text-sm break-words whitespace-pre-wrap text-foreground shadow-lg">
       {card.title}
     </div>
   );

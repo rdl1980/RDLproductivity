@@ -13,3 +13,12 @@ test("login page shows access denied errors", async ({ page }) => {
     "Questo account non è autorizzato ad accedere.",
   );
 });
+
+test("login page has no serious accessibility issues", async ({ page }) => {
+  const { default: AxeBuilder } = await import("@axe-core/playwright");
+  await page.goto("/login");
+  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(
+    results.violations.filter((v) => v.impact === "serious" || v.impact === "critical"),
+  ).toEqual([]);
+});

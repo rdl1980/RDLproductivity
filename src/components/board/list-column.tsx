@@ -59,6 +59,8 @@ export function ListColumn({
     transition,
     isDragging,
   } = useSortable({ id: list.id, data: { type: "list" }, disabled: pending || dragDisabled });
+  const { onKeyDown: dragKeyDown, ...pointerListeners } = listeners ?? {};
+  const onKeyDown = dragKeyDown as React.KeyboardEventHandler<HTMLButtonElement> | undefined;
 
   return (
     <section
@@ -68,14 +70,15 @@ export function ListColumn({
       aria-label={list.title}
       data-testid="list"
       className={cn(
-        "flex max-h-full w-72 shrink-0 flex-col rounded-xl bg-neutral-100 text-neutral-900 shadow-sm",
+        "flex max-h-full w-[min(20rem,85vw)] shrink-0 flex-col rounded-xl bg-list text-foreground shadow-sm sm:w-72",
         isDragging && "opacity-40",
       )}
     >
       <header
-        ref={setActivatorNodeRef}
-        {...(editing ? {} : { ...attributes, ...listeners })}
-        className="flex items-center gap-1 px-2 pt-2 pb-1 outline-none"
+        // Mouse and touch drags start anywhere on the header; the keyboard
+        // drag starts from the title button (Space), so nothing is nested.
+        {...(editing ? {} : pointerListeners)}
+        className="flex items-center gap-1 px-2 pt-2 pb-1"
       >
         <div className="min-w-0 flex-1">
           <InlineTitle
@@ -84,7 +87,8 @@ export function ListColumn({
             editing={editing}
             onEditingChange={setEditing}
             onSave={onRename}
-            className="w-full rounded px-2 py-1 text-sm font-semibold"
+            className="w-full rounded px-2 py-1 text-sm font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            triggerProps={{ ref: setActivatorNodeRef, ...attributes, onKeyDown }}
           />
         </div>
         {!pending && (
@@ -95,7 +99,8 @@ export function ListColumn({
                 size="icon"
                 className="size-7"
                 aria-label={`Azioni per ${list.title}`}
-                onPointerDown={(event) => event.stopPropagation()}
+                onMouseDown={(event) => event.stopPropagation()}
+                onTouchStart={(event) => event.stopPropagation()}
               >
                 <MoreHorizontalIcon />
               </Button>
@@ -145,7 +150,7 @@ export function ListColumn({
             variant="ghost"
             size="sm"
             disabled={pending}
-            className="w-full justify-start text-muted-foreground"
+            className="w-full justify-start text-foreground/75"
             onClick={() => onComposerOpenChange(true)}
           >
             <PlusIcon />
@@ -160,10 +165,10 @@ export function ListColumn({
 /** Static copy rendered in the drag overlay. */
 export function ListPreview({ list }: { list: ListItem }) {
   return (
-    <div className="flex w-72 rotate-2 flex-col gap-2 rounded-xl bg-neutral-100 p-2 text-neutral-900 shadow-lg">
+    <div className="flex w-72 rotate-2 flex-col gap-2 rounded-xl bg-list p-2 text-foreground shadow-lg">
       <p className="px-2 py-1 text-sm font-semibold">{list.title}</p>
       {list.cards.map((card) => (
-        <div key={card.id} className="rounded-md bg-white px-3 py-2 text-sm shadow-sm">
+        <div key={card.id} className="rounded-md bg-list-card px-3 py-2 text-sm shadow-sm">
           {card.title}
         </div>
       ))}

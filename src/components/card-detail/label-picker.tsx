@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { LabelItem } from "@/lib/board-state";
-import { LABEL_COLORS } from "@/lib/label-colors";
+import { LABEL_COLORS, labelTextColor } from "@/lib/label-colors";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -73,8 +73,8 @@ export function LabelPicker({
                 aria-checked={assigned}
                 aria-label={`Etichetta ${label.name || "senza nome"}`}
                 onClick={() => onToggle(label, !assigned)}
-                className="flex h-8 flex-1 items-center justify-between rounded px-2 text-left text-sm font-medium text-white hover:brightness-110"
-                style={{ backgroundColor: label.color }}
+                className="flex h-8 flex-1 items-center justify-between rounded px-2 text-left text-sm font-medium hover:brightness-110"
+                style={{ backgroundColor: label.color, color: labelTextColor(label.color) }}
               >
                 <span className="truncate">{label.name}</span>
                 {assigned && <CheckIcon className="size-4 shrink-0" />}
@@ -126,8 +126,8 @@ function LabelForm({
         {onDelete ? "Modifica etichetta" : "Nuova etichetta"}
       </p>
       <div
-        className="flex h-8 items-center rounded px-2 text-sm font-medium text-white"
-        style={{ backgroundColor: values.color }}
+        className="flex h-8 items-center rounded px-2 text-sm font-medium"
+        style={{ backgroundColor: values.color, color: labelTextColor(values.color) }}
       >
         {values.name}
       </div>
@@ -151,10 +151,10 @@ function LabelForm({
             title={color.name}
             onClick={() => setValues({ ...values, color: color.value })}
             className={cn(
-              "flex h-7 items-center justify-center rounded text-white",
+              "flex h-7 items-center justify-center rounded",
               values.color === color.value && "ring-2 ring-ring ring-offset-1",
             )}
-            style={{ backgroundColor: color.value }}
+            style={{ backgroundColor: color.value, color: labelTextColor(color.value) }}
           >
             {values.color === color.value && <CheckIcon className="size-3.5" />}
           </button>

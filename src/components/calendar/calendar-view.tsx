@@ -5,7 +5,8 @@ import {
   type DragEndEvent,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useDraggable,
   useDroppable,
   useSensor,
@@ -76,7 +77,9 @@ export function CalendarView({ cards: initialCards, boards, view, date, boardId,
   const openCardId = searchParams.get("card");
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    // On touch screens a long press starts the drag, so swiping still scrolls.
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor),
   );
 

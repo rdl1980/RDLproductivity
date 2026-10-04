@@ -4,6 +4,7 @@ import { CheckSquareIcon, ClockIcon, TextIcon } from "lucide-react";
 
 import type { CardItem, LabelItem } from "@/lib/board-state";
 import { DUE_STATUS_LABEL, dueStatus, formatDue } from "@/lib/due";
+import { labelTextColor } from "@/lib/label-colors";
 import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
 
@@ -64,10 +65,10 @@ export function LabelChips({
           key={label.id}
           title={label.name || undefined}
           className={cn(
-            "rounded font-medium text-white",
+            "rounded font-medium",
             size === "sm" ? "min-w-10 px-1.5 text-[11px] leading-4" : "px-2 py-1 text-xs",
           )}
-          style={{ backgroundColor: label.color }}
+          style={{ backgroundColor: label.color, color: labelTextColor(label.color) }}
         >
           {label.name || " "}
         </li>

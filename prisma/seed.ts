@@ -26,7 +26,7 @@ async function main() {
       position: boardPos,
       labels: {
         create: [
-          { name: "Urgente", color: "#eb5a46" },
+          { name: "Urgente", color: "#c9372c" },
           { name: "Lavoro", color: "#0079bf" },
           { name: "Personale", color: "#61bd4f" },
         ],
