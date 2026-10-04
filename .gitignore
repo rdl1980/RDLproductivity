@@ -38,3 +38,6 @@ Thumbs.db
 
 # claude code local
 .claude/settings.local.json
+
+# prisma generated client
+src/generated/

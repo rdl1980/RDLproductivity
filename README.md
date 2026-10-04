@@ -21,11 +21,14 @@ Progetto mono-utente, pensato per un solo proprietario.
 
 ## Avvio in locale
 
-> Disponibile dalla Milestone 0 (scaffolding).
+Requisiti: Node 22, pnpm 10, PostgreSQL 16.
 
 ```bash
-pnpm install
-cp .env.example .env    # imposta DATABASE_URL e le variabili di auth
-pnpm prisma migrate dev
+pnpm install                 # genera anche il client Prisma
+cp .env.example .env         # imposta DATABASE_URL e le variabili di auth
+pnpm prisma migrate dev      # applica le migrazioni
+pnpm db:seed                 # crea una board d'esempio
 pnpm dev
 ```
+
+Controlli: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm format`.

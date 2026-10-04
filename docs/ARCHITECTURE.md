@@ -7,7 +7,9 @@
 - **UI ottimistica**: il drag & drop aggiorna subito lo stato locale, poi persiste; in caso di errore si fa rollback.
 - **Semplice da deployare**: Vercel + Postgres gestito, nessun altro servizio.
 
-## Modello dati (Prisma, bozza)
+## Modello dati (Prisma)
+
+Schema definitivo in `prisma/schema.prisma`; quello sotto è il riferimento logico.
 
 ```prisma
 model Board {
@@ -108,11 +110,15 @@ src/
     ui/                    shadcn/ui
   server/
     actions/               Server Actions (board, list, card, label, checklist)
-    db.ts                  client Prisma
+    db.ts                  client Prisma (adapter pg)
   lib/                     utilità (validazione zod, date, posizioni)
+  generated/prisma/        client Prisma generato (non versionato)
 prisma/
   schema.prisma
+  migrations/
   seed.ts
+prisma.config.ts           config Prisma 7 (schema, migrazioni, seed)
+e2e/                       test Playwright
 ```
 
 ## Ricerca

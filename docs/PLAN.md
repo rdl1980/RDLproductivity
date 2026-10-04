@@ -4,13 +4,13 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 
 ## Milestone 0 — Scaffolding e infrastruttura
 
-- [ ] Creare app Next.js (App Router, TypeScript, ESLint, Tailwind, `src/`), gestore pacchetti pnpm
-- [ ] Prettier + regole ESLint, script `lint`, `typecheck`, `format`
-- [ ] Installare shadcn/ui e componenti base (button, input, dialog, dropdown, popover, calendar)
-- [ ] Prisma + schema iniziale da `docs/ARCHITECTURE.md`, prima migrazione, `seed.ts` con una board d'esempio
-- [ ] `.env.example` completo
-- [ ] Vitest per unit test, Playwright per un test e2e smoke
-- [ ] GitHub Actions: lint + typecheck + test su ogni PR
+- [x] Creare app Next.js (App Router, TypeScript, ESLint, Tailwind, `src/`), gestore pacchetti pnpm
+- [x] Prettier + regole ESLint, script `lint`, `typecheck`, `format`
+- [x] Installare shadcn/ui e componenti base (button, input, dialog, dropdown, popover, calendar)
+- [x] Prisma + schema iniziale da `docs/ARCHITECTURE.md`, prima migrazione, `seed.ts` con una board d'esempio
+- [x] `.env.example` completo
+- [x] Vitest per unit test, Playwright per un test e2e smoke
+- [x] GitHub Actions: lint + typecheck + test su ogni PR
 
 ## Milestone 1 — Autenticazione mono-utente
 

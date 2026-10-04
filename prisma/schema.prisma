@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Board {
+  id        String   @id @default(cuid())
+  title     String
+  color     String?
+  position  String // fractional index
+  archived  Boolean  @default(false)
+  lists     List[]
+  labels    Label[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([position])
+}
+
+model List {
+  id        String   @id @default(cuid())
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  title     String
+  position  String // fractional index
+  archived  Boolean  @default(false)
+  cards     Card[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([boardId, position])
+}
+
+model Card {
+  id          String      @id @default(cuid())
+  listId      String
+  list        List        @relation(fields: [listId], references: [id], onDelete: Cascade)
+  title       String
+  description String? // markdown
+  position    String // fractional index
+  startDate   DateTime?
+  dueDate     DateTime?
+  completed   Boolean     @default(false)
+  archived    Boolean     @default(false)
+  labels      CardLabel[]
+  checklists  Checklist[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([listId, position])
+  @@index([dueDate])
+}
+
+model Label {
+  id      String      @id @default(cuid())
+  boardId String
+  board   Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name    String
+  color   String
+  cards   CardLabel[]
+
+  @@index([boardId])
+}
+
+model CardLabel {
+  cardId  String
+  labelId String
+  card    Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, labelId])
+  @@index([labelId])
+}
+
+model Checklist {
+  id       String          @id @default(cuid())
+  cardId   String
+  card     Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  title    String
+  position String // fractional index
+  items    ChecklistItem[]
+
+  @@index([cardId, position])
+}
+
+model ChecklistItem {
+  id          String    @id @default(cuid())
+  checklistId String
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  text        String
+  done        Boolean   @default(false)
+  position    String // fractional index
+
+  @@index([checklistId, position])
+}
