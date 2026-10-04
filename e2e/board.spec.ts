@@ -1,29 +1,5 @@
-import type { Locator, Page } from "@playwright/test";
-
 import { expect, test } from "./fixtures";
-
-const list = (page: Page, title: string) =>
-  page.getByTestId("list").filter({ has: page.getByRole("button", { name: title, exact: true }) });
-const cardTitles = (column: Locator) => column.getByTestId("card").allInnerTexts();
-
-/** Waits until optimistic items have been saved (temp items are not draggable). */
-async function settle(page: Page) {
-  await expect(page.locator('[aria-roledescription="sortable"][aria-disabled="true"]')).toHaveCount(
-    0,
-  );
-  await page.waitForLoadState("networkidle");
-}
-
-async function dragTo(page: Page, source: Locator, target: Locator) {
-  const from = (await source.boundingBox())!;
-  const to = (await target.boundingBox())!;
-  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(from.x + from.width / 2 + 10, from.y + from.height / 2, { steps: 5 });
-  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 15 });
-  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2 + 2, { steps: 2 });
-  await page.mouse.up();
-}
+import { cardTitles, dragTo, list, settle } from "./helpers";
 
 test("create a board, lists and cards, move a card and persist everything", async ({ page }) => {
   const boardTitle = `E2E ${Date.now()}`;

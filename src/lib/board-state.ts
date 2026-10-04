@@ -1,6 +1,32 @@
 import { positionBetween } from "./position";
 
-export type CardItem = { id: string; title: string; position: string };
+export type CardItem = {
+  id: string;
+  title: string;
+  position: string;
+  /** ISO string (UTC). */
+  dueDate: string | null;
+  completed: boolean;
+  hasDescription: boolean;
+  labelIds: string[];
+  checklist: { done: number; total: number };
+};
+
+export type LabelItem = { id: string; name: string; color: string };
+
+/** Summary for a freshly created card. */
+export function newCardSummary(id: string, title: string, position: string): CardItem {
+  return {
+    id,
+    title,
+    position,
+    dueDate: null,
+    completed: false,
+    hasDescription: false,
+    labelIds: [],
+    checklist: { done: 0, total: 0 },
+  };
+}
 export type ListItem = { id: string; title: string; position: string; cards: CardItem[] };
 
 /** Neighbours of the item at `index`, used to compute a fractional position. */

@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { CardItem, ListItem } from "@/lib/board-state";
+import type { CardItem, LabelItem, ListItem } from "@/lib/board-state";
 import { cn } from "@/lib/utils";
 
 import { isTempId, SortableCard } from "./card-item";
@@ -21,6 +21,9 @@ import { InlineTitle } from "./inline-title";
 
 type Props = {
   list: ListItem;
+  labels: LabelItem[];
+  dragDisabled?: boolean;
+  onOpenCard: (card: CardItem) => void;
   composerOpen: boolean;
   onComposerOpenChange: (open: boolean) => void;
   onHover: () => void;
@@ -33,6 +36,9 @@ type Props = {
 
 export function ListColumn({
   list,
+  labels,
+  dragDisabled,
+  onOpenCard,
   composerOpen,
   onComposerOpenChange,
   onHover,
@@ -52,7 +58,7 @@ export function ListColumn({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: list.id, data: { type: "list" }, disabled: pending });
+  } = useSortable({ id: list.id, data: { type: "list" }, disabled: pending || dragDisabled });
 
   return (
     <section
@@ -116,6 +122,9 @@ export function ListColumn({
             <SortableCard
               key={card.id}
               card={card}
+              labels={labels}
+              dragDisabled={dragDisabled}
+              onOpen={() => onOpenCard(card)}
               onRename={(title) => onRenameCard(card, title)}
               onArchive={() => onArchiveCard(card)}
             />

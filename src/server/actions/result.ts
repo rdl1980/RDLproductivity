@@ -11,7 +11,10 @@ export function fail(error: string): ActionResult<never> {
 }
 
 /** Validates `input` with `schema`, returning a user-facing error on failure. */
-export function parse<S extends z.ZodType>(schema: S, input: unknown) {
+export function parse<S extends z.ZodType>(
+  schema: S,
+  input: unknown,
+): { data: z.infer<S>; error: null } | { data: null; error: string } {
   const result = schema.safeParse(input);
   if (result.success) return { data: result.data as z.infer<S>, error: null };
   return { data: null, error: result.error.issues[0]?.message ?? "Dati non validi." };
@@ -23,3 +26,8 @@ export const titleSchema = z
   .trim()
   .min(1, "Il titolo non può essere vuoto.")
   .max(200, "Il titolo è troppo lungo.");
+
+export const UNAUTHORIZED = "Sessione scaduta, accedi di nuovo.";
+
+/** ISO datetime string or null; undefined leaves the field untouched. */
+export const optionalDateSchema = z.iso.datetime({ offset: true }).nullable().optional();

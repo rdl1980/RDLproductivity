@@ -12,7 +12,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { CardItem as Card } from "@/lib/board-state";
+import { CardBadges, LabelChips } from "@/components/card-detail/card-badges";
+import type { CardItem as Card, LabelItem } from "@/lib/board-state";
 import { cn } from "@/lib/utils";
 
 import { InlineTitle } from "./inline-title";
@@ -23,17 +24,20 @@ export function isTempId(id: string) {
 
 type Props = {
   card: Card;
+  labels: LabelItem[];
+  dragDisabled?: boolean;
+  onOpen: () => void;
   onRename: (title: string) => void;
   onArchive: () => void;
 };
 
-export function SortableCard({ card, onRename, onArchive }: Props) {
+export function SortableCard({ card, labels, dragDisabled, onOpen, onRename, onArchive }: Props) {
   const [editing, setEditing] = useState(false);
   const pending = isTempId(card.id);
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { type: "card" },
-    disabled: pending || editing,
+    disabled: pending || editing || dragDisabled,
   });
 
   return (
@@ -44,8 +48,16 @@ export function SortableCard({ card, onRename, onArchive }: Props) {
       {...(editing ? {} : { ...attributes, ...listeners })}
       aria-label={card.title}
       data-testid="card"
+      onClick={() => !editing && !pending && onOpen()}
+      onKeyDown={(event) => {
+        if (!editing) listeners?.onKeyDown?.(event);
+        if (event.key === "Enter" && !editing && !pending && event.target === event.currentTarget) {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
       className={cn(
-        "group relative rounded-md bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none",
+        "group relative cursor-pointer rounded-md bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none",
         "focus-visible:ring-[3px] focus-visible:ring-ring/50",
         isDragging && "opacity-40",
         pending && "opacity-60",
@@ -61,7 +73,11 @@ export function SortableCard({ card, onRename, onArchive }: Props) {
         />
       ) : (
         <>
+          <div className="mb-1 empty:hidden">
+            <LabelChips labelIds={card.labelIds} labels={labels} />
+          </div>
           <p className="pr-6 break-words whitespace-pre-wrap">{card.title}</p>
+          <CardBadges card={card} />
           {!pending && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -70,12 +86,14 @@ export function SortableCard({ card, onRename, onArchive }: Props) {
                   size="icon"
                   aria-label={`Azioni per ${card.title}`}
                   onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
                   className="absolute top-1 right-1 size-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
                 >
                   <MoreHorizontalIcon />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
+              <DropdownMenuContent align="start" onClick={(event) => event.stopPropagation()}>
                 <DropdownMenuItem onSelect={() => setEditing(true)}>Rinomina</DropdownMenuItem>
                 <DropdownMenuItem variant="destructive" onSelect={onArchive}>
                   Archivia

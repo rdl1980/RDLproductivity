@@ -140,6 +140,16 @@ prisma.config.ts           config Prisma 7 (schema, migrazioni, seed)
 e2e/                       test Playwright
 ```
 
+## Dettaglio card
+
+- La modale (`CardDetailDialog`) si apre con `?card=<id>` nell'URL, aggiornato con `history.pushState` senza ricaricare la pagina: il link è condivisibile e il tasto indietro la chiude.
+- I dati del dettaglio arrivano dalla Server Action `getCardDetail`, chiamata dal client all'apertura. La modale ha uno stato proprio con aggiornamenti ottimistici e notifica la board (o il calendario) con callback (`onCardChange`, `onCardPlaced`, `onCardRemoved`, `onLabelsChange`), così il riepilogo sulla card resta allineato anche dopo un rollback.
+- Le etichette appartengono alla board: spostando una card in un'altra board le sue etichette vengono rimosse; copiandola si mantengono solo nella stessa board.
+- La descrizione è Markdown (GFM) renderizzato con `react-markdown`, senza HTML grezzo, quindi senza rischio XSS.
+- Le operazioni su una checklist appena creata (ancora con id `temp-…`) vengono accodate finché il server non restituisce l'id reale.
+- Le date sono salvate in UTC e mostrate nel fuso del browser. Il badge di scadenza viene renderizzato solo lato client per evitare differenze di idratazione; "in scadenza" significa entro 24 ore.
+- Nei campi di testo dentro la modale, Esc annulla l'editing senza chiudere la modale; un secondo Esc la chiude.
+
 ## Test
 
 - Vitest per la logica pura (`src/lib`).

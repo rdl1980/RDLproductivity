@@ -27,6 +27,7 @@ export default async function BoardPage({ params }: PageProps<"/boards/[boardId]
       key={board.id}
       board={{ id: board.id, title: board.title, color: board.color ?? DEFAULT_BOARD_COLOR }}
       initialLists={board.lists}
+      initialLabels={board.labels}
     />
   );
 }

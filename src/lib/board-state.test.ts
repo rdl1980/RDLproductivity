@@ -4,6 +4,7 @@ import {
   type ListItem,
   moveCardInState,
   moveListInState,
+  newCardSummary,
   patchCard,
   patchList,
   removeCard,
@@ -14,6 +15,8 @@ import {
 } from "./board-state";
 import { positionsFor } from "./position";
 
+const card = (id: string, position: string) => newCardSummary(id, id.toUpperCase(), position);
+
 function makeBoard(): ListItem[] {
   const [l1, l2] = positionsFor(2);
   const [c1, c2, c3] = positionsFor(3);
@@ -22,11 +25,7 @@ function makeBoard(): ListItem[] {
       id: "todo",
       title: "Da fare",
       position: l1,
-      cards: [
-        { id: "a", title: "A", position: c1 },
-        { id: "b", title: "B", position: c2 },
-        { id: "c", title: "C", position: c3 },
-      ],
+      cards: [card("a", c1), card("b", c2), card("c", c3)],
     },
     { id: "done", title: "Fatto", position: l2, cards: [] },
   ];
