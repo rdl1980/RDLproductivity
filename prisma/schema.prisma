@@ -97,3 +97,42 @@ model ChecklistItem {
 
   @@index([checklistId, position])
 }
+
+// OAuth 2.1 authorization server for the remote MCP endpoint. Secrets are
+// stored as SHA-256 hashes, never in clear.
+
+model OAuthClient {
+  id           String   @id // random id (DCR) or https URL (client ID metadata document)
+  name         String
+  redirectUris String[]
+  secretHash   String?
+  createdAt    DateTime @default(now())
+}
+
+model OAuthCode {
+  codeHash      String   @id
+  clientId      String
+  email         String
+  redirectUri   String
+  codeChallenge String
+  scope         String
+  resource      String
+  expiresAt     DateTime
+}
+
+model OAuthToken {
+  id               String   @id @default(cuid())
+  clientId         String
+  clientName       String
+  email            String
+  scope            String
+  resource         String
+  accessTokenHash  String   @unique
+  accessExpiresAt  DateTime
+  refreshTokenHash String   @unique
+  refreshExpiresAt DateTime
+  createdAt        DateTime @default(now())
+  lastUsedAt       DateTime @default(now())
+
+  @@index([refreshExpiresAt])
+}

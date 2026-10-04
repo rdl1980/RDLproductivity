@@ -57,6 +57,14 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Deploy su Vercel + database Supabase, migrazioni in produzione
 - [x] Backup: export JSON di tutte le board
 
+## Milestone 7 — Server MCP per Claude
+
+- [x] Endpoint MCP remoto `/api/mcp` (Streamable HTTP) con tool di lettura e scrittura
+- [x] Authorization server OAuth 2.1: metadata, registrazione dinamica, client ID metadata document, PKCE, refresh token a rotazione, revoca
+- [x] Pagina di consenso dietro login GitHub, solo `ALLOWED_EMAIL`
+- [x] Pagina `/connections` con URL del connettore e revoca dei client
+- [x] Test unitari ed e2e del flusso OAuth + tool
+
 ## Dopo l'MVP (idee)
 
 - Allegati (Vercel Blob / Supabase Storage)
