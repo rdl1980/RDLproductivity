@@ -15,7 +15,8 @@
     "test:e2e": "playwright test",
     "postinstall": "prisma generate",
     "db:seed": "prisma db seed",
-    "vercel-build": "sh scripts/vercel-build.sh"
+    "vercel-build": "sh scripts/vercel-build.sh",
+    "smoke:live": "node scripts/live-smoke.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
