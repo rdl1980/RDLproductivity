@@ -70,6 +70,18 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Contatore delle card nell'intestazione di ogni lista (`visibili/totali` con i filtri attivi)
 - [x] Board alta quanto la finestra: le liste scorrono al loro interno e la barra di scorrimento orizzontale resta sempre visibile
 
+## Milestone 8 — Pianificazione e produttività
+
+- [x] Priorità delle card da P0 (massima) a P4, opzionale; badge, filtro della board, tool MCP
+- [x] Super board `/priority`: card P0 e P1 di tutte le board, colonne per lista di origine (unite per nome), righe per priorità (P0 = expedite lane), drag per cambiare priorità o lista
+- [x] Vista `/today`: scadute, oggi, prossimi 7 giorni, completamento con un click
+- [ ] Card ricorrenti
+- [ ] Feed iCal privato delle scadenze
+- [ ] Allegati e immagini nelle card
+- [ ] Storico attività con undo
+- [ ] Template di board e card
+- [ ] Dashboard statistiche
+
 ## Dopo l'MVP (idee)
 
 - Allegati (Vercel Blob / Supabase Storage)

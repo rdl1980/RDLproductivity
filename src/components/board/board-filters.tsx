@@ -19,8 +19,10 @@ import {
   type DueFilter,
   EMPTY_FILTERS,
   NO_LABEL,
+  NO_PRIORITY,
   type StatusFilter,
 } from "@/lib/filters";
+import { PRIORITIES, PRIORITY_VALUES } from "@/lib/priority";
 
 const ALL = "all";
 
@@ -51,6 +53,19 @@ export function BoardFiltersButton({
     const rest = filters.labels.filter((label) => label !== id);
     onChange({ ...filters, labels: checked ? [...rest, id] : rest });
   }
+
+  function togglePriority(key: string, checked: boolean) {
+    const rest = filters.priorities.filter((value) => value !== key);
+    onChange({ ...filters, priorities: checked ? [...rest, key] : rest });
+  }
+
+  const priorityOptions = [
+    ...PRIORITY_VALUES.map((value) => ({
+      key: String(value),
+      label: `${PRIORITIES[value].label} · ${PRIORITIES[value].name}`,
+    })),
+    { key: NO_PRIORITY, label: "Senza priorità" },
+  ];
 
   const labelOptions = [...labels, { id: NO_LABEL, name: "Senza etichette", color: "" }];
 
@@ -89,6 +104,21 @@ export function BoardFiltersButton({
                 )}
                 <span className={label.id === NO_LABEL ? "text-muted-foreground" : undefined}>
                   {label.name || "Senza nome"}
+                </span>
+              </label>
+            ))}
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-1.5">
+            <legend className="mb-1 text-xs font-medium text-muted-foreground">Priorità</legend>
+            {priorityOptions.map((option) => (
+              <label key={option.key} className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={filters.priorities.includes(option.key)}
+                  onCheckedChange={(checked) => togglePriority(option.key, checked === true)}
+                />
+                <span className={option.key === NO_PRIORITY ? "text-muted-foreground" : undefined}>
+                  {option.label}
                 </span>
               </label>
             ))}

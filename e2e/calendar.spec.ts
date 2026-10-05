@@ -1,5 +1,14 @@
 import { expect, test } from "./fixtures";
-import { addCards, addLists, cardIn, createBoard, dragTo, list, settle } from "./helpers";
+import {
+  addCards,
+  addLists,
+  cardIn,
+  createBoard,
+  dragTo,
+  expectPersisted,
+  list,
+  settle,
+} from "./helpers";
 
 /** "YYYY-MM-DD" in the browser's time zone, `offset` days from today. */
 function dayKeyIn(page: import("@playwright/test").Page, offset: number) {
@@ -47,10 +56,9 @@ test("calendar shows due cards, moves them by drag and filters by board", async 
     : await dayKeyIn(page, -1);
   await dragTo(page, chip, page.locator(`[data-day="${target}"]`));
   await expect(page.locator(`[data-day="${target}"]`)).toContainText(cardTitle);
-  await page.waitForLoadState("networkidle");
-
-  await page.reload();
-  await expect(page.locator(`[data-day="${target}"]`)).toContainText(cardTitle);
+  await expectPersisted(page, () =>
+    expect(page.locator(`[data-day="${target}"]`)).toContainText(cardTitle),
+  );
 
   // Click opens the detail dialog; time of day is preserved (12:00).
   await chip.click();
@@ -77,6 +85,6 @@ test("calendar shows due cards, moves them by drag and filters by board", async 
   await page.getByRole("button", { name: "Mese" }).click();
   await page.getByRole("button", { name: "Periodo successivo" }).click();
   await expect(page).toHaveURL(/date=/);
-  await page.getByRole("button", { name: "Oggi" }).click();
+  await page.getByRole("button", { name: "Oggi", exact: true }).click();
   await expect(page.locator(`[data-day="${today}"]`)).toBeVisible();
 });

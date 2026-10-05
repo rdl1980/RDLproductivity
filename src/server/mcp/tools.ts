@@ -27,6 +27,7 @@ import { createList, moveList, updateList } from "@/server/actions/lists";
 import { type ActionResult, fail, ok } from "@/server/actions/result";
 import { db } from "@/server/db";
 import { runAsMcpUser } from "@/server/mcp-context";
+import { getSuperBoard } from "@/server/queries/aggregate";
 import { getArchive } from "@/server/queries/archive";
 import { getBoard, getBoards } from "@/server/queries/boards";
 import { getCalendarCards } from "@/server/queries/calendar";
@@ -48,6 +49,14 @@ const isoDate = z.iso
   .datetime({ offset: true })
   .describe("ISO 8601 date-time with offset, e.g. 2026-10-05T09:00:00+02:00");
 const nullableDate = isoDate.nullable().optional();
+const priority = z
+  .number()
+  .int()
+  .min(0)
+  .max(4)
+  .nullable()
+  .optional()
+  .describe("Priority from 0 (highest, P0) to 4 (lowest); null clears it");
 const index = z
   .number()
   .int()
@@ -224,6 +233,20 @@ export function registerTools(server: McpServer) {
 
   defineTool(
     server,
+    "get_super_board",
+    {
+      title: "Get super board",
+      description:
+        "Returns every active card with priority P0 (expedite) or P1 across all boards, with its " +
+        "board, list, labels and due date. Use it to answer what matters most right now.",
+      inputSchema: z.object({}),
+      annotations: READ,
+    },
+    async () => ok((await getSuperBoard()).cards),
+  );
+
+  defineTool(
+    server,
     "list_archived",
     {
       title: "List archived items",
@@ -322,7 +345,7 @@ export function registerTools(server: McpServer) {
     {
       title: "Create card",
       description:
-        "Adds a card at the bottom of a list, optionally with description (markdown), dates and labels " +
+        "Adds a card at the bottom of a list, optionally with description (markdown), dates, priority and labels " +
         "(label IDs from the same board). Returns the created card.",
       inputSchema: z.object({
         listId: id("list"),
@@ -330,18 +353,19 @@ export function registerTools(server: McpServer) {
         description: z.string().optional(),
         startDate: nullableDate,
         dueDate: nullableDate,
+        priority,
         labelIds: z.array(id("label")).max(20).optional(),
       }),
       annotations: WRITE,
     },
-    async ({ listId, title, description, startDate, dueDate, labelIds }) => {
+    async ({ listId, title, description, startDate, dueDate, priority: level, labelIds }) => {
       const created = await createCard({ listId, title });
       if (!created.ok) return created;
       const cardId = created.data.id;
       const result = await chain(
         () =>
-          description !== undefined || startDate || dueDate
-            ? updateCardDetails({ id: cardId, description, startDate, dueDate })
+          description !== undefined || startDate || dueDate || level != null
+            ? updateCardDetails({ id: cardId, description, startDate, dueDate, priority: level })
             : Promise.resolve(ok(undefined)),
         ...(labelIds ?? []).map(
           (labelId) => () => setCardLabel({ cardId, labelId, assigned: true }),
@@ -359,7 +383,8 @@ export function registerTools(server: McpServer) {
       title: "Update card",
       description:
         "Updates a card: title, description (markdown; empty string clears it), start and due dates " +
-        "(null clears), completed flag, archived flag. Only the given fields change. Returns the card.",
+        "(null clears), completed flag, priority (0-4, null clears), archived flag. Only the given " +
+        "fields change. Returns the card.",
       inputSchema: z.object({
         cardId: id("card"),
         title: z.string().optional(),
@@ -367,19 +392,36 @@ export function registerTools(server: McpServer) {
         startDate: nullableDate,
         dueDate: nullableDate,
         completed: z.boolean().optional(),
+        priority,
         archived: z.boolean().optional(),
       }),
       annotations: WRITE,
     },
-    async ({ cardId, title, archived, description, startDate, dueDate, completed }) => {
+    async ({
+      cardId,
+      title,
+      archived,
+      description,
+      startDate,
+      dueDate,
+      completed,
+      priority: level,
+    }) => {
       const result = await chain(
         () =>
           title !== undefined || archived !== undefined
             ? updateCard({ id: cardId, title, archived })
             : Promise.resolve(ok(undefined)),
         () =>
-          [description, startDate, dueDate, completed].some((value) => value !== undefined)
-            ? updateCardDetails({ id: cardId, description, startDate, dueDate, completed })
+          [description, startDate, dueDate, completed, level].some((value) => value !== undefined)
+            ? updateCardDetails({
+                id: cardId,
+                description,
+                startDate,
+                dueDate,
+                completed,
+                priority: level,
+              })
             : Promise.resolve(ok(undefined)),
       );
       return result.ok ? cardDetail(cardId) : result;

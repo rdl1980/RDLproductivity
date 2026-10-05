@@ -118,7 +118,14 @@ test.describe("mobile", () => {
     expect(box.x + box.width).toBeLessThanOrEqual(390);
     await page.keyboard.press("Escape");
 
-    for (const path of ["/boards", "/calendar", "/archive", "/connections"]) {
+    for (const path of [
+      "/boards",
+      "/calendar",
+      "/archive",
+      "/connections",
+      "/today",
+      "/priority",
+    ]) {
       await page.goto(path);
       await page.waitForLoadState("networkidle");
       expect(await pageOverflow(), path).toBeLessThanOrEqual(0);

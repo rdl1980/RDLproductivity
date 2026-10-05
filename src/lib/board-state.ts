@@ -7,6 +7,8 @@ export type CardItem = {
   /** ISO string (UTC). */
   dueDate: string | null;
   completed: boolean;
+  /** 0 (highest) to 4, or null. */
+  priority: number | null;
   hasDescription: boolean;
   labelIds: string[];
   checklist: { done: number; total: number };
@@ -22,6 +24,7 @@ export function newCardSummary(id: string, title: string, position: string): Car
     position,
     dueDate: null,
     completed: false,
+    priority: null,
     hasDescription: false,
     labelIds: [],
     checklist: { done: 0, total: 0 },

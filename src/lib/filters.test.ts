@@ -20,9 +20,15 @@ describe("URL round trip", () => {
   it("parses and writes filters without touching other params", () => {
     const params = new URLSearchParams("card=abc&labels=l1,l2&due=week&status=open");
     const filters = parseFilters(params);
-    expect(filters).toEqual({ labels: ["l1", "l2"], due: "week", status: "open" });
+    expect(filters).toEqual({ labels: ["l1", "l2"], due: "week", status: "open", priorities: [] });
     expect(activeFilterCount(filters)).toBe(4);
     expect(writeFilters(params, EMPTY_FILTERS).toString()).toBe("card=abc");
+  });
+
+  it("round-trips priorities and drops unknown ones", () => {
+    const filters = parseFilters(new URLSearchParams("priority=0,none,9"));
+    expect(filters.priorities).toEqual(["0", "none"]);
+    expect(writeFilters(new URLSearchParams(), filters).toString()).toBe("priority=0%2Cnone");
   });
 
   it("ignores invalid values", () => {
@@ -31,6 +37,13 @@ describe("URL round trip", () => {
 });
 
 describe("matchesFilters", () => {
+  it("filters by priority, including cards without one", () => {
+    const filters = { ...EMPTY_FILTERS, priorities: ["0", "none"] };
+    expect(matchesFilters(card({ priority: 0 }), filters, now)).toBe(true);
+    expect(matchesFilters(card({ priority: null }), filters, now)).toBe(true);
+    expect(matchesFilters(card({ priority: 1 }), filters, now)).toBe(false);
+  });
+
   it("matches everything without filters", () => {
     expect(matchesFilters(card(), EMPTY_FILTERS, now)).toBe(true);
   });

@@ -208,3 +208,10 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
   - `/oauth/token`: `authorization_code` con PKCE S256 obbligatorio, `refresh_token` con rotazione; `/oauth/revoke` (RFC 7009).
 - **Token**: opachi (256 bit), salvati solo come hash SHA-256 (`OAuthCode`, `OAuthToken`, `OAuthClient`, RLS attiva). Access token 1 h, refresh 60 giorni, codici 5 min monouso. Ogni token è legato alla risorsa `/api/mcp` (RFC 8707) e all'email, ricontrollata contro `ALLOWED_EMAIL` a ogni richiesta.
 - **Revoca**: pagina `/connections` (menu utente → Connessioni Claude).
+
+## Priorità, super board e vista Oggi
+
+- `Card.priority`: intero 0-4 nullable (0 = massima), vincolo `CHECK` nel database. Costanti ed etichette in `src/lib/priority.ts`; filtro della board via parametro `priority=0,1,none`.
+- Le viste trasversali (`/priority`, `/today`) leggono card "aggregate" (`AggregateCard`: riepilogo + board, lista ed etichette risolte) da `src/server/queries/aggregate.ts` e riusano il dialog della card tramite il parametro `?card=`.
+- Super board: colonne = nomi di lista normalizzati (trim, minuscole) delle board che hanno card P0/P1, ordinate per posizione della lista nella sua board; righe = P0 (expedite lane) e P1. Il drag cambia priorità e/o sposta la card nella lista omonima della sua board, in un'unica Server Action (`moveCardToList` con `priority`).
+- Vista Oggi: il server restituisce un intervallo largo (il fuso del browser non è noto); le sezioni si calcolano nel client dopo l'idratazione (`src/lib/agenda.ts`).
