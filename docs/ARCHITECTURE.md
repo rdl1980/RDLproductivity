@@ -249,3 +249,9 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - Sviluppo e test (`NEXT_PUBLIC_ATTACHMENT_STORAGE=local`): i file vanno in `.data/attachments` tramite la stessa route; stessa registrazione.
 - Lettura: `GET /api/attachments/<id>` dietro login, stream dal Blob privato. Solo le immagini raster sono mostrate inline; tutto il resto (SVG compreso) è scaricato, con `nosniff` e CSP `sandbox`.
 - Eliminazione: allegato singolo (con conferma, non annullabile) ed eliminazioni definitive dall'archivio rimuovono anche i file non più referenziati.
+
+## Statistiche
+
+- Campi `Card.completedAt` (impostato al completamento, azzerato alla riapertura) e `Card.listEnteredAt` (alla creazione e a ogni cambio di lista). Per le card già esistenti la migrazione usa `updatedAt` e `createdAt` come approssimazione.
+- `/stats` (menu utente): quattro indicatori (aperte, completate negli ultimi 7 giorni, scadute, P0/P1 aperte), colonne delle completate per settimana (lunedì-domenica nel fuso del browser, ultime 12), barre delle scadute per board e del tempo medio nella lista attuale (liste omonime unite). Ogni grafico ha la vista tabella completa; il grafico mostra le prime 10 righe.
+- Grafici in SVG/HTML senza librerie: una sola serie, colore `--chart-1` (blu validato ≥ 3:1 su sfondo chiaro e scuro), colonne ≤ 24 px con estremo arrotondato di 4 px, etichette solo su picco e settimana corrente, tooltip su hover e focus.

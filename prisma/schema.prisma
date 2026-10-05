@@ -36,31 +36,36 @@ model List {
 }
 
 model Card {
-  id          String       @id @default(cuid())
-  listId      String
-  list        List         @relation(fields: [listId], references: [id], onDelete: Cascade)
-  title       String
-  description String? // markdown
-  position    String // fractional index
-  startDate   DateTime?
-  dueDate     DateTime?
-  completed   Boolean      @default(false)
+  id            String       @id @default(cuid())
+  listId        String
+  list          List         @relation(fields: [listId], references: [id], onDelete: Cascade)
+  title         String
+  description   String? // markdown
+  position      String // fractional index
+  startDate     DateTime?
+  dueDate       DateTime?
+  completed     Boolean      @default(false)
+  /// When the card was last completed (statistics); null while open.
+  completedAt   DateTime?
+  /// When the card entered its current list (time-in-list statistics).
+  listEnteredAt DateTime     @default(now())
   /// 0 (highest) to 4 (lowest); null = no priority. Checked in the database.
-  priority    Int?
+  priority      Int?
   /// { rule, interval, timeZone }: completing the card creates the next occurrence.
-  recurrence  Json?
-  coverId     String?      @unique
-  cover       Attachment?  @relation("CardCover", fields: [coverId], references: [id], onDelete: SetNull)
-  attachments Attachment[] @relation("CardAttachments")
-  archived    Boolean      @default(false)
-  labels      CardLabel[]
-  checklists  Checklist[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  recurrence    Json?
+  coverId       String?      @unique
+  cover         Attachment?  @relation("CardCover", fields: [coverId], references: [id], onDelete: SetNull)
+  attachments   Attachment[] @relation("CardAttachments")
+  archived      Boolean      @default(false)
+  labels        CardLabel[]
+  checklists    Checklist[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@index([listId, position])
   @@index([dueDate])
   @@index([priority])
+  @@index([completedAt])
 }
 
 model Label {

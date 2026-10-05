@@ -80,7 +80,7 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Allegati e immagini nelle card (Vercel Blob privato, anteprime, copertina sulla card)
 - [x] Storico attività (tu o Claude) con undo: pagina `/activity`, sezione nel dettaglio card, Ctrl/Cmd+Z sulla board, tool MCP
 - [x] Template di board (liste, etichette, opzionalmente card) e di card (descrizione, priorità, etichette, checklist); pagina `/templates`, tool MCP
-- [ ] Dashboard statistiche
+- [x] Dashboard statistiche `/stats`: indicatori, completate per settimana, scadute per board, tempo medio nella lista; tool MCP `get_stats`
 
 ## Dopo l'MVP (idee)
 

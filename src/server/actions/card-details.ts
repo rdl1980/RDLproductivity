@@ -87,6 +87,7 @@ export async function updateCardDetails(
       startDate: true,
       dueDate: true,
       completed: true,
+      completedAt: true,
       priority: true,
       recurrence: true,
       list: { select: { boardId: true } },
@@ -121,6 +122,12 @@ export async function updateCardDetails(
         startDate,
         dueDate,
         completed: data.completed,
+        completedAt:
+          data.completed === undefined || data.completed === current.completed
+            ? undefined
+            : data.completed
+              ? new Date()
+              : null,
         priority: data.priority,
         // The completed occurrence hands its rule over to the next one.
         recurrence: nextRecurrence ?? Prisma.DbNull,
@@ -148,6 +155,7 @@ export async function updateCardDetails(
             startDate: current.startDate,
             dueDate: current.dueDate,
             completed: current.completed,
+            completedAt: current.completedAt,
             priority: current.priority,
             recurrence: previousRecurrence,
           }),
@@ -344,6 +352,7 @@ export async function moveCardToList(
         listId: true,
         position: true,
         priority: true,
+        listEnteredAt: true,
         labels: { select: { labelId: true } },
         list: { select: { boardId: true, title: true } },
       },
@@ -362,7 +371,12 @@ export async function moveCardToList(
     }
     const result = await tx.card.update({
       where: { id: data.id },
-      data: { listId: data.listId, position, priority: data.priority },
+      data: {
+        listId: data.listId,
+        position,
+        priority: data.priority,
+        listEnteredAt: card.listId !== data.listId ? new Date() : undefined,
+      },
       select: cardSummarySelect,
     });
     const moved = card.listId !== data.listId;
@@ -387,7 +401,12 @@ export async function moveCardToList(
             op: "update",
             model: "card",
             id: data.id,
-            data: { listId: card.listId, position: card.position, priority: card.priority },
+            data: snapshot({
+              listId: card.listId,
+              position: card.position,
+              priority: card.priority,
+              listEnteredAt: card.listEnteredAt,
+            }),
           },
           ...(otherBoard
             ? card.labels.map(({ labelId }) => ({

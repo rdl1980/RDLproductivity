@@ -57,6 +57,7 @@ test("accessibility: no serious axe violations on the main pages", async ({ page
     "/priority",
     "/activity",
     "/templates",
+    "/stats",
   ]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
@@ -131,6 +132,7 @@ test.describe("mobile", () => {
       "/priority",
       "/activity",
       "/templates",
+      "/stats",
     ]) {
       await page.goto(path);
       await page.waitForLoadState("networkidle");

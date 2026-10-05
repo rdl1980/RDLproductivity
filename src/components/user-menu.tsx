@@ -2,6 +2,7 @@
 
 import {
   ArchiveIcon,
+  BarChart3Icon,
   DownloadIcon,
   HistoryIcon,
   LayoutTemplateIcon,
@@ -44,6 +45,12 @@ export function UserMenu({ name, signOut }: { name: string; signOut: () => Promi
           <Link href="/archive">
             <ArchiveIcon />
             Archivio
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/stats">
+            <BarChart3Icon />
+            Statistiche
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

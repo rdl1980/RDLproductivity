@@ -72,7 +72,7 @@ export async function logActivity(entry: ActivityEntry, client: Client = db): Pr
   }
 }
 
-const DATE_FIELDS = new Set(["startDate", "dueDate"]);
+const DATE_FIELDS = new Set(["startDate", "dueDate", "completedAt", "listEnteredAt"]);
 
 /** JSON-safe snapshot of fields, for an update op. */
 export function snapshot<T extends Record<string, unknown>>(fields: T): Record<string, unknown> {
