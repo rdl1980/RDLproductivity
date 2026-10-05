@@ -141,3 +141,10 @@ model OAuthToken {
 
   @@index([refreshExpiresAt])
 }
+
+// App-wide settings (single user), e.g. the iCal feed version.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

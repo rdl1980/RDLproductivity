@@ -207,7 +207,7 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
   - `/oauth/authorize`: pagina di consenso dietro il login Auth.js (GitHub), quindi solo `ALLOWED_EMAIL`; protetta da framing; la Server Action rivalida tutta la richiesta;
   - `/oauth/token`: `authorization_code` con PKCE S256 obbligatorio, `refresh_token` con rotazione; `/oauth/revoke` (RFC 7009).
 - **Token**: opachi (256 bit), salvati solo come hash SHA-256 (`OAuthCode`, `OAuthToken`, `OAuthClient`, RLS attiva). Access token 1 h, refresh 60 giorni, codici 5 min monouso. Ogni token è legato alla risorsa `/api/mcp` (RFC 8707) e all'email, ricontrollata contro `ALLOWED_EMAIL` a ogni richiesta.
-- **Revoca**: pagina `/connections` (menu utente → Connessioni Claude).
+- **Revoca**: pagina `/connections` (menu utente → Integrazioni).
 
 ## Priorità, super board e vista Oggi
 
@@ -221,3 +221,9 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - `Card.recurrence` (JSONB): `{ rule, interval, timeZone }`, validato con zod (`src/lib/recurrence.ts`). Richiede una scadenza; togliendo la scadenza la regola viene rimossa.
 - Completare una card ricorrente (dialog, vista Oggi o MCP) crea nella stessa transazione la prossima occorrenza subito dopo di essa nella lista: stessi titolo, descrizione, priorità, etichette e checklist (con elementi non spuntati), scadenza successiva e inizio traslato dello stesso intervallo. La regola passa alla nuova card, quella completata non si ripete più.
 - La data successiva mantiene l'ora locale nel fuso salvato nella regola (cambio dell'ora legale compreso) e salta le occorrenze già passate.
+
+## Feed iCal
+
+- `GET /api/calendar/<token>.ics` (fuori dal proxy di Auth.js): le app di calendario non fanno login, quindi l'URL è la credenziale.
+- Il token è `HMAC-SHA256(AUTH_SECRET, "ical-feed:<versione>")`: nel database c'è solo la versione (`AppSetting` `ical.version`, positiva = attivo, negativa = disattivato). "Rigenera" incrementa la versione e invalida l'URL precedente; il confronto è a tempo costante.
+- Eventi: card attive con scadenza dagli ultimi 90 giorni in poi, 30 minuti dalla scadenza, titolo con `✓` se completata e `[P0]`…`[P4]`, link alla card. Writer RFC 5545 in `src/lib/ical.ts` (escape e folding a 75 ottetti).
