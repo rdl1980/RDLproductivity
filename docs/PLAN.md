@@ -79,7 +79,7 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Feed iCal privato delle scadenze (Integrazioni → Calendario), URL rigenerabile e disattivabile
 - [ ] Allegati e immagini nelle card
 - [x] Storico attività (tu o Claude) con undo: pagina `/activity`, sezione nel dettaglio card, Ctrl/Cmd+Z sulla board, tool MCP
-- [ ] Template di board e card
+- [x] Template di board (liste, etichette, opzionalmente card) e di card (descrizione, priorità, etichette, checklist); pagina `/templates`, tool MCP
 - [ ] Dashboard statistiche
 
 ## Dopo l'MVP (idee)

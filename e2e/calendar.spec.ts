@@ -33,7 +33,7 @@ test("calendar shows due cards, moves them by drag and filters by board", async 
   const dialog = page.getByRole("dialog", { name: cardTitle });
   await dialog.getByRole("button", { name: "Date" }).click();
   await page.getByRole("checkbox", { name: "Data di scadenza" }).click();
-  await page.getByRole("button", { name: "Salva" }).click();
+  await page.getByRole("button", { name: "Salva", exact: true }).click();
   await expect(dialog.getByTestId("due-badge")).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "Data di scadenza" })).toBeHidden();
   await page.keyboard.press("Escape");

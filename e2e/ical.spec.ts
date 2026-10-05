@@ -14,7 +14,7 @@ test("the private iCal feed lists due cards and can be rotated and disabled", as
   const dialog = page.getByRole("dialog", { name: title });
   await dialog.getByRole("button", { name: "Date" }).click();
   await page.getByRole("checkbox", { name: "Data di scadenza" }).click();
-  await page.getByRole("button", { name: "Salva" }).click();
+  await page.getByRole("button", { name: "Salva", exact: true }).click();
   await expect(dialog.getByTestId("due-badge")).toBeVisible();
   await page.keyboard.press("Escape");
   await settle(page);

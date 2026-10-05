@@ -8,6 +8,7 @@ import {
   CheckSquareIcon,
   CopyIcon,
   HistoryIcon,
+  LayoutTemplateIcon,
   RepeatIcon,
   TagIcon,
   TextIcon,
@@ -18,6 +19,7 @@ import { toast } from "sonner";
 import { ActorIcon } from "@/components/activity/activity-list";
 import { Composer } from "@/components/board/composer";
 import { LocalDateTime } from "@/components/local-date-time";
+import { SaveTemplateDialog } from "@/components/templates/save-template-dialog";
 import { InlineTitle } from "@/components/board/inline-title";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -55,6 +57,7 @@ import {
 } from "@/server/actions/checklists";
 import { createLabel, deleteLabel, setCardLabel, updateLabel } from "@/server/actions/labels";
 import type { ActionResult } from "@/server/actions/result";
+import { saveCardAsTemplate } from "@/server/actions/templates";
 
 import { DueBadge, LabelChips } from "./card-badges";
 import { ChecklistSection } from "./checklist-section";
@@ -146,6 +149,7 @@ function CardDetailContent({
     "labels" | "dates" | "checklist" | "repeat" | null
   >(null);
   const [moveCopy, setMoveCopy] = useState<"move" | "copy" | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   // Real ids of checklists still being created, so their items can be queued.
   const pendingChecklists = useRef(new Map<string, Promise<string>>());
 
@@ -762,6 +766,15 @@ function CardDetailContent({
             <CopyIcon />
             Copia
           </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className={sidebarButton}
+            onClick={() => setSavingTemplate(true)}
+          >
+            <LayoutTemplateIcon />
+            Salva come template
+          </Button>
           {!card.archived && (
             <Button variant="secondary" size="sm" className={sidebarButton} onClick={archive}>
               <ArchiveIcon />
@@ -770,6 +783,14 @@ function CardDetailContent({
           )}
         </aside>
       </div>
+
+      <SaveTemplateDialog
+        open={savingTemplate}
+        onOpenChange={setSavingTemplate}
+        title="Salva la card come template"
+        defaultName={card.title}
+        onSave={({ name }) => saveCardAsTemplate({ cardId: card.id, name })}
+      />
 
       <MoveCopyDialog
         mode={moveCopy}

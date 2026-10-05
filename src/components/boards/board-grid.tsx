@@ -14,13 +14,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DEFAULT_BOARD_COLOR } from "@/lib/board-colors";
+import type { TemplateSummary } from "@/lib/templates";
 import { createBoard, updateBoard } from "@/server/actions/boards";
+import { createBoardFromTemplate } from "@/server/actions/templates";
 
 import { BoardFormDialog } from "./board-form-dialog";
 
 type BoardSummary = { id: string; title: string; color: string | null };
 
-export function BoardGrid({ boards }: { boards: BoardSummary[] }) {
+export function BoardGrid({
+  boards,
+  templates,
+}: {
+  boards: BoardSummary[];
+  templates: TemplateSummary[];
+}) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<BoardSummary | null>(null);
@@ -83,8 +91,11 @@ export function BoardGrid({ boards }: { boards: BoardSummary[] }) {
         onOpenChange={setCreating}
         title="Nuova board"
         submitLabel="Crea"
-        onSubmit={async (values) => {
-          const result = await createBoard(values);
+        templates={templates}
+        onSubmit={async ({ templateId, ...values }) => {
+          const result = templateId
+            ? await createBoardFromTemplate({ templateId, ...values })
+            : await createBoard(values);
           if (!result.ok) return result.error;
           router.push(`/boards/${result.data.id}`);
           return null;

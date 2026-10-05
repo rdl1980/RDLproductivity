@@ -29,6 +29,13 @@ import { type ActionResult, fail, ok } from "@/server/actions/result";
 import { db } from "@/server/db";
 import { runAsMcpUser } from "@/server/mcp-context";
 import { listActivity, undoActivity, UndoError } from "@/server/activity";
+import {
+  createBoardFromTemplate,
+  createCardFromTemplate,
+  getTemplates,
+  saveBoardAsTemplate,
+  saveCardAsTemplate,
+} from "@/server/actions/templates";
 import { getSuperBoard } from "@/server/queries/aggregate";
 import { getArchive } from "@/server/queries/archive";
 import { getBoard, getBoards } from "@/server/queries/boards";
@@ -300,6 +307,83 @@ export function registerTools(server: McpServer) {
         if (error instanceof UndoError) return fail(error.message);
         throw error;
       }
+    },
+  );
+
+  // ---- Templates ----
+
+  defineTool(
+    server,
+    "list_templates",
+    {
+      title: "List templates",
+      description: "Lists saved board and card templates (id, kind, name, short description).",
+      inputSchema: z.object({ kind: z.enum(["board", "card"]).optional() }),
+      annotations: READ,
+    },
+    ({ kind }) => getTemplates(kind),
+  );
+
+  defineTool(
+    server,
+    "save_board_as_template",
+    {
+      title: "Save board as template",
+      description:
+        "Saves a board's lists and labels (and optionally its cards) as a reusable template.",
+      inputSchema: z.object({
+        boardId: id("board"),
+        name: z.string(),
+        includeCards: z.boolean().default(false),
+      }),
+      annotations: WRITE,
+    },
+    (input) => saveBoardAsTemplate(input),
+  );
+
+  defineTool(
+    server,
+    "save_card_as_template",
+    {
+      title: "Save card as template",
+      description:
+        "Saves a card's title, description, priority, labels and checklists as a reusable template.",
+      inputSchema: z.object({ cardId: id("card"), name: z.string() }),
+      annotations: WRITE,
+    },
+    (input) => saveCardAsTemplate(input),
+  );
+
+  defineTool(
+    server,
+    "create_board_from_template",
+    {
+      title: "Create board from template",
+      description: "Creates a new board from a board template. Returns the new board id.",
+      inputSchema: z.object({
+        templateId: id("template"),
+        title: z.string(),
+        color: boardColor.optional(),
+      }),
+      annotations: WRITE,
+    },
+    (input) => createBoardFromTemplate(input),
+  );
+
+  defineTool(
+    server,
+    "create_card_from_template",
+    {
+      title: "Create card from template",
+      description:
+        "Adds a card from a card template at the bottom of a list; missing labels are created on " +
+        "the list's board. Returns the card.",
+      inputSchema: z.object({ templateId: id("template"), listId: id("list") }),
+      annotations: WRITE,
+    },
+    async (input) => {
+      const created = await createCardFromTemplate(input);
+      return created.ok ? cardDetail(created.data.card.id) : created;
     },
   );
 
