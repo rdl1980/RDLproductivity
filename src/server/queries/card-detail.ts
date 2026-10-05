@@ -2,6 +2,7 @@ import "server-only";
 
 import type { CardDetail } from "@/server/actions/card-details";
 import { parseRecurrence } from "@/lib/recurrence";
+import { listActivity } from "@/server/activity";
 import { db } from "@/server/db";
 
 /** Full card data for the detail dialog, or null when the card does not exist. */
@@ -47,6 +48,7 @@ export async function loadCardDetail(cardId: string): Promise<CardDetail | null>
     },
   });
   if (!card) return null;
+  const activity = await listActivity({ cardId, take: 20 });
 
   const { board, ...list } = card.list;
   return {
@@ -63,5 +65,11 @@ export async function loadCardDetail(cardId: string): Promise<CardDetail | null>
     board,
     labelIds: card.labels.map((label) => label.labelId),
     checklists: card.checklists,
+    activity: activity.map((item) => ({
+      id: item.id,
+      createdAt: item.createdAt.toISOString(),
+      actor: item.actor,
+      summary: item.summary,
+    })),
   };
 }

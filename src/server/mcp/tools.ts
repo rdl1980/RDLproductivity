@@ -28,6 +28,7 @@ import { createList, moveList, updateList } from "@/server/actions/lists";
 import { type ActionResult, fail, ok } from "@/server/actions/result";
 import { db } from "@/server/db";
 import { runAsMcpUser } from "@/server/mcp-context";
+import { listActivity, undoActivity, UndoError } from "@/server/activity";
 import { getSuperBoard } from "@/server/queries/aggregate";
 import { getArchive } from "@/server/queries/archive";
 import { getBoard, getBoards } from "@/server/queries/boards";
@@ -261,6 +262,45 @@ export function registerTools(server: McpServer) {
       annotations: READ,
     },
     async () => ok((await getSuperBoard()).cards),
+  );
+
+  defineTool(
+    server,
+    "list_activity",
+    {
+      title: "List activity",
+      description:
+        "Lists recent changes (newest first) made by the user or by Claude, optionally for one " +
+        "card or board. Entries with undoable: true can be reverted with undo_activity.",
+      inputSchema: z.object({
+        cardId: id("card").optional(),
+        boardId: id("board").optional(),
+        limit: z.number().int().min(1).max(100).default(30),
+      }),
+      annotations: READ,
+    },
+    async ({ cardId, boardId, limit }) => ok(await listActivity({ cardId, boardId, take: limit })),
+  );
+
+  defineTool(
+    server,
+    "undo_activity",
+    {
+      title: "Undo activity",
+      description:
+        "Reverts one change from list_activity. Refused when a later change touched the same " +
+        "records (undo that one first) or when the change cannot be undone (permanent deletions).",
+      inputSchema: z.object({ activityId: id("activity entry") }),
+      annotations: WRITE,
+    },
+    async ({ activityId }) => {
+      try {
+        return ok(await undoActivity(activityId));
+      } catch (error) {
+        if (error instanceof UndoError) return fail(error.message);
+        throw error;
+      }
+    },
   );
 
   defineTool(

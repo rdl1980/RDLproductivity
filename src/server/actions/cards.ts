@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import { positionAfter, positionBetween } from "@/lib/position";
+import { logActivity, q, snapshot } from "@/server/activity";
 import { db } from "@/server/db";
 import { isAuthenticated } from "@/server/session";
 
@@ -17,7 +18,10 @@ export async function createCard(
   const { data, error } = parse(createSchema, input);
   if (!data) return fail(error);
 
-  const list = await db.list.findUnique({ where: { id: data.listId }, select: { id: true } });
+  const list = await db.list.findUnique({
+    where: { id: data.listId },
+    select: { id: true, title: true, boardId: true },
+  });
   if (!list) return fail("Lista non trovata.");
 
   const last = await db.card.findFirst({
@@ -32,6 +36,14 @@ export async function createCard(
       position: positionAfter(last?.position ?? null),
     },
     select: { id: true, position: true },
+  });
+  await logActivity({
+    kind: "card.create",
+    summary: `Card ${q(data.title)} creata in ${q(list.title)}`,
+    boardId: list.boardId,
+    cardId: card.id,
+    entityIds: [card.id],
+    undo: [{ op: "update", model: "card", id: card.id, data: { archived: true } }],
   });
   return ok(card);
 }
@@ -48,8 +60,36 @@ export async function updateCard(input: z.input<typeof updateSchema>): Promise<A
   if (!data) return fail(error);
 
   const { id, ...changes } = data;
-  const { count } = await db.card.updateMany({ where: { id }, data: changes });
-  if (count === 0) return fail("Card non trovata.");
+  const before = await db.card.findUnique({
+    where: { id },
+    select: { title: true, archived: true, list: { select: { boardId: true } } },
+  });
+  if (!before) return fail("Card non trovata.");
+  await db.card.update({ where: { id }, data: changes });
+  const summary =
+    changes.archived === true
+      ? `Card ${q(before.title)} archiviata`
+      : changes.archived === false
+        ? `Card ${q(before.title)} ripristinata`
+        : `Card ${q(before.title)} rinominata in ${q(changes.title ?? before.title)}`;
+  await logActivity({
+    kind: "card.update",
+    summary,
+    boardId: before.list.boardId,
+    cardId: id,
+    entityIds: [id],
+    undo: [
+      {
+        op: "update",
+        model: "card",
+        id,
+        data: snapshot({
+          title: changes.title === undefined ? undefined : before.title,
+          archived: changes.archived === undefined ? undefined : before.archived,
+        }),
+      },
+    ],
+  });
   return ok(undefined);
 }
 
@@ -69,8 +109,16 @@ export async function moveCard(
   if (!data) return fail(error);
 
   const [card, list] = await Promise.all([
-    db.card.findUnique({ where: { id: data.id }, select: { list: { select: { boardId: true } } } }),
-    db.list.findUnique({ where: { id: data.listId }, select: { boardId: true } }),
+    db.card.findUnique({
+      where: { id: data.id },
+      select: {
+        title: true,
+        listId: true,
+        position: true,
+        list: { select: { boardId: true, title: true } },
+      },
+    }),
+    db.list.findUnique({ where: { id: data.listId }, select: { boardId: true, title: true } }),
   ]);
   if (!card || !list) return fail("Card o lista non trovata.");
   if (card.list.boardId !== list.boardId) return fail("Spostamento tra board non supportato.");
@@ -89,6 +137,24 @@ export async function moveCard(
   try {
     const position = positionBetween(before, after);
     await db.card.update({ where: { id: data.id }, data: { listId: data.listId, position } });
+    await logActivity({
+      kind: "card.move",
+      summary:
+        card.listId === data.listId
+          ? `Card ${q(card.title)} riordinata in ${q(list.title)}`
+          : `Card ${q(card.title)} spostata da ${q(card.list.title)} a ${q(list.title)}`,
+      boardId: list.boardId,
+      cardId: data.id,
+      entityIds: [data.id],
+      undo: [
+        {
+          op: "update",
+          model: "card",
+          id: data.id,
+          data: { listId: card.listId, position: card.position },
+        },
+      ],
+    });
     return ok({ position });
   } catch {
     return fail("Posizione non valida.");

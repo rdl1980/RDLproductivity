@@ -181,6 +181,12 @@ test("an MCP client authorizes via OAuth and edits boards through tools", async 
   })) as unknown as { id: string }[];
   expect(found.map((result) => result.id)).toContain(card.id);
 
+  // Claude's changes are logged with Claude as the actor.
+  const log = (await callTool(request, tokens.access_token, "list_activity", {
+    cardId: card.id,
+  })) as unknown as { actor: string; summary: string }[];
+  expect(log[0]).toMatchObject({ actor: "claude", summary: expect.stringContaining("completata") });
+
   // The changes are visible in the app.
   await page.unroute("https://client.example/**");
   await page.goto(`/boards/${board.id}`);

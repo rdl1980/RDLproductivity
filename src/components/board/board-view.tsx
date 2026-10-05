@@ -21,7 +21,7 @@ import {
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { PlusIcon } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -57,6 +57,7 @@ import {
 import { positionAfter } from "@/lib/position";
 import { useIsClient } from "@/lib/use-is-client";
 import { useStableCallbacks } from "@/lib/use-stable-callbacks";
+import { undoLatestAction } from "@/server/actions/activity";
 import { createCard, moveCard, updateCard } from "@/server/actions/cards";
 import { createList, moveList, updateList } from "@/server/actions/lists";
 import type { ActionResult } from "@/server/actions/result";
@@ -104,6 +105,19 @@ export function BoardView({
   const [board, setBoard] = useState(initialBoard);
   const [lists, setLists] = useState(initialLists);
   const [labels, setLabels] = useState(initialLabels);
+  // After an undo the server data is the truth: adopt the next props once.
+  const router = useRouter();
+  const [serverLists, setServerLists] = useState(initialLists);
+  const [resyncPending, setResyncPending] = useState(false);
+  if (serverLists !== initialLists) {
+    setServerLists(initialLists);
+    if (resyncPending) {
+      setResyncPending(false);
+      setBoard(initialBoard);
+      setLists(initialLists);
+      setLabels(initialLabels);
+    }
+  }
   const searchParams = useSearchParams();
   const openCardId = searchParams.get("card");
   const query = searchParams.toString();
@@ -169,9 +183,28 @@ export function BoardView({
       });
   }
 
-  // Keyboard shortcuts: `n` opens the card composer, `Esc` closes composers.
+  // Keyboard shortcuts: `n` opens the card composer, `Esc` closes composers,
+  // Ctrl/Cmd+Z undoes the latest change on this board.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        !event.shiftKey &&
+        event.key.toLowerCase() === "z" &&
+        !isTypingTarget(event.target) &&
+        !openCardId
+      ) {
+        event.preventDefault();
+        undoLatestAction(board.id)
+          .catch(() => ({ ok: false as const, error: "Errore di rete." }))
+          .then((result) => {
+            if (!result.ok) return void toast.error(result.error);
+            toast.success(`Annullato: ${result.data.summary}`);
+            setResyncPending(true);
+            router.refresh();
+          });
+        return;
+      }
       if (event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target)) return;
       if (openCardId) return;
       if (event.key === "n" && lists.length > 0) {
@@ -185,7 +218,7 @@ export function BoardView({
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [lists, openCardId]);
+  }, [lists, openCardId, board.id, router]);
 
   // --- Card detail (URL: ?card=<id>) -----------------------------------------
 

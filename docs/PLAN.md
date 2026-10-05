@@ -78,7 +78,7 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Card ricorrenti: giornaliera, giorni lavorativi, settimanale, mensile, annuale, ogni N; al completamento si crea la prossima occorrenza
 - [x] Feed iCal privato delle scadenze (Integrazioni → Calendario), URL rigenerabile e disattivabile
 - [ ] Allegati e immagini nelle card
-- [ ] Storico attività con undo
+- [x] Storico attività (tu o Claude) con undo: pagina `/activity`, sezione nel dettaglio card, Ctrl/Cmd+Z sulla board, tool MCP
 - [ ] Template di board e card
 - [ ] Dashboard statistiche
 

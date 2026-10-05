@@ -148,3 +148,24 @@ model AppSetting {
   value     String
   updatedAt DateTime @updatedAt
 }
+
+// Change log of every mutation, from the UI or from Claude (MCP), with the
+// inverse operations needed to undo it.
+model Activity {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  actor     String // "user" | "claude"
+  kind      String // e.g. "card.update"
+  summary   String
+  boardId   String?
+  cardId    String?
+  /// Ids of the records touched, to detect later conflicting changes.
+  entityIds String[]
+  /// UndoOp[] (see src/server/activity.ts); null when it cannot be undone.
+  undo      Json?
+  undoneAt  DateTime?
+
+  @@index([createdAt])
+  @@index([boardId, createdAt])
+  @@index([cardId, createdAt])
+}
