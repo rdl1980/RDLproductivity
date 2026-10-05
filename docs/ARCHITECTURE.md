@@ -215,3 +215,9 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - Le viste trasversali (`/priority`, `/today`) leggono card "aggregate" (`AggregateCard`: riepilogo + board, lista ed etichette risolte) da `src/server/queries/aggregate.ts` e riusano il dialog della card tramite il parametro `?card=`.
 - Super board: colonne = nomi di lista normalizzati (trim, minuscole) delle board che hanno card P0/P1, ordinate per posizione della lista nella sua board; righe = P0 (expedite lane) e P1. Il drag cambia priorità e/o sposta la card nella lista omonima della sua board, in un'unica Server Action (`moveCardToList` con `priority`).
 - Vista Oggi: il server restituisce un intervallo largo (il fuso del browser non è noto); le sezioni si calcolano nel client dopo l'idratazione (`src/lib/agenda.ts`).
+
+## Card ricorrenti
+
+- `Card.recurrence` (JSONB): `{ rule, interval, timeZone }`, validato con zod (`src/lib/recurrence.ts`). Richiede una scadenza; togliendo la scadenza la regola viene rimossa.
+- Completare una card ricorrente (dialog, vista Oggi o MCP) crea nella stessa transazione la prossima occorrenza subito dopo di essa nella lista: stessi titolo, descrizione, priorità, etichette e checklist (con elementi non spuntati), scadenza successiva e inizio traslato dello stesso intervallo. La regola passa alla nuova card, quella completata non si ripete più.
+- La data successiva mantiene l'ora locale nel fuso salvato nella regola (cambio dell'ora legale compreso) e salta le occorrenze già passate.

@@ -4,7 +4,13 @@ import { z } from "zod";
 
 import type { CardItem, LabelItem } from "@/lib/board-state";
 import { positionAfter, positionBetween } from "@/lib/position";
-import { db } from "@/server/db";
+import {
+  nextOccurrence,
+  parseRecurrence,
+  type Recurrence,
+  recurrenceSchema,
+} from "@/lib/recurrence";
+import { db, Prisma } from "@/server/db";
 import { cardSummarySelect, toCardSummary } from "@/server/queries/card-summary";
 import { isAuthenticated } from "@/server/session";
 
@@ -37,6 +43,7 @@ export type CardDetail = {
   dueDate: string | null;
   completed: boolean;
   priority: number | null;
+  recurrence: Recurrence | null;
   archived: boolean;
   list: { id: string; title: string };
   board: { id: string; title: string; labels: LabelItem[] };
@@ -51,19 +58,23 @@ const detailsSchema = z.object({
   dueDate: optionalDateSchema,
   completed: z.boolean().optional(),
   priority: z.number().int().min(0).max(4).nullable().optional(),
+  recurrence: recurrenceSchema.nullable().optional(),
 });
 
-/** Updates description, dates, priority and the completed flag. */
+/**
+ * Updates description, dates, priority, recurrence and the completed flag.
+ * Completing a recurring card creates its next occurrence, returned as `next`.
+ */
 export async function updateCardDetails(
   input: z.input<typeof detailsSchema>,
-): Promise<ActionResult> {
+): Promise<ActionResult<{ next: MovedCard | null }>> {
   if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
   const { data, error } = parse(detailsSchema, input);
   if (!data) return fail(error);
 
   const current = await db.card.findUnique({
     where: { id: data.id },
-    select: { startDate: true, dueDate: true },
+    select: { startDate: true, dueDate: true, completed: true, recurrence: true },
   });
   if (!current) return fail("Card non trovata.");
 
@@ -74,18 +85,86 @@ export async function updateCardDetails(
   if (startDate && dueDate && startDate > dueDate) {
     return fail("La data di inizio deve precedere la scadenza.");
   }
+  // A rule needs a due date to repeat from; removing the due date drops it.
+  let recurrence =
+    data.recurrence === undefined ? parseRecurrence(current.recurrence) : data.recurrence;
+  if (data.recurrence && !dueDate) return fail("Imposta una scadenza per ripetere la card.");
+  if (!dueDate) recurrence = null;
 
-  await db.card.update({
-    where: { id: data.id },
-    data: {
-      description: data.description === undefined ? undefined : data.description || null,
-      startDate,
-      dueDate,
-      completed: data.completed,
-      priority: data.priority,
+  const completing = data.completed === true && !current.completed;
+  const repeat = completing && recurrence && dueDate ? recurrence : null;
+
+  const next = await db.$transaction(async (tx) => {
+    await tx.card.update({
+      where: { id: data.id },
+      data: {
+        description: data.description === undefined ? undefined : data.description || null,
+        startDate,
+        dueDate,
+        completed: data.completed,
+        priority: data.priority,
+        // The completed occurrence hands its rule over to the next one.
+        recurrence: repeat || !recurrence ? Prisma.DbNull : recurrence,
+      },
+    });
+    return repeat ? createNextOccurrence(tx, data.id, repeat) : null;
+  });
+  return ok({ next });
+}
+
+/** Copies a recurring card to its next due date, right after it in its list. */
+async function createNextOccurrence(
+  tx: Prisma.TransactionClient,
+  cardId: string,
+  recurrence: Recurrence,
+): Promise<MovedCard> {
+  const source = await tx.card.findUniqueOrThrow({
+    where: { id: cardId },
+    select: {
+      listId: true,
+      position: true,
+      title: true,
+      description: true,
+      startDate: true,
+      dueDate: true,
+      priority: true,
+      list: { select: { boardId: true } },
+      labels: { select: { labelId: true } },
+      checklists: {
+        select: { title: true, position: true, items: { select: { text: true, position: true } } },
+      },
     },
   });
-  return ok(undefined);
+  const dueDate = nextOccurrence(source.dueDate!, recurrence);
+  const shift = dueDate.getTime() - source.dueDate!.getTime();
+  const following = await tx.card.findFirst({
+    where: { listId: source.listId, position: { gt: source.position } },
+    orderBy: { position: "asc" },
+    select: { position: true },
+  });
+  const created = await tx.card.create({
+    data: {
+      listId: source.listId,
+      position: positionBetween(source.position, following?.position ?? null),
+      title: source.title,
+      description: source.description,
+      startDate: source.startDate && new Date(source.startDate.getTime() + shift),
+      dueDate,
+      priority: source.priority,
+      recurrence,
+      labels: { create: source.labels },
+      // Checklists start over, unchecked.
+      checklists: {
+        create: source.checklists.map((checklist) => ({
+          title: checklist.title,
+          position: checklist.position,
+          items: { create: checklist.items },
+        })),
+      },
+    },
+    select: cardSummarySelect,
+  });
+  return { boardId: source.list.boardId, listId: source.listId, card: toCardSummary(created) };
 }
 
 /** Boards and lists a card can be moved or copied to. */

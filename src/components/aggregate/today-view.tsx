@@ -39,9 +39,13 @@ export function TodayView({ cards: initialCards }: { cards: AggregateCard[] }) {
     updateCardDetails({ id: card.id, completed })
       .catch(() => ({ ok: false as const, error: NETWORK_ERROR }))
       .then((result) => {
-        if (result.ok) return;
-        apply(!completed);
-        toast.error(result.error);
+        if (!result.ok) {
+          apply(!completed);
+          toast.error(result.error);
+        } else if (result.data.next) {
+          toast.success("Creata la prossima occorrenza");
+          router.refresh();
+        }
       });
   }
 

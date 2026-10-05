@@ -9,6 +9,8 @@ export type CardItem = {
   completed: boolean;
   /** 0 (highest) to 4, or null. */
   priority: number | null;
+  /** Completing the card creates its next occurrence. */
+  recurring: boolean;
   hasDescription: boolean;
   labelIds: string[];
   checklist: { done: number; total: number };
@@ -25,6 +27,7 @@ export function newCardSummary(id: string, title: string, position: string): Car
     dueDate: null,
     completed: false,
     priority: null,
+    recurring: false,
     hasDescription: false,
     labelIds: [],
     checklist: { done: 0, total: 0 },

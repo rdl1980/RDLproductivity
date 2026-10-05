@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { BOARD_COLORS, DEFAULT_BOARD_COLOR } from "@/lib/board-colors";
 import { LABEL_COLORS } from "@/lib/label-colors";
+import { RECURRENCE_RULES } from "@/lib/recurrence";
 import { restoreBoard, restoreList } from "@/server/actions/archive";
 import { createBoard, updateBoard } from "@/server/actions/boards";
 import {
@@ -40,6 +41,9 @@ type ToolAnnotations = {
   idempotentHint?: boolean;
 };
 
+/** The app is single-user: dates without a zone are read in the owner's. */
+const DEFAULT_TIME_ZONE = process.env.DEFAULT_TIME_ZONE ?? "Europe/Rome";
+
 const READ: ToolAnnotations = { readOnlyHint: true };
 const WRITE: ToolAnnotations = { readOnlyHint: false, destructiveHint: false };
 const DELETE: ToolAnnotations = { readOnlyHint: false, destructiveHint: true };
@@ -57,6 +61,20 @@ const priority = z
   .nullable()
   .optional()
   .describe("Priority from 0 (highest, P0) to 4 (lowest); null clears it");
+const recurrence = z
+  .object({
+    rule: z.enum(RECURRENCE_RULES),
+    interval: z.number().int().min(1).max(365).default(1),
+    timeZone: z
+      .string()
+      .default(DEFAULT_TIME_ZONE)
+      .describe(`IANA time zone of the due time, default ${DEFAULT_TIME_ZONE}`),
+  })
+  .nullable()
+  .optional()
+  .describe(
+    "Repeat rule; requires a due date. Completing the card creates the next occurrence. null removes it",
+  );
 const index = z
   .number()
   .int()
@@ -354,18 +372,35 @@ export function registerTools(server: McpServer) {
         startDate: nullableDate,
         dueDate: nullableDate,
         priority,
+        recurrence,
         labelIds: z.array(id("label")).max(20).optional(),
       }),
       annotations: WRITE,
     },
-    async ({ listId, title, description, startDate, dueDate, priority: level, labelIds }) => {
+    async ({
+      listId,
+      title,
+      description,
+      startDate,
+      dueDate,
+      priority: level,
+      recurrence: repeat,
+      labelIds,
+    }) => {
       const created = await createCard({ listId, title });
       if (!created.ok) return created;
       const cardId = created.data.id;
       const result = await chain(
         () =>
-          description !== undefined || startDate || dueDate || level != null
-            ? updateCardDetails({ id: cardId, description, startDate, dueDate, priority: level })
+          description !== undefined || startDate || dueDate || level != null || repeat
+            ? updateCardDetails({
+                id: cardId,
+                description,
+                startDate,
+                dueDate,
+                priority: level,
+                recurrence: repeat,
+              })
             : Promise.resolve(ok(undefined)),
         ...(labelIds ?? []).map(
           (labelId) => () => setCardLabel({ cardId, labelId, assigned: true }),
@@ -383,8 +418,9 @@ export function registerTools(server: McpServer) {
       title: "Update card",
       description:
         "Updates a card: title, description (markdown; empty string clears it), start and due dates " +
-        "(null clears), completed flag, priority (0-4, null clears), archived flag. Only the given " +
-        "fields change. Returns the card.",
+        "(null clears), completed flag, priority (0-4, null clears), repeat rule, archived flag. " +
+        "Only the given fields change. Completing a recurring card creates its next occurrence, " +
+        "returned as nextOccurrence. Returns the card.",
       inputSchema: z.object({
         cardId: id("card"),
         title: z.string().optional(),
@@ -393,6 +429,7 @@ export function registerTools(server: McpServer) {
         dueDate: nullableDate,
         completed: z.boolean().optional(),
         priority,
+        recurrence,
         archived: z.boolean().optional(),
       }),
       annotations: WRITE,
@@ -406,25 +443,31 @@ export function registerTools(server: McpServer) {
       dueDate,
       completed,
       priority: level,
+      recurrence: repeat,
     }) => {
-      const result = await chain(
-        () =>
-          title !== undefined || archived !== undefined
-            ? updateCard({ id: cardId, title, archived })
-            : Promise.resolve(ok(undefined)),
-        () =>
-          [description, startDate, dueDate, completed, level].some((value) => value !== undefined)
-            ? updateCardDetails({
-                id: cardId,
-                description,
-                startDate,
-                dueDate,
-                completed,
-                priority: level,
-              })
-            : Promise.resolve(ok(undefined)),
-      );
-      return result.ok ? cardDetail(cardId) : result;
+      const renamed =
+        title !== undefined || archived !== undefined
+          ? await updateCard({ id: cardId, title, archived })
+          : ok(undefined);
+      if (!renamed.ok) return renamed;
+      let nextOccurrence: string | null = null;
+      if (
+        [description, startDate, dueDate, completed, level, repeat].some((v) => v !== undefined)
+      ) {
+        const updated = await updateCardDetails({
+          id: cardId,
+          description,
+          startDate,
+          dueDate,
+          completed,
+          priority: level,
+          recurrence: repeat,
+        });
+        if (!updated.ok) return updated;
+        nextOccurrence = updated.data.next?.card.id ?? null;
+      }
+      const detail = await cardDetail(cardId);
+      return detail.ok && nextOccurrence ? ok({ ...detail.data, nextOccurrence }) : detail;
     },
   );
 

@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { CardDetail } from "@/server/actions/card-details";
+import { parseRecurrence } from "@/lib/recurrence";
 import { db } from "@/server/db";
 
 /** Full card data for the detail dialog, or null when the card does not exist. */
@@ -15,6 +16,7 @@ export async function loadCardDetail(cardId: string): Promise<CardDetail | null>
       dueDate: true,
       completed: true,
       priority: true,
+      recurrence: true,
       archived: true,
       list: {
         select: {
@@ -55,6 +57,7 @@ export async function loadCardDetail(cardId: string): Promise<CardDetail | null>
     dueDate: card.dueDate?.toISOString() ?? null,
     completed: card.completed,
     priority: card.priority,
+    recurrence: parseRecurrence(card.recurrence),
     archived: card.archived,
     list,
     board,

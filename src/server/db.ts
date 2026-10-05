@@ -14,3 +14,6 @@ function createClient() {
 export const db = globalForPrisma.prisma ?? createClient();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+
+/** Prisma namespace (e.g. `Prisma.DbNull`, transaction types) for server code. */
+export { Prisma } from "@/generated/prisma/client";
