@@ -14,6 +14,7 @@ export async function loadCardDetail(cardId: string): Promise<CardDetail | null>
       startDate: true,
       dueDate: true,
       completed: true,
+      priority: true,
       archived: true,
       list: {
         select: {
@@ -53,6 +54,7 @@ export async function loadCardDetail(cardId: string): Promise<CardDetail | null>
     startDate: card.startDate?.toISOString() ?? null,
     dueDate: card.dueDate?.toISOString() ?? null,
     completed: card.completed,
+    priority: card.priority,
     archived: card.archived,
     list,
     board,

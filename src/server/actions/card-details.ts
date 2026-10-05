@@ -36,6 +36,7 @@ export type CardDetail = {
   startDate: string | null;
   dueDate: string | null;
   completed: boolean;
+  priority: number | null;
   archived: boolean;
   list: { id: string; title: string };
   board: { id: string; title: string; labels: LabelItem[] };
@@ -49,9 +50,10 @@ const detailsSchema = z.object({
   startDate: optionalDateSchema,
   dueDate: optionalDateSchema,
   completed: z.boolean().optional(),
+  priority: z.number().int().min(0).max(4).nullable().optional(),
 });
 
-/** Updates description, dates and the completed flag. */
+/** Updates description, dates, priority and the completed flag. */
 export async function updateCardDetails(
   input: z.input<typeof detailsSchema>,
 ): Promise<ActionResult> {
@@ -80,6 +82,7 @@ export async function updateCardDetails(
       startDate,
       dueDate,
       completed: data.completed,
+      priority: data.priority,
     },
   });
   return ok(undefined);
@@ -119,7 +122,13 @@ async function edgePosition(listId: string, placement: "top" | "bottom") {
     : positionAfter(edge?.position ?? null);
 }
 
-const moveToSchema = z.object({ id: idSchema, listId: idSchema, placement: placementSchema });
+const moveToSchema = z.object({
+  id: idSchema,
+  listId: idSchema,
+  placement: placementSchema,
+  /** Optionally changes the priority in the same update (super board). */
+  priority: z.number().int().min(0).max(4).nullable().optional(),
+});
 
 export type MovedCard = { boardId: string; listId: string; card: CardItem };
 
@@ -145,7 +154,7 @@ export async function moveCardToList(
     }
     return tx.card.update({
       where: { id: data.id },
-      data: { listId: data.listId, position },
+      data: { listId: data.listId, position, priority: data.priority },
       select: cardSummarySelect,
     });
   });
@@ -176,6 +185,7 @@ export async function copyCard(
         description: true,
         startDate: true,
         dueDate: true,
+        priority: true,
         list: { select: { boardId: true } },
         labels: { select: { labelId: true } },
         checklists: {
@@ -201,6 +211,7 @@ export async function copyCard(
       description: source.description,
       startDate: source.startDate,
       dueDate: source.dueDate,
+      priority: source.priority,
       labels:
         data.keepLabels && sameBoard
           ? { create: source.labels.map(({ labelId }) => ({ labelId })) }

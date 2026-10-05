@@ -19,10 +19,18 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { CardItem, LabelItem } from "@/lib/board-state";
 import { isTypingTarget } from "@/lib/dom";
 import { fetchCardDetail } from "@/lib/fetch-card-detail";
 import { positionAfter } from "@/lib/position";
+import { PRIORITIES, PRIORITY_VALUES } from "@/lib/priority";
 import {
   type CardDetail,
   type ChecklistDetail,
@@ -81,6 +89,7 @@ export function CardDetailDialog({ cardId, onClose, ...callbacks }: Props) {
 }
 
 const NETWORK_ERROR = "Errore di rete, modifica annullata.";
+const NO_PRIORITY = "none";
 // Popovers scroll instead of overflowing small viewports.
 const POPOVER_FIT = "max-h-(--radix-popover-content-available-height) overflow-y-auto";
 const tempId = () => `temp-${crypto.randomUUID()}`;
@@ -93,6 +102,7 @@ function toSummary(detail: CardDetail): CardSummaryPatch {
     title: detail.title,
     dueDate: detail.dueDate,
     completed: detail.completed,
+    priority: detail.priority,
     hasDescription: detail.description.trim().length > 0,
     labelIds: detail.labelIds,
     checklist: { done: items.filter((item) => item.done).length, total: items.length },
@@ -209,6 +219,15 @@ function CardDetailContent({
       (d) => ({ ...d, completed }),
       (d) => ({ ...d, completed: !completed }),
       () => updateCardDetails({ id: card.id, completed }),
+    );
+  }
+
+  function setPriority(priority: number | null) {
+    if (priority === card.priority) return;
+    mutate(
+      (d) => ({ ...d, priority }),
+      (d) => ({ ...d, priority: card.priority }),
+      () => updateCardDetails({ id: card.id, priority }),
     );
   }
 
@@ -504,6 +523,30 @@ function CardDetailContent({
                 </label>
               </div>
             )}
+            <div className="flex flex-col gap-1.5">
+              <h3 className="text-xs font-medium text-muted-foreground">Priorità</h3>
+              <Select
+                value={card.priority === null ? NO_PRIORITY : String(card.priority)}
+                onValueChange={(value) => setPriority(value === NO_PRIORITY ? null : Number(value))}
+              >
+                <SelectTrigger aria-label="Priorità" size="sm" className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_PRIORITY}>Nessuna</SelectItem>
+                  {PRIORITY_VALUES.map((value) => (
+                    <SelectItem key={value} value={String(value)}>
+                      <span
+                        className={`rounded px-1 text-xs font-semibold ${PRIORITIES[value].className}`}
+                      >
+                        {PRIORITIES[value].label}
+                      </span>
+                      {PRIORITIES[value].name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {!card.dueDate && (
               <label className="flex items-center gap-2 self-end text-sm">
                 <Checkbox

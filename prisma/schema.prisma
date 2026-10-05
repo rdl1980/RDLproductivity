@@ -45,6 +45,8 @@ model Card {
   startDate   DateTime?
   dueDate     DateTime?
   completed   Boolean     @default(false)
+  /// 0 (highest) to 4 (lowest); null = no priority. Checked in the database.
+  priority    Int?
   archived    Boolean     @default(false)
   labels      CardLabel[]
   checklists  Checklist[]
@@ -53,6 +55,7 @@ model Card {
 
   @@index([listId, position])
   @@index([dueDate])
+  @@index([priority])
 }
 
 model Label {

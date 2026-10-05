@@ -64,3 +64,11 @@ export async function addCards(page: Page, listTitle: string, titles: string[]) 
   await input.press("Escape");
   await settle(page);
 }
+
+/** Reloads until the assertion holds: saves run in the background after the UI updates. */
+export async function expectPersisted(page: Page, assertion: () => Promise<void>) {
+  await expect(async () => {
+    await page.reload();
+    await assertion();
+  }).toPass({ timeout: 15_000 });
+}
