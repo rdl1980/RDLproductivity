@@ -54,10 +54,14 @@ In produzione aggiungi gli stessi URL con il dominio Vercel (`https://rdlproduct
 L'app espone un server MCP remoto: Claude può leggere e modificare board, liste, card, etichette e checklist.
 
 1. In Claude: Impostazioni → Connettori → Aggiungi connettore personalizzato.
-2. URL: `https://rdlproductivity.vercel.app/api/mcp` (lo trovi anche in Menu utente → Connessioni Claude).
+2. URL: `https://rdlproductivity.vercel.app/api/mcp` (lo trovi anche in Menu utente → Integrazioni).
 3. Al primo uso Claude apre la pagina di consenso: accedi con GitHub e clicca Consenti.
 
 I client autorizzati si revocano da `/connections`. Dettagli in `docs/ARCHITECTURE.md`.
+
+## Calendario (iCal)
+
+Menu utente → Integrazioni → Attiva il feed: l'URL `.ics` si aggiunge a Google Calendar ("Da URL"), Apple Calendar o Outlook e mostra le scadenze delle card. "Rigenera URL" invalida il precedente.
 
 ## Deploy
 

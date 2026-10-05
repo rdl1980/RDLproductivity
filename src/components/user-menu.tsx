@@ -53,7 +53,7 @@ export function UserMenu({ name, signOut }: { name: string; signOut: () => Promi
         <DropdownMenuItem asChild>
           <Link href="/connections">
             <PlugIcon />
-            Connessioni Claude
+            Integrazioni
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
