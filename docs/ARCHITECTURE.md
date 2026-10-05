@@ -227,3 +227,11 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - `GET /api/calendar/<token>.ics` (fuori dal proxy di Auth.js): le app di calendario non fanno login, quindi l'URL è la credenziale.
 - Il token è `HMAC-SHA256(AUTH_SECRET, "ical-feed:<versione>")`: nel database c'è solo la versione (`AppSetting` `ical.version`, positiva = attivo, negativa = disattivato). "Rigenera" incrementa la versione e invalida l'URL precedente; il confronto è a tempo costante.
 - Eventi: card attive con scadenza dagli ultimi 90 giorni in poi, 30 minuti dalla scadenza, titolo con `✓` se completata e `[P0]`…`[P4]`, link alla card. Writer RFC 5545 in `src/lib/ical.ts` (escape e folding a 75 ottetti).
+
+## Storico attività e undo
+
+- Ogni Server Action che modifica dati chiama `logActivity()` (`src/server/activity.ts`): tipo, riepilogo in italiano, board/card, `entityIds` toccati e le operazioni inverse (`UndoOp[]`, JSON). L'attore è `claude` quando la chiamata arriva dal server MCP (contesto `runAsMcpUser`), altrimenti `user`.
+- Operazioni inverse: ripristino di campi (`update`), eliminazione di ciò che è stato creato (etichette, checklist, elementi) o archiviazione (board, liste, card), riassegnazione di etichette, ricreazione con gli stessi id di etichette/checklist/elementi eliminati. Le eliminazioni definitive dall'archivio non si annullano.
+- Un'attività si annulla solo se nessuna attività successiva non annullata tocca gli stessi `entityIds` (evita di sovrascrivere modifiche più recenti); l'annullamento è a sua volta registrato. Retention: 180 giorni.
+- UI: pagina `/activity` (menu utente), sezione "Attività" nel dettaglio card, Ctrl/Cmd+Z sulla board annulla l'ultima modifica di quella board. MCP: `list_activity`, `undo_activity`.
+- e2e: `settle()` aspetta che non ci siano Server Action in corso (POST contate dal fixture `page`), perché `networkidle` si risolve subito se già raggiunto.

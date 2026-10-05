@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import { positionAfter, positionBetween } from "@/lib/position";
+import { logActivity, q, snapshot } from "@/server/activity";
 import { db } from "@/server/db";
 import { isAuthenticated } from "@/server/session";
 
@@ -36,6 +37,13 @@ export async function createList(
     },
     select: { id: true, position: true },
   });
+  await logActivity({
+    kind: "list.create",
+    summary: `Lista ${q(data.title)} creata`,
+    boardId: data.boardId,
+    entityIds: [list.id],
+    undo: [{ op: "update", model: "list", id: list.id, data: { archived: true } }],
+  });
   return ok(list);
 }
 
@@ -51,8 +59,35 @@ export async function updateList(input: z.input<typeof updateSchema>): Promise<A
   if (!data) return fail(error);
 
   const { id, ...changes } = data;
-  const { count } = await db.list.updateMany({ where: { id }, data: changes });
-  if (count === 0) return fail("Lista non trovata.");
+  const before = await db.list.findUnique({
+    where: { id },
+    select: { title: true, archived: true, boardId: true },
+  });
+  if (!before) return fail("Lista non trovata.");
+  await db.list.update({ where: { id }, data: changes });
+  const summary =
+    changes.archived === true
+      ? `Lista ${q(before.title)} archiviata`
+      : changes.archived === false
+        ? `Lista ${q(before.title)} ripristinata`
+        : `Lista ${q(before.title)} rinominata in ${q(changes.title ?? before.title)}`;
+  await logActivity({
+    kind: "list.update",
+    summary,
+    boardId: before.boardId,
+    entityIds: [id],
+    undo: [
+      {
+        op: "update",
+        model: "list",
+        id,
+        data: snapshot({
+          title: changes.title === undefined ? undefined : before.title,
+          archived: changes.archived === undefined ? undefined : before.archived,
+        }),
+      },
+    ],
+  });
   return ok(undefined);
 }
 
@@ -70,7 +105,10 @@ export async function moveList(
   const { data, error } = parse(moveSchema, input);
   if (!data) return fail(error);
 
-  const list = await db.list.findUnique({ where: { id: data.id }, select: { boardId: true } });
+  const list = await db.list.findUnique({
+    where: { id: data.id },
+    select: { boardId: true, title: true, position: true },
+  });
   if (!list) return fail("Lista non trovata.");
 
   const neighbourIds = [data.beforeId, data.afterId].filter((id): id is string => id !== null);
@@ -87,6 +125,13 @@ export async function moveList(
   try {
     const position = positionBetween(before, after);
     await db.list.update({ where: { id: data.id }, data: { position } });
+    await logActivity({
+      kind: "list.move",
+      summary: `Lista ${q(list.title)} spostata`,
+      boardId: list.boardId,
+      entityIds: [data.id],
+      undo: [{ op: "update", model: "list", id: data.id, data: { position: list.position } }],
+    });
     return ok({ position });
   } catch {
     return fail("Posizione non valida.");

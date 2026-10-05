@@ -3,6 +3,7 @@
 import {
   ArchiveIcon,
   DownloadIcon,
+  HistoryIcon,
   LogOutIcon,
   MonitorIcon,
   MoonIcon,
@@ -42,6 +43,12 @@ export function UserMenu({ name, signOut }: { name: string; signOut: () => Promi
           <Link href="/archive">
             <ArchiveIcon />
             Archivio
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/activity">
+            <HistoryIcon />
+            Attività
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

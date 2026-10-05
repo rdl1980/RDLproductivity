@@ -7,6 +7,7 @@ import {
   CalendarIcon,
   CheckSquareIcon,
   CopyIcon,
+  HistoryIcon,
   RepeatIcon,
   TagIcon,
   TextIcon,
@@ -14,7 +15,9 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { ActorIcon } from "@/components/activity/activity-list";
 import { Composer } from "@/components/board/composer";
+import { LocalDateTime } from "@/components/local-date-time";
 import { InlineTitle } from "@/components/board/inline-title";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -616,6 +619,28 @@ function CardDetailContent({
               {...checklistActions(checklist)}
             />
           ))}
+
+          {card.activity.length > 0 && (
+            <details className="group flex flex-col gap-2">
+              <summary className="flex cursor-pointer items-center gap-2 font-semibold">
+                <HistoryIcon className="size-4 text-muted-foreground" />
+                Attività
+              </summary>
+              <ul className="mt-2 flex flex-col gap-2" data-testid="card-activity">
+                {card.activity.map((item) => (
+                  <li key={item.id} className="flex items-start gap-2 text-sm">
+                    <ActorIcon actor={item.actor} />
+                    <span className="flex min-w-0 flex-col">
+                      <span className="break-words">{item.summary}</span>
+                      <span className="text-xs text-muted-foreground">
+                        <LocalDateTime value={new Date(item.createdAt)} />
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </div>
 
         <aside className="flex flex-col gap-2" aria-label="Azioni card">

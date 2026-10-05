@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 
-import { expect } from "./fixtures";
+import { expect, pendingSaveCount } from "./fixtures";
 
 export const list = (page: Page, title: string) =>
   page.getByTestId("list").filter({ has: page.getByRole("button", { name: title, exact: true }) });
@@ -16,7 +16,8 @@ export async function settle(page: Page) {
   await expect(page.locator('[aria-roledescription="sortable"][aria-disabled="true"]')).toHaveCount(
     0,
   );
-  await page.waitForLoadState("networkidle");
+  // `networkidle` resolves at once when already reached: wait for the saves.
+  await expect.poll(() => pendingSaveCount(page)).toBe(0);
 }
 
 export async function dragTo(page: Page, source: Locator, target: Locator) {
