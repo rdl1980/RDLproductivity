@@ -12,10 +12,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { BOARD_COLORS, DEFAULT_BOARD_COLOR } from "@/lib/board-colors";
+import type { TemplateSummary } from "@/lib/templates";
 import { cn } from "@/lib/utils";
 
-type Values = { title: string; color: string };
+type Values = { title: string; color: string; templateId?: string };
+
+const NO_TEMPLATE = "none";
 
 type Props = {
   open: boolean;
@@ -23,6 +33,8 @@ type Props = {
   title: string;
   submitLabel: string;
   initialValues?: Values;
+  /** Board templates to start from (creation only). */
+  templates?: TemplateSummary[];
   /** Returns an error message, or null on success. */
   onSubmit: (values: Values) => Promise<string | null>;
 };
@@ -42,6 +54,7 @@ function BoardForm({
   title,
   submitLabel,
   initialValues,
+  templates,
   onSubmit,
   onDone,
 }: Omit<Props, "open" | "onOpenChange"> & { onDone: () => void }) {
@@ -84,6 +97,31 @@ function BoardForm({
           placeholder="Es. Lavoro"
         />
       </label>
+
+      {templates && templates.length > 0 && (
+        <div className="flex flex-col gap-1.5 text-sm font-medium">
+          <span id="board-template-label">Template</span>
+          <Select
+            value={values.templateId ?? NO_TEMPLATE}
+            onValueChange={(value) =>
+              setValues({ ...values, templateId: value === NO_TEMPLATE ? undefined : value })
+            }
+          >
+            <SelectTrigger aria-labelledby="board-template-label" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_TEMPLATE}>Board vuota</SelectItem>
+              {templates.map((template) => (
+                <SelectItem key={template.id} value={template.id}>
+                  {template.name}
+                  <span className="text-xs text-muted-foreground">{template.detail}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <fieldset className="flex flex-col gap-1.5">
         <legend className="mb-1.5 text-sm font-medium">Colore</legend>

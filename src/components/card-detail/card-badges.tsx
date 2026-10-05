@@ -15,7 +15,7 @@ const DUE_STYLES = {
   upcoming: "text-muted-foreground",
   soon: "bg-amber-400 text-amber-950",
   overdue: "bg-red-600 text-white",
-  completed: "bg-green-600 text-white",
+  completed: "bg-green-700 text-white",
 } as const;
 
 export function DueBadge({
@@ -123,7 +123,7 @@ export function CardBadges({ card }: { card: CardItem }) {
           data-testid="checklist-badge"
           className={cn(
             "inline-flex items-center gap-1 rounded px-1.5 py-0.5",
-            done === total && "bg-green-600 text-white",
+            done === total && "bg-green-700 text-white",
           )}
           title="Elementi della checklist completati"
         >

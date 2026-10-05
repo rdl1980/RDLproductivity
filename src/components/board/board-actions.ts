@@ -8,6 +8,7 @@ export type BoardActions = {
   renameList: (list: ListItem, title: string) => void;
   archiveList: (list: ListItem) => void;
   addCard: (listId: string, title: string) => void;
+  addCardFromTemplate: (listId: string) => void;
   renameCard: (card: CardItem, title: string) => void;
   archiveCard: (listId: string, card: CardItem) => void;
 };

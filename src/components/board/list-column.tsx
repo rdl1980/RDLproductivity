@@ -117,6 +117,9 @@ export const ListColumn = memo(function ListColumn({
               <DropdownMenuItem onSelect={() => onComposerOpenChange(true)}>
                 Aggiungi una card
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => actions.addCardFromTemplate(list.id)}>
+                Aggiungi card da template…
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setEditing(true)}>Rinomina</DropdownMenuItem>
               <DropdownMenuItem variant="destructive" onSelect={() => actions.archiveList(list)}>
                 Archivia lista

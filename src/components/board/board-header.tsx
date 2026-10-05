@@ -15,7 +15,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { BOARD_COLORS } from "@/lib/board-colors";
+import { SaveTemplateDialog } from "@/components/templates/save-template-dialog";
 import { updateBoard } from "@/server/actions/boards";
+import { saveBoardAsTemplate } from "@/server/actions/templates";
 
 import { InlineTitle } from "./inline-title";
 
@@ -33,6 +35,7 @@ export function BoardHeader({
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   async function save(changes: Partial<Omit<Board, "id">>) {
     const previous = board;
@@ -87,6 +90,9 @@ export function BoardHeader({
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => setEditing(true)}>Rinomina</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setSavingTemplate(true)}>
+            Salva come template…
+          </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
             onSelect={async () => {
@@ -101,6 +107,16 @@ export function BoardHeader({
         </DropdownMenuContent>
       </DropdownMenu>
       <div className="ml-auto">{children}</div>
+      <SaveTemplateDialog
+        open={savingTemplate}
+        onOpenChange={setSavingTemplate}
+        title="Salva la board come template"
+        defaultName={board.title}
+        withCardsOption
+        onSave={({ name, includeCards }) =>
+          saveBoardAsTemplate({ boardId: board.id, name, includeCards })
+        }
+      />
     </div>
   );
 }

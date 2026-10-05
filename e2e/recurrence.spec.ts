@@ -16,7 +16,7 @@ test("completing a recurring card creates the next occurrence", async ({ page })
   await page.keyboard.press("Escape");
   await dialog.getByRole("button", { name: "Date" }).click();
   await page.getByRole("checkbox", { name: "Data di scadenza" }).click();
-  await page.getByRole("button", { name: "Salva" }).click();
+  await page.getByRole("button", { name: "Salva", exact: true }).click();
   await expect(dialog.getByTestId("due-badge")).toBeVisible();
   const due = await dialog.getByTestId("due-badge").innerText();
 
@@ -24,7 +24,7 @@ test("completing a recurring card creates the next occurrence", async ({ page })
   await page.getByRole("combobox", { name: "Frequenza" }).click();
   await page.getByRole("option", { name: "Ogni settimana" }).click();
   await page.getByLabel("Ogni", { exact: true }).fill("2");
-  await page.getByRole("button", { name: "Salva" }).click();
+  await page.getByRole("button", { name: "Salva", exact: true }).click();
   await expect(dialog.getByRole("button", { name: "Ogni 2 settimane" })).toBeVisible();
 
   await dialog.getByRole("checkbox", { name: "Completata" }).click();

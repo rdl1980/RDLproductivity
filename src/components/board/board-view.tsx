@@ -62,6 +62,8 @@ import { createCard, moveCard, updateCard } from "@/server/actions/cards";
 import { createList, moveList, updateList } from "@/server/actions/lists";
 import type { ActionResult } from "@/server/actions/result";
 
+import { CardTemplatePicker } from "@/components/templates/card-template-picker";
+
 import type { BoardActions } from "./board-actions";
 import { BoardFiltersButton } from "./board-filters";
 import { BoardHeader } from "./board-header";
@@ -105,6 +107,7 @@ export function BoardView({
   const [board, setBoard] = useState(initialBoard);
   const [lists, setLists] = useState(initialLists);
   const [labels, setLabels] = useState(initialLabels);
+  const [templateListId, setTemplateListId] = useState<string | null>(null);
   // After an undo the server data is the truth: adopt the next props once.
   const router = useRouter();
   const [serverLists, setServerLists] = useState(initialLists);
@@ -432,6 +435,7 @@ export function BoardView({
     renameList,
     archiveList,
     addCard,
+    addCardFromTemplate: (listId) => setTemplateListId(listId),
     renameCard,
     archiveCard,
   });
@@ -529,6 +533,18 @@ export function BoardView({
         cardId={openCardId}
         onClose={() => setCardParam(null)}
         {...detailCallbacks}
+      />
+      <CardTemplatePicker
+        listId={templateListId}
+        onClose={() => setTemplateListId(null)}
+        onCreated={(placed) => {
+          detailCallbacks.onCardPlaced?.(placed);
+          // The template may have created labels this board view does not know yet.
+          if (placed.card.labelIds.some((id) => !labels.some((label) => label.id === id))) {
+            setResyncPending(true);
+            router.refresh();
+          }
+        }}
       />
     </main>
   );

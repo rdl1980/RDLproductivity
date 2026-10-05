@@ -19,7 +19,7 @@ test("card detail: description, labels, dates, checklist, persisted and shown on
   await dialog.getByLabel("Descrizione").fill("Prenotare **hotel** e treno");
   await dialog.getByRole("tab", { name: "Anteprima" }).click();
   await expect(dialog.locator("strong", { hasText: "hotel" })).toBeVisible();
-  await dialog.getByRole("button", { name: "Salva" }).click();
+  await dialog.getByRole("button", { name: "Salva", exact: true }).click();
   await expect(dialog.locator("strong", { hasText: "hotel" })).toBeVisible();
 
   // New label, assigned automatically.
@@ -43,7 +43,7 @@ test("card detail: description, labels, dates, checklist, persisted and shown on
     .click();
   await page.getByRole("grid").getByRole("button").filter({ hasText: /^10$/ }).first().click();
   await page.getByLabel("Ora di scadenza").fill("09:30");
-  await page.getByRole("button", { name: "Salva" }).click();
+  await page.getByRole("button", { name: "Salva", exact: true }).click();
   await expect(dialog.getByTestId("due-badge")).toHaveAttribute("data-status", "overdue");
   await dialog.getByRole("checkbox", { name: "Completata" }).click();
   await expect(dialog.getByTestId("due-badge")).toHaveAttribute("data-status", "completed");

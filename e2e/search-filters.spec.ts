@@ -12,7 +12,7 @@ test("global search finds cards by title and description and opens them", async 
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: /Aggiungi una descrizione/ }).click();
   await dialog.getByLabel("Descrizione").fill(`Passare al supermercato ${token} dopo il lavoro`);
-  await dialog.getByRole("button", { name: "Salva" }).click();
+  await dialog.getByRole("button", { name: "Salva", exact: true }).click();
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await settle(page);

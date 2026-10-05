@@ -235,3 +235,9 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - Un'attività si annulla solo se nessuna attività successiva non annullata tocca gli stessi `entityIds` (evita di sovrascrivere modifiche più recenti); l'annullamento è a sua volta registrato. Retention: 180 giorni.
 - UI: pagina `/activity` (menu utente), sezione "Attività" nel dettaglio card, Ctrl/Cmd+Z sulla board annulla l'ultima modifica di quella board. MCP: `list_activity`, `undo_activity`.
 - e2e: `settle()` aspetta che non ci siano Server Action in corso (POST contate dal fixture `page`), perché `networkidle` si risolve subito se già raggiunto.
+
+## Template
+
+- Modello `Template` (`kind` = `board` | `card`, `data` JSON validato con zod in `src/lib/templates.ts`). Le etichette sono salvate per nome e colore e, all'uso, associate a quelle della board di destinazione o create se mancano.
+- Board: liste attive, etichette e, se richiesto, card attive con descrizione, priorità, etichette e checklist (elementi non spuntati). Card: titolo, descrizione, priorità, etichette, checklist. Date, ripetizioni e completamento non entrano nei template.
+- Uso: "Crea una board" con il selettore Template; menu lista "Aggiungi card da template…"; salvataggio dal menu board e dal dettaglio card; gestione in `/templates`. La creazione da template è in una transazione e registra un'attività annullabile.
