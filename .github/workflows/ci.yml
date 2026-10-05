@@ -17,6 +17,8 @@ jobs:
       AUTH_SECRET: ci-only-auth-secret-not-used-in-production
       # Matches the e2e session cookie, so MCP access tokens are accepted.
       ALLOWED_EMAIL: e2e@example.com
+      # Attachments on local disk: CI has no Vercel Blob token.
+      NEXT_PUBLIC_ATTACHMENT_STORAGE: local
     services:
       postgres:
         image: postgres:16

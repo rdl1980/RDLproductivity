@@ -36,24 +36,27 @@ model List {
 }
 
 model Card {
-  id          String      @id @default(cuid())
+  id          String       @id @default(cuid())
   listId      String
-  list        List        @relation(fields: [listId], references: [id], onDelete: Cascade)
+  list        List         @relation(fields: [listId], references: [id], onDelete: Cascade)
   title       String
   description String? // markdown
   position    String // fractional index
   startDate   DateTime?
   dueDate     DateTime?
-  completed   Boolean     @default(false)
+  completed   Boolean      @default(false)
   /// 0 (highest) to 4 (lowest); null = no priority. Checked in the database.
   priority    Int?
   /// { rule, interval, timeZone }: completing the card creates the next occurrence.
   recurrence  Json?
-  archived    Boolean     @default(false)
+  coverId     String?      @unique
+  cover       Attachment?  @relation("CardCover", fields: [coverId], references: [id], onDelete: SetNull)
+  attachments Attachment[] @relation("CardAttachments")
+  archived    Boolean      @default(false)
   labels      CardLabel[]
   checklists  Checklist[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@index([listId, position])
   @@index([dueDate])
@@ -180,4 +183,20 @@ model Template {
   updatedAt DateTime @updatedAt
 
   @@index([kind, name])
+}
+
+// File attached to a card. `url` is a private Vercel Blob URL, or "local:<key>"
+// with the local storage driver (development and tests).
+model Attachment {
+  id          String   @id @default(cuid())
+  cardId      String
+  card        Card     @relation("CardAttachments", fields: [cardId], references: [id], onDelete: Cascade)
+  coverOf     Card?    @relation("CardCover")
+  name        String
+  url         String
+  contentType String
+  size        Int
+  createdAt   DateTime @default(now())
+
+  @@index([cardId, createdAt])
 }

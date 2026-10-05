@@ -12,6 +12,9 @@ export type CardItem = {
   /** Completing the card creates its next occurrence. */
   recurring: boolean;
   hasDescription: boolean;
+  /** Number of attachments, and the image shown on top of the card. */
+  attachments: number;
+  coverId: string | null;
   labelIds: string[];
   checklist: { done: number; total: number };
 };
@@ -29,6 +32,8 @@ export function newCardSummary(id: string, title: string, position: string): Car
     priority: null,
     recurring: false,
     hasDescription: false,
+    attachments: 0,
+    coverId: null,
     labelIds: [],
     checklist: { done: 0, total: 0 },
   };

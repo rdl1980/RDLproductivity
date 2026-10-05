@@ -3,10 +3,17 @@
 import { revalidatePath } from "next/cache";
 
 import { logActivity, q } from "@/server/activity";
-import { db } from "@/server/db";
+import { removeUnreferencedFiles } from "@/server/attachment-storage";
+import { db, type Prisma } from "@/server/db";
 import { isAuthenticated } from "@/server/session";
 
 import { type ActionResult, fail, idSchema, ok, parse, UNAUTHORIZED } from "./result";
+
+/** Files of the attachments about to be deleted with their card, list or board. */
+async function attachmentUrls(where: Prisma.AttachmentWhereInput): Promise<string[]> {
+  const rows = await db.attachment.findMany({ where, select: { url: true } });
+  return rows.map((row) => row.url);
+}
 
 function refresh() {
   revalidatePath("/archive");
@@ -84,7 +91,9 @@ export async function deleteArchivedBoard(id: string): Promise<ActionResult> {
     select: { title: true },
   });
   if (!board) return fail("Solo le board archiviate si possono eliminare.");
+  const files = await attachmentUrls({ card: { list: { boardId } } });
   await db.board.delete({ where: { id: boardId } });
+  await removeUnreferencedFiles(files);
   await logActivity({
     kind: "board.delete",
     summary: `Board ${q(board.title)} eliminata definitivamente`,
@@ -104,7 +113,9 @@ export async function deleteArchivedList(id: string): Promise<ActionResult> {
     select: { title: true, boardId: true },
   });
   if (!list) return fail("Solo le liste archiviate si possono eliminare.");
+  const files = await attachmentUrls({ card: { listId } });
   await db.list.delete({ where: { id: listId } });
+  await removeUnreferencedFiles(files);
   await logActivity({
     kind: "list.delete",
     summary: `Lista ${q(list.title)} eliminata definitivamente`,
@@ -125,7 +136,9 @@ export async function deleteArchivedCard(id: string): Promise<ActionResult> {
     select: { title: true, list: { select: { boardId: true } } },
   });
   if (!card) return fail("Solo le card archiviate si possono eliminare.");
+  const files = await attachmentUrls({ cardId });
   await db.card.delete({ where: { id: cardId } });
+  await removeUnreferencedFiles(files);
   await logActivity({
     kind: "card.delete",
     summary: `Card ${q(card.title)} eliminata definitivamente`,

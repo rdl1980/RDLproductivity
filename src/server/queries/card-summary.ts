@@ -13,6 +13,8 @@ export const cardSummarySelect = {
   priority: true,
   recurrence: true,
   description: true,
+  coverId: true,
+  _count: { select: { attachments: true } },
   labels: { select: { labelId: true } },
   checklists: { select: { items: { select: { done: true } } } },
 } satisfies Prisma.CardSelect;
@@ -30,6 +32,8 @@ export function toCardSummary(card: CardSummaryRow): CardItem {
     priority: card.priority,
     recurring: card.recurrence !== null,
     hasDescription: !!card.description?.trim(),
+    attachments: card._count.attachments,
+    coverId: card.coverId,
     labelIds: card.labels.map((label) => label.labelId),
     checklist: { done: items.filter((item) => item.done).length, total: items.length },
   };

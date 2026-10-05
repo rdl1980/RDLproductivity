@@ -241,3 +241,11 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - Modello `Template` (`kind` = `board` | `card`, `data` JSON validato con zod in `src/lib/templates.ts`). Le etichette sono salvate per nome e colore e, all'uso, associate a quelle della board di destinazione o create se mancano.
 - Board: liste attive, etichette e, se richiesto, card attive con descrizione, priorità, etichette e checklist (elementi non spuntati). Card: titolo, descrizione, priorità, etichette, checklist. Date, ripetizioni e completamento non entrano nei template.
 - Uso: "Crea una board" con il selettore Template; menu lista "Aggiungi card da template…"; salvataggio dal menu board e dal dettaglio card; gestione in `/templates`. La creazione da template è in una transazione e registra un'attività annullabile.
+
+## Allegati
+
+- Modello `Attachment` (nome, URL, tipo, dimensione) e `Card.coverId` per l'immagine di copertina mostrata sulla card.
+- Produzione: store **Vercel Blob privato** (`rdlproductivity-attachments`, fra1, `BLOB_READ_WRITE_TOKEN` gestito da Vercel). Il browser carica direttamente su Blob (niente limite di 4,5 MB delle funzioni, max 25 MB per file): `POST /api/attachments/upload` emette un token client solo per l'utente loggato e solo per la cartella `cards/<cardId>/`; poi la Server Action `registerAttachment` verifica il file con `head()` e lo registra.
+- Sviluppo e test (`NEXT_PUBLIC_ATTACHMENT_STORAGE=local`): i file vanno in `.data/attachments` tramite la stessa route; stessa registrazione.
+- Lettura: `GET /api/attachments/<id>` dietro login, stream dal Blob privato. Solo le immagini raster sono mostrate inline; tutto il resto (SVG compreso) è scaricato, con `nosniff` e CSP `sandbox`.
+- Eliminazione: allegato singolo (con conferma, non annullabile) ed eliminazioni definitive dall'archivio rimuovono anche i file non più referenziati.

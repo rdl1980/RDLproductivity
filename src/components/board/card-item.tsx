@@ -83,6 +83,17 @@ export const SortableCard = memo(function SortableCard({
         />
       ) : (
         <>
+          {card.coverId && (
+            // eslint-disable-next-line @next/next/no-img-element -- private, auth-gated file
+            <img
+              src={`/api/attachments/${card.coverId}`}
+              alt=""
+              loading="lazy"
+              draggable={false}
+              data-testid="card-cover"
+              className="-mx-3 -mt-2 mb-2 block max-h-40 w-[calc(100%+1.5rem)] max-w-none rounded-t-md object-cover"
+            />
+          )}
           <div className="mb-1 empty:hidden">
             <LabelChips labelIds={card.labelIds} labels={labels} />
           </div>
