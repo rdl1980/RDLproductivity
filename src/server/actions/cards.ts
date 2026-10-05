@@ -115,6 +115,7 @@ export async function moveCard(
         title: true,
         listId: true,
         position: true,
+        listEnteredAt: true,
         list: { select: { boardId: true, title: true } },
       },
     }),
@@ -136,7 +137,14 @@ export async function moveCard(
 
   try {
     const position = positionBetween(before, after);
-    await db.card.update({ where: { id: data.id }, data: { listId: data.listId, position } });
+    await db.card.update({
+      where: { id: data.id },
+      data: {
+        listId: data.listId,
+        position,
+        listEnteredAt: card.listId !== data.listId ? new Date() : undefined,
+      },
+    });
     await logActivity({
       kind: "card.move",
       summary:
@@ -151,7 +159,11 @@ export async function moveCard(
           op: "update",
           model: "card",
           id: data.id,
-          data: { listId: card.listId, position: card.position },
+          data: snapshot({
+            listId: card.listId,
+            position: card.position,
+            listEnteredAt: card.listEnteredAt,
+          }),
         },
       ],
     });

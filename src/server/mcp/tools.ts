@@ -37,6 +37,7 @@ import {
   saveCardAsTemplate,
 } from "@/server/actions/templates";
 import { getSuperBoard } from "@/server/queries/aggregate";
+import { getStats } from "@/server/queries/stats";
 import { getArchive } from "@/server/queries/archive";
 import { getBoard, getBoards } from "@/server/queries/boards";
 import { getCalendarCards } from "@/server/queries/calendar";
@@ -385,6 +386,21 @@ export function registerTools(server: McpServer) {
       const created = await createCardFromTemplate(input);
       return created.ok ? cardDetail(created.data.card.id) : created;
     },
+  );
+
+  defineTool(
+    server,
+    "get_stats",
+    {
+      title: "Get statistics",
+      description:
+        "Productivity statistics: open, overdue and P0/P1 card counts, completion times of the " +
+        "last ~13 weeks (ISO, UTC), overdue cards per board, and average days open cards have " +
+        "spent in their current list (lists with the same name merged).",
+      inputSchema: z.object({}),
+      annotations: READ,
+    },
+    async () => ok(await getStats()),
   );
 
   defineTool(
