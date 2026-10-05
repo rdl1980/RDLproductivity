@@ -11,6 +11,8 @@ import {
   recurrenceSchema,
 } from "@/lib/recurrence";
 import { logActivity, q, snapshot, type UndoOp } from "@/server/activity";
+
+import type { AttachmentItem } from "./attachments";
 import { db, Prisma } from "@/server/db";
 import { cardSummarySelect, toCardSummary } from "@/server/queries/card-summary";
 import { isAuthenticated } from "@/server/session";
@@ -50,6 +52,8 @@ export type CardDetail = {
   board: { id: string; title: string; labels: LabelItem[] };
   labelIds: string[];
   checklists: ChecklistDetail[];
+  attachments: AttachmentItem[];
+  coverId: string | null;
   /** Latest changes, newest first (ISO dates). */
   activity: { id: string; createdAt: string; actor: string; summary: string }[];
 };

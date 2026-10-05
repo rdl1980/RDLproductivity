@@ -18,6 +18,11 @@ export async function loadCardDetail(cardId: string): Promise<CardDetail | null>
       completed: true,
       priority: true,
       recurrence: true,
+      coverId: true,
+      attachments: {
+        orderBy: { createdAt: "desc" },
+        select: { id: true, name: true, contentType: true, size: true, createdAt: true },
+      },
       archived: true,
       list: {
         select: {
@@ -65,6 +70,11 @@ export async function loadCardDetail(cardId: string): Promise<CardDetail | null>
     board,
     labelIds: card.labels.map((label) => label.labelId),
     checklists: card.checklists,
+    coverId: card.coverId,
+    attachments: card.attachments.map((attachment) => ({
+      ...attachment,
+      createdAt: attachment.createdAt.toISOString(),
+    })),
     activity: activity.map((item) => ({
       id: item.id,
       createdAt: item.createdAt.toISOString(),

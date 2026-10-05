@@ -56,6 +56,7 @@ import {
   updateChecklistItem,
 } from "@/server/actions/checklists";
 import { createLabel, deleteLabel, setCardLabel, updateLabel } from "@/server/actions/labels";
+import { type AttachmentItem, deleteAttachment, setCardCover } from "@/server/actions/attachments";
 import type { ActionResult } from "@/server/actions/result";
 import { saveCardAsTemplate } from "@/server/actions/templates";
 
@@ -64,6 +65,7 @@ import { ChecklistSection } from "./checklist-section";
 import { DatesForm } from "./dates-form";
 import { DescriptionEditor } from "./description-editor";
 import { LabelPicker } from "./label-picker";
+import { AttachmentsSection } from "./attachments-section";
 import { MoveCopyDialog } from "./move-copy-dialog";
 import { RecurrenceForm } from "./recurrence-form";
 
@@ -115,6 +117,8 @@ function toSummary(detail: CardDetail): CardSummaryPatch {
     priority: detail.priority,
     recurring: detail.recurrence !== null,
     hasDescription: detail.description.trim().length > 0,
+    attachments: detail.attachments.length,
+    coverId: detail.coverId,
     labelIds: detail.labelIds,
     checklist: { done: items.filter((item) => item.done).length, total: items.length },
   };
@@ -240,6 +244,31 @@ function CardDetailContent({
         onCardPlaced?.(next);
         toast.success(`Creata la prossima occorrenza: ${formatDue(next.card.dueDate!)}`);
       },
+    );
+  }
+
+  function removeAttachment(attachment: AttachmentItem) {
+    const index = card.attachments.findIndex((a) => a.id === attachment.id);
+    mutate(
+      (d) => ({
+        ...d,
+        attachments: d.attachments.filter((a) => a.id !== attachment.id),
+        coverId: d.coverId === attachment.id ? null : d.coverId,
+      }),
+      (d) => ({
+        ...d,
+        attachments: [...d.attachments.slice(0, index), attachment, ...d.attachments.slice(index)],
+        coverId: card.coverId,
+      }),
+      () => deleteAttachment(attachment.id),
+    );
+  }
+
+  function setCover(coverId: string | null) {
+    mutate(
+      (d) => ({ ...d, coverId }),
+      (d) => ({ ...d, coverId: card.coverId }),
+      () => setCardCover({ cardId: card.id, attachmentId: coverId }),
     );
   }
 
@@ -623,6 +652,17 @@ function CardDetailContent({
               {...checklistActions(checklist)}
             />
           ))}
+
+          <AttachmentsSection
+            cardId={card.id}
+            attachments={card.attachments}
+            coverId={card.coverId}
+            onAdded={(attachment) =>
+              setDetail((d) => d && { ...d, attachments: [attachment, ...d.attachments] })
+            }
+            onDelete={removeAttachment}
+            onSetCover={setCover}
+          />
 
           {card.activity.length > 0 && (
             <details className="group flex flex-col gap-2">

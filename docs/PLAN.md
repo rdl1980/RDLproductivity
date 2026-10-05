@@ -77,7 +77,7 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Vista `/today`: scadute, oggi, prossimi 7 giorni, completamento con un click
 - [x] Card ricorrenti: giornaliera, giorni lavorativi, settimanale, mensile, annuale, ogni N; al completamento si crea la prossima occorrenza
 - [x] Feed iCal privato delle scadenze (Integrazioni → Calendario), URL rigenerabile e disattivabile
-- [ ] Allegati e immagini nelle card
+- [x] Allegati e immagini nelle card (Vercel Blob privato, anteprime, copertina sulla card)
 - [x] Storico attività (tu o Claude) con undo: pagina `/activity`, sezione nel dettaglio card, Ctrl/Cmd+Z sulla board, tool MCP
 - [x] Template di board (liste, etichette, opzionalmente card) e di card (descrizione, priorità, etichette, checklist); pagina `/templates`, tool MCP
 - [ ] Dashboard statistiche
