@@ -47,6 +47,8 @@ model Card {
   completed   Boolean     @default(false)
   /// 0 (highest) to 4 (lowest); null = no priority. Checked in the database.
   priority    Int?
+  /// { rule, interval, timeZone }: completing the card creates the next occurrence.
+  recurrence  Json?
   archived    Boolean     @default(false)
   labels      CardLabel[]
   checklists  Checklist[]

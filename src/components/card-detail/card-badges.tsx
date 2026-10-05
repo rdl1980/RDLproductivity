@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckSquareIcon, ClockIcon, TextIcon } from "lucide-react";
+import { CheckSquareIcon, ClockIcon, RepeatIcon, TextIcon } from "lucide-react";
 
 import type { CardItem, LabelItem } from "@/lib/board-state";
 import { isPriority, PRIORITIES } from "@/lib/priority";
@@ -103,10 +103,16 @@ export function PriorityBadge({
 export function CardBadges({ card }: { card: CardItem }) {
   const { done, total } = card.checklist;
   if (!card.dueDate && !card.hasDescription && total === 0 && card.priority === null) return null;
+  const repeat = card.recurring && (
+    <span title="Card ricorrente" data-testid="recurring-badge">
+      <RepeatIcon className="size-3.5" aria-label="Ricorrente" />
+    </span>
+  );
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
       <PriorityBadge priority={card.priority} />
       <DueBadge dueDate={card.dueDate} completed={card.completed} />
+      {repeat}
       {card.hasDescription && (
         <span title="Questa card ha una descrizione">
           <TextIcon className="size-3.5" aria-label="Descrizione" />

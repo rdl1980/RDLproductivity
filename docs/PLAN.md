@@ -75,7 +75,7 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Priorità delle card da P0 (massima) a P4, opzionale; badge, filtro della board, tool MCP
 - [x] Super board `/priority`: card P0 e P1 di tutte le board, colonne per lista di origine (unite per nome), righe per priorità (P0 = expedite lane), drag per cambiare priorità o lista
 - [x] Vista `/today`: scadute, oggi, prossimi 7 giorni, completamento con un click
-- [ ] Card ricorrenti
+- [x] Card ricorrenti: giornaliera, giorni lavorativi, settimanale, mensile, annuale, ogni N; al completamento si crea la prossima occorrenza
 - [ ] Feed iCal privato delle scadenze
 - [ ] Allegati e immagini nelle card
 - [ ] Storico attività con undo

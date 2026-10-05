@@ -7,6 +7,7 @@ import {
   CalendarIcon,
   CheckSquareIcon,
   CopyIcon,
+  RepeatIcon,
   TagIcon,
   TextIcon,
 } from "lucide-react";
@@ -30,7 +31,9 @@ import type { CardItem, LabelItem } from "@/lib/board-state";
 import { isTypingTarget } from "@/lib/dom";
 import { fetchCardDetail } from "@/lib/fetch-card-detail";
 import { positionAfter } from "@/lib/position";
+import { formatDue } from "@/lib/due";
 import { PRIORITIES, PRIORITY_VALUES } from "@/lib/priority";
+import { describeRecurrence, type Recurrence } from "@/lib/recurrence";
 import {
   type CardDetail,
   type ChecklistDetail,
@@ -56,6 +59,7 @@ import { DatesForm } from "./dates-form";
 import { DescriptionEditor } from "./description-editor";
 import { LabelPicker } from "./label-picker";
 import { MoveCopyDialog } from "./move-copy-dialog";
+import { RecurrenceForm } from "./recurrence-form";
 
 export type CardSummaryPatch = Omit<CardItem, "id" | "position">;
 
@@ -103,6 +107,7 @@ function toSummary(detail: CardDetail): CardSummaryPatch {
     dueDate: detail.dueDate,
     completed: detail.completed,
     priority: detail.priority,
+    recurring: detail.recurrence !== null,
     hasDescription: detail.description.trim().length > 0,
     labelIds: detail.labelIds,
     checklist: { done: items.filter((item) => item.done).length, total: items.length },
@@ -134,7 +139,9 @@ function CardDetailContent({
   const [detail, setDetail] = useState<CardDetail | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
-  const [openPopover, setOpenPopover] = useState<"labels" | "dates" | "checklist" | null>(null);
+  const [openPopover, setOpenPopover] = useState<
+    "labels" | "dates" | "checklist" | "repeat" | null
+  >(null);
   const [moveCopy, setMoveCopy] = useState<"move" | "copy" | null>(null);
   // Real ids of checklists still being created, so their items can be queued.
   const pendingChecklists = useRef(new Map<string, Promise<string>>());
@@ -219,6 +226,22 @@ function CardDetailContent({
       (d) => ({ ...d, completed }),
       (d) => ({ ...d, completed: !completed }),
       () => updateCardDetails({ id: card.id, completed }),
+      ({ next }) => {
+        if (!next) return;
+        // The rule moved to the next occurrence.
+        setDetail((d) => d && { ...d, recurrence: null });
+        onCardPlaced?.(next);
+        toast.success(`Creata la prossima occorrenza: ${formatDue(next.card.dueDate!)}`);
+      },
+    );
+  }
+
+  function saveRecurrence(recurrence: Recurrence | null) {
+    setOpenPopover(null);
+    mutate(
+      (d) => ({ ...d, recurrence }),
+      (d) => ({ ...d, recurrence: card.recurrence }),
+      () => updateCardDetails({ id: card.id, recurrence }),
     );
   }
 
@@ -234,8 +257,14 @@ function CardDetailContent({
   function saveDates(values: { startDate: string | null; dueDate: string | null }) {
     setOpenPopover(null);
     mutate(
-      (d) => ({ ...d, ...values }),
-      (d) => ({ ...d, startDate: card.startDate, dueDate: card.dueDate }),
+      // Without a due date the card cannot repeat (the server drops the rule too).
+      (d) => ({ ...d, ...values, recurrence: values.dueDate ? d.recurrence : null }),
+      (d) => ({
+        ...d,
+        startDate: card.startDate,
+        dueDate: card.dueDate,
+        recurrence: card.recurrence,
+      }),
       () => updateCardDetails({ id: card.id, ...values }),
     );
   }
@@ -547,6 +576,19 @@ function CardDetailContent({
                 </SelectContent>
               </Select>
             </div>
+            {card.recurrence && (
+              <div className="flex flex-col gap-1.5">
+                <h3 className="text-xs font-medium text-muted-foreground">Ripetizione</h3>
+                <button
+                  type="button"
+                  onClick={() => setOpenPopover("repeat")}
+                  className="flex h-8 items-center gap-1.5 rounded-md bg-muted px-2 text-sm"
+                >
+                  <RepeatIcon className="size-3.5" />
+                  {describeRecurrence(card.recurrence)}
+                </button>
+              </div>
+            )}
             {!card.dueDate && (
               <label className="flex items-center gap-2 self-end text-sm">
                 <Checkbox
@@ -648,6 +690,30 @@ function CardDetailContent({
                 submitLabel="Aggiungi"
                 onSubmit={addChecklist}
                 onClose={() => setOpenPopover(null)}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Popover
+            open={openPopover === "repeat"}
+            onOpenChange={(open) => setOpenPopover(open ? "repeat" : null)}
+          >
+            <PopoverTrigger asChild>
+              <Button variant="secondary" size="sm" className={sidebarButton}>
+                <RepeatIcon />
+                Ripeti
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="left"
+              align="start"
+              collisionPadding={8}
+              className={`w-72 ${POPOVER_FIT}`}
+            >
+              <RecurrenceForm
+                initial={card.recurrence}
+                hasDueDate={card.dueDate !== null}
+                onSave={saveRecurrence}
               />
             </PopoverContent>
           </Popover>
