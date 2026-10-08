@@ -8,6 +8,8 @@ import { revokeConnection } from "@/server/actions/oauth";
 import { currentFeedToken } from "@/server/ical-feed";
 import { issuerFromHeaders, listConnections, resourceOf } from "@/server/oauth";
 import { requireSession } from "@/server/session";
+import { PlugIcon } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 
 export const metadata: Metadata = { title: "Integrazioni · RDL Productivity" };
 
@@ -24,7 +26,11 @@ export default async function ConnectionsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Integrazioni</h1>
+      <PageHeader
+        icon={PlugIcon}
+        title="Integrazioni"
+        description="Collega il calendario e Claude a RDL Productivity."
+      />
 
       <section className="flex flex-col gap-2" aria-label="Calendario iCal">
         <h2 className="text-lg font-semibold">Calendario (iCal)</h2>

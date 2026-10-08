@@ -6,6 +6,8 @@ import type { StatsData } from "@/server/queries/stats";
 
 import { BarList } from "./bar-list";
 import { WeeklyColumns } from "./weekly-columns";
+import { BarChart3Icon } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 
 /** Bars drawn per chart; the table view lists every row. */
 const CHART_ROWS = 10;
@@ -85,7 +87,11 @@ export function StatsView({ stats }: { stats: StatsData }) {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Statistiche</h1>
+      <PageHeader
+        icon={BarChart3Icon}
+        title="Statistiche"
+        description="Andamento del lavoro su tutte le board attive."
+      />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Tile label="Card aperte" value={stats.openCards} hint="non completate, non archiviate" />

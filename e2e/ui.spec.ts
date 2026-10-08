@@ -37,6 +37,8 @@ test("theme can be switched to dark and back, and persists across reloads", asyn
 });
 
 test("accessibility: no serious axe violations on the main pages", async ({ page }) => {
+  // Thirteen pages, each with a full axe run.
+  test.slow();
   await createBoard(page, `A11y ${Date.now()}`);
   await addLists(page, ["Uno"]);
   await addCards(page, "Uno", ["Card accessibile"]);

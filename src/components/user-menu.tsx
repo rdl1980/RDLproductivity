@@ -11,7 +11,6 @@ import {
   MoonIcon,
   PlugIcon,
   SunIcon,
-  UserIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -28,13 +27,33 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+function initials(name: string) {
+  const parts = name
+    .replace(/@.*/, "")
+    .split(/[\s._-]+/)
+    .filter(Boolean);
+  return (
+    parts.length > 1 ? parts[0][0] + parts[1][0] : (parts[0] ?? "?").slice(0, 1)
+  ).toUpperCase();
+}
+
 export function UserMenu({ name, signOut }: { name: string; signOut: () => Promise<void> }) {
   const { theme, setTheme } = useTheme();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" aria-label="Menu utente">
-          <UserIcon />
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label="Menu utente"
+          className="gap-2 rounded-full pr-1 pl-1 md:pr-3"
+        >
+          <span
+            aria-hidden
+            className="flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 to-rose-400 text-xs font-semibold text-rose-950"
+          >
+            {initials(name)}
+          </span>
           <span className="hidden max-w-32 truncate md:inline">{name}</span>
         </Button>
       </DropdownMenuTrigger>

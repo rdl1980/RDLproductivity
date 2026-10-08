@@ -3,6 +3,7 @@ import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { providerMap, signIn } from "@/auth";
+import { BrandMark } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Accedi · RDL Productivity" };
@@ -19,11 +20,18 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const redirectTo = typeof callbackUrl === "string" ? callbackUrl : "/";
 
   return (
-    <main className="flex flex-1 items-center justify-center p-8">
-      <div className="flex w-full max-w-sm flex-col gap-6 rounded-xl border p-8 shadow-sm">
-        <div className="flex flex-col gap-1 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">RDL Productivity</h1>
-          <p className="text-sm text-muted-foreground">Accedi per continuare</p>
+    <main className="relative flex flex-1 items-center justify-center overflow-hidden p-8">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_0%,color-mix(in_oklch,var(--brand)_18%,transparent),transparent)]"
+      />
+      <div className="relative flex w-full max-w-sm flex-col gap-6 rounded-2xl border bg-card p-8 shadow-card-hover">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <BrandMark className="size-11 rounded-xl [&_svg]:size-6" />
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-semibold tracking-tight">RDL Productivity</h1>
+            <p className="text-sm text-muted-foreground">Accedi per continuare</p>
+          </div>
         </div>
 
         {errorCode && (
@@ -53,7 +61,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
                   }
                 }}
               >
-                <Button type="submit" variant="outline" className="w-full">
+                <Button type="submit" size="lg" className="w-full">
                   Accedi con {provider.name}
                 </Button>
               </form>

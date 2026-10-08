@@ -30,7 +30,7 @@ export function SearchBox() {
   return (
     <form
       role="search"
-      className="relative w-full max-w-xs"
+      className="relative w-full max-w-sm"
       onSubmit={(event) => {
         event.preventDefault();
         const q = new FormData(event.currentTarget).get("q")?.toString().trim() ?? "";
@@ -46,12 +46,15 @@ export function SearchBox() {
         type="search"
         defaultValue={current}
         aria-label="Cerca card"
-        placeholder="Cerca…  /"
-        className="h-8 pl-8"
+        placeholder="Cerca card…"
+        className="h-9 rounded-lg border-transparent bg-muted pr-9 pl-8 shadow-none focus-visible:border-input focus-visible:bg-background"
         onKeyDown={(event) => {
           if (event.key === "Escape") event.currentTarget.blur();
         }}
       />
+      <kbd className="pointer-events-none absolute top-1/2 right-2 z-10 hidden -translate-y-1/2 rounded border bg-background px-1.5 font-mono text-[11px] text-muted-foreground sm:block">
+        /
+      </kbd>
     </form>
   );
 }

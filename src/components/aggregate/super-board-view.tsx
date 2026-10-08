@@ -34,6 +34,8 @@ import type { ActionResult } from "@/server/actions/result";
 
 import { AggregateCardBody, applyPatch } from "./aggregate-card";
 import { useCardParam } from "./use-card-param";
+import { FlameIcon } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 
 const NETWORK_ERROR = "Errore di rete, modifica annullata.";
 
@@ -104,15 +106,13 @@ export function SuperBoardView({ cards: initialCards, lists }: Props) {
   }
 
   return (
-    <main className="flex h-[calc(100dvh-3rem)] min-h-0 flex-col overflow-hidden">
-      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3">
-        <h1 className="text-xl font-semibold tracking-tight">Super board</h1>
-        <p className="text-sm text-muted-foreground">
-          Le card P0 e P1 di tutte le board: colonne per lista di origine, righe per priorità.
-          Trascina tra le righe per cambiare priorità, tra le colonne per spostare la card nella
-          lista con lo stesso nome della sua board.
-        </p>
-      </header>
+    <main className="flex h-[calc(100dvh-var(--header-height))] min-h-0 flex-col overflow-hidden">
+      <PageHeader
+        icon={FlameIcon}
+        title="Super board"
+        description="Le card P0 e P1 di tutte le board: colonne per lista di origine, righe per priorità. Trascina tra le righe per cambiare priorità, tra le colonne per spostare la card nella lista con lo stesso nome della sua board."
+        className="px-4 pt-5 pb-4"
+      />
 
       {cards.length === 0 ? (
         <p className="px-4 text-sm text-muted-foreground">
@@ -120,6 +120,8 @@ export function SuperBoardView({ cards: initialCards, lists }: Props) {
         </p>
       ) : (
         <DndContext
+          // Stable id: generated ids differ between server and client (hydration).
+          id="super-board-dnd"
           sensors={sensors}
           onDragStart={({ active }) => setDragging(cards.find((c) => c.id === active.id) ?? null)}
           onDragEnd={onDragEnd}

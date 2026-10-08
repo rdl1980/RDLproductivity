@@ -249,6 +249,8 @@ export function CalendarView({ cards: initialCards, boards, view, date, boardId,
       {toolbar(title)}
 
       <DndContext
+        // Stable id: generated ids differ between server and client (hydration).
+        id="calendar-dnd"
         sensors={sensors}
         onDragStart={({ active }) => setDragging(cards.find((c) => c.id === active.id) ?? null)}
         onDragCancel={() => setDragging(null)}

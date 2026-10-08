@@ -20,7 +20,13 @@ import { createBoardFromTemplate } from "@/server/actions/templates";
 
 import { BoardFormDialog } from "./board-form-dialog";
 
-type BoardSummary = { id: string; title: string; color: string | null };
+type BoardSummary = {
+  id: string;
+  title: string;
+  color: string | null;
+  lists?: number;
+  openCards?: number;
+};
 
 export function BoardGrid({
   boards,
@@ -40,10 +46,21 @@ export function BoardGrid({
           <li key={board.id} className="group relative">
             <Link
               href={`/boards/${board.id}`}
-              className="flex h-24 items-start rounded-lg p-3 font-semibold text-white shadow-sm transition hover:brightness-110"
-              style={{ backgroundColor: board.color ?? undefined }}
+              className="flex h-32 flex-col justify-between rounded-2xl p-4 text-white shadow-card ring-1 ring-black/5 transition-[box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:shadow-card-hover focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+              style={{
+                backgroundColor: board.color ?? DEFAULT_BOARD_COLOR,
+                backgroundImage: `linear-gradient(135deg, ${board.color ?? DEFAULT_BOARD_COLOR} 30%, color-mix(in oklch, ${board.color ?? DEFAULT_BOARD_COLOR} 70%, black) 100%)`,
+              }}
             >
-              <span className="line-clamp-2 pr-6">{board.title}</span>
+              <span className="line-clamp-2 pr-6 text-base font-semibold tracking-tight">
+                {board.title}
+              </span>
+              {board.lists !== undefined && (
+                <span className="text-xs font-medium text-white tabular-nums">
+                  {board.lists} {board.lists === 1 ? "lista" : "liste"} · {board.openCards}{" "}
+                  {board.openCards === 1 ? "card aperta" : "card aperte"}
+                </span>
+              )}
             </Link>
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
@@ -78,7 +95,7 @@ export function BoardGrid({
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="flex h-24 w-full items-center justify-center gap-2 rounded-lg bg-muted text-sm font-medium text-muted-foreground transition hover:bg-muted/70"
+            className="flex h-32 w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-accent-foreground"
           >
             <PlusIcon className="size-4" />
             Crea una board

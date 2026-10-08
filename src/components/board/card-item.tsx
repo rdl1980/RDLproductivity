@@ -68,7 +68,7 @@ export const SortableCard = memo(function SortableCard({
       data-testid="card"
       onClick={() => !editing && !pending && onOpen()}
       className={cn(
-        "group relative cursor-pointer rounded-md bg-list-card px-3 py-2 text-sm text-foreground shadow-sm select-none [-webkit-touch-callout:none]",
+        "group relative cursor-pointer rounded-lg border border-black/[0.06] bg-list-card px-3 py-2.5 text-sm text-foreground shadow-card transition-[box-shadow,transform] duration-150 select-none [-webkit-touch-callout:none] hover:-translate-y-px hover:shadow-card-hover dark:border-white/[0.06]",
         isDragging && "opacity-40",
         pending && "opacity-60",
       )}
@@ -91,10 +91,10 @@ export const SortableCard = memo(function SortableCard({
               loading="lazy"
               draggable={false}
               data-testid="card-cover"
-              className="-mx-3 -mt-2 mb-2 block max-h-40 w-[calc(100%+1.5rem)] max-w-none rounded-t-md object-cover"
+              className="-mx-3 -mt-2.5 mb-2.5 block max-h-40 w-[calc(100%+1.5rem)] max-w-none rounded-t-lg object-cover"
             />
           )}
-          <div className="mb-1 empty:hidden">
+          <div className="mb-1.5 empty:hidden">
             <LabelChips labelIds={card.labelIds} labels={labels} />
           </div>
           <button
@@ -103,7 +103,7 @@ export const SortableCard = memo(function SortableCard({
             {...attributes}
             onKeyDown={onKeyDown}
             data-card-title
-            className="block w-full cursor-pointer rounded-sm pr-6 text-left break-words whitespace-pre-wrap outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            className="block w-full cursor-pointer rounded-sm pr-6 text-left leading-snug font-medium break-words whitespace-pre-wrap outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             {card.title}
           </button>
@@ -143,7 +143,7 @@ export const SortableCard = memo(function SortableCard({
 /** Static copy rendered in the drag overlay. */
 export function CardPreview({ card }: { card: Card }) {
   return (
-    <div className="rotate-2 rounded-md bg-list-card px-3 py-2 text-sm break-words whitespace-pre-wrap text-foreground shadow-lg">
+    <div className="rotate-2 rounded-lg border border-black/[0.06] bg-list-card px-3 py-2.5 text-sm font-medium break-words whitespace-pre-wrap text-foreground shadow-xl ring-2 ring-primary/30">
       {card.title}
     </div>
   );

@@ -35,7 +35,7 @@ function CardCounter({ shown, total }: { shown: number; total?: number }) {
   const label = filtered ? `${shown} di ${total} card visibili` : `${shown} card`;
   return (
     <span
-      className="relative shrink-0 rounded-full px-1.5 text-xs text-muted-foreground tabular-nums"
+      className="relative shrink-0 rounded-full bg-black/5 px-2 py-0.5 text-xs font-medium text-muted-foreground tabular-nums dark:bg-white/10"
       title={label}
       data-testid="list-card-count"
     >
@@ -77,7 +77,7 @@ export const ListColumn = memo(function ListColumn({
       aria-label={list.title}
       data-testid="list"
       className={cn(
-        "flex max-h-full w-[min(20rem,85vw)] shrink-0 flex-col rounded-xl bg-list text-foreground shadow-sm sm:w-72",
+        "flex max-h-full w-[min(20rem,85vw)] shrink-0 flex-col rounded-2xl bg-list text-foreground shadow-sm ring-1 ring-black/5 backdrop-blur-sm sm:w-72 dark:ring-white/5",
         isDragging && "opacity-40",
       )}
     >
@@ -85,7 +85,7 @@ export const ListColumn = memo(function ListColumn({
         // Mouse and touch drags start anywhere on the header; the keyboard
         // drag starts from the title button (Space), so nothing is nested.
         {...(editing ? {} : pointerListeners)}
-        className="flex items-center gap-1 px-2 pt-2 pb-1"
+        className="flex items-center gap-1 px-2 pt-2.5 pb-1.5"
       >
         <div className="min-w-0 flex-1">
           <InlineTitle
@@ -133,7 +133,7 @@ export const ListColumn = memo(function ListColumn({
         items={list.cards.map((card) => card.id)}
         strategy={verticalListSortingStrategy}
       >
-        <ol className="flex min-h-2 flex-col gap-2 overflow-y-auto px-2 pb-1">
+        <ol className="flex min-h-2 flex-col gap-2 overflow-y-auto px-2 pt-0.5 pb-1">
           {list.cards.map((card) => (
             <SortableCard
               key={card.id}
@@ -160,7 +160,7 @@ export const ListColumn = memo(function ListColumn({
             variant="ghost"
             size="sm"
             disabled={pending}
-            className="w-full justify-start text-foreground/75"
+            className="w-full justify-start text-muted-foreground hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
             onClick={() => onComposerOpenChange(true)}
           >
             <PlusIcon />
@@ -175,10 +175,13 @@ export const ListColumn = memo(function ListColumn({
 /** Static copy rendered in the drag overlay. */
 export function ListPreview({ list }: { list: ListItem }) {
   return (
-    <div className="flex w-72 rotate-2 flex-col gap-2 rounded-xl bg-list p-2 text-foreground shadow-lg">
+    <div className="flex w-72 rotate-2 flex-col gap-2 rounded-2xl bg-list p-2 text-foreground shadow-xl ring-2 ring-primary/30">
       <p className="px-2 py-1 text-sm font-semibold">{list.title}</p>
       {list.cards.map((card) => (
-        <div key={card.id} className="rounded-md bg-list-card px-3 py-2 text-sm shadow-sm">
+        <div
+          key={card.id}
+          className="rounded-lg bg-list-card px-3 py-2.5 text-sm font-medium shadow-card"
+        >
           {card.title}
         </div>
       ))}

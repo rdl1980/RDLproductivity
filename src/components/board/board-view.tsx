@@ -447,11 +447,15 @@ export function BoardView({
   const activeList = active?.type === "list" ? lists.find((l) => l.id === active.id) : undefined;
 
   return (
-    // Fixed to the viewport below the 3rem app header: lists scroll vertically
+    // Fixed to the viewport below the app header: lists scroll vertically
     // inside themselves, so the horizontal scrollbar stays on screen.
     <main
-      className="flex h-[calc(100dvh-3rem)] min-h-0 flex-col overflow-hidden"
-      style={{ backgroundColor: board.color }}
+      className="flex h-[calc(100dvh-var(--header-height))] min-h-0 flex-col overflow-hidden"
+      style={{
+        // The board color, only ever darker, so white text keeps its contrast.
+        backgroundColor: board.color,
+        backgroundImage: `linear-gradient(135deg, ${board.color} 20%, color-mix(in oklch, ${board.color} 72%, black) 100%)`,
+      }}
     >
       <BoardHeader board={board} onChange={setBoard}>
         <BoardFiltersButton labels={labels} filters={filters} onChange={setFilters} />
@@ -459,7 +463,7 @@ export function BoardView({
       {filtering && (
         <p
           role="status"
-          className="mx-4 mb-3 w-fit rounded-md bg-black/25 px-3 py-1.5 text-sm text-white"
+          className="mx-4 mb-3 w-fit rounded-full bg-black/30 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm"
         >
           Filtri attivi
           {hiddenCount > 0 &&
@@ -469,6 +473,8 @@ export function BoardView({
       )}
 
       <DndContext
+        // Stable id: generated ids differ between server and client (hydration).
+        id="board-dnd"
         sensors={sensors}
         collisionDetection={collisionDetection}
         onDragStart={onDragStart}
@@ -502,7 +508,7 @@ export function BoardView({
 
           <div className="w-[min(20rem,85vw)] shrink-0 sm:w-72">
             {addingList ? (
-              <div className="rounded-xl bg-list p-2">
+              <div className="rounded-2xl bg-list p-2 shadow-sm ring-1 ring-black/5 dark:ring-white/5">
                 <Composer
                   placeholder="Titolo della lista"
                   submitLabel="Aggiungi lista"
@@ -513,7 +519,7 @@ export function BoardView({
             ) : (
               <Button
                 variant="ghost"
-                className="w-full justify-start bg-black/20 text-white hover:bg-black/30 hover:text-white"
+                className="w-full justify-start rounded-xl bg-white/15 text-white backdrop-blur-sm hover:bg-white/25 hover:text-white"
                 onClick={() => setAddingList(true)}
               >
                 <PlusIcon />

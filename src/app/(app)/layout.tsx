@@ -1,8 +1,9 @@
-import { CalendarDaysIcon, FlameIcon, LayoutGridIcon, SunIcon } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { signOut } from "@/auth";
+import { AppNav } from "@/components/app-nav";
+import { BrandMark, BrandName } from "@/components/brand";
 import { SearchBox } from "@/components/search/search-box";
 import { UserMenu } from "@/components/user-menu";
 import { requireSession } from "@/server/session";
@@ -17,46 +18,17 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background/95 px-2 sm:px-4">
-        <Link href="/boards" className="shrink-0 font-semibold tracking-tight">
-          <span className="sm:hidden">RDL</span>
-          <span className="hidden sm:inline">RDL Productivity</span>
+      <header className="sticky top-0 z-40 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background/80 px-2 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 sm:gap-3 sm:px-4">
+        <Link
+          href="/boards"
+          className="flex shrink-0 items-center gap-2 rounded-md pr-1 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        >
+          <BrandMark />
+          <BrandName className="hidden text-[15px] lg:inline" />
+          <span className="sr-only lg:hidden">RDL Productivity</span>
         </Link>
-        <nav aria-label="Principale" className="flex shrink-0 items-center text-sm">
-          <Link
-            href="/boards"
-            className="flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-muted"
-          >
-            <LayoutGridIcon className="size-4" />
-            <span className="hidden md:inline">Board</span>
-            <span className="sr-only md:hidden">Board</span>
-          </Link>
-          <Link
-            href="/today"
-            className="flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-muted"
-          >
-            <SunIcon className="size-4" />
-            <span className="hidden md:inline">Oggi</span>
-            <span className="sr-only md:hidden">Oggi</span>
-          </Link>
-          <Link
-            href="/priority"
-            className="flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-muted"
-          >
-            <FlameIcon className="size-4" />
-            <span className="hidden md:inline">Priorità</span>
-            <span className="sr-only md:hidden">Priorità</span>
-          </Link>
-          <Link
-            href="/calendar"
-            className="flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-muted"
-          >
-            <CalendarDaysIcon className="size-4" />
-            <span className="hidden md:inline">Calendario</span>
-            <span className="sr-only md:hidden">Calendario</span>
-          </Link>
-        </nav>
-        <div className="flex min-w-0 flex-1 justify-center">
+        <AppNav />
+        <div className="flex min-w-0 flex-1 justify-end md:justify-center">
           <Suspense>
             <SearchBox />
           </Suspense>
