@@ -1,21 +1,19 @@
+import Image from "next/image";
+
 import { cn } from "@/lib/utils";
 
-/** RDL monogram: three stacked bars, like cards in a column. */
+import brandIcon from "./brand-icon.png";
+
+/** App icon (src/app/icon.png is the same artwork, for browsers and home screens). */
 export function BrandMark({ className }: { className?: string }) {
   return (
-    <span
+    <Image
+      src={brandIcon}
+      alt=""
       aria-hidden
-      className={cn(
-        "inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm",
-        className,
-      )}
-    >
-      <svg viewBox="0 0 16 16" className="size-4" fill="currentColor">
-        <rect x="2.5" y="3" width="11" height="2.5" rx="1.25" />
-        <rect x="2.5" y="6.75" width="8" height="2.5" rx="1.25" opacity="0.85" />
-        <rect x="2.5" y="10.5" width="5" height="2.5" rx="1.25" opacity="0.7" />
-      </svg>
-    </span>
+      priority
+      className={cn("size-8 shrink-0 drop-shadow-sm", className)}
+    />
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDaysIcon, FlameIcon, LayoutGridIcon, SunIcon } from "lucide-react";
+import { BookOpenIcon, CalendarDaysIcon, FlameIcon, LayoutGridIcon, SunIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/today", label: "Oggi", icon: SunIcon },
   { href: "/priority", label: "Priorità", icon: FlameIcon },
   { href: "/calendar", label: "Calendario", icon: CalendarDaysIcon },
+  { href: "/kdp", label: "KDP", icon: BookOpenIcon },
 ] as const;
 
 /** Main navigation; the current section is highlighted and announced. */
@@ -26,7 +27,7 @@ export function AppNav() {
             href={href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-medium transition-colors",
+              "flex items-center gap-1.5 rounded-md px-2 py-1.5 font-medium transition-colors md:px-2.5",
               active
                 ? "bg-accent text-accent-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",

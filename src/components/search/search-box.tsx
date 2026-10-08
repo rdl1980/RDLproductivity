@@ -47,7 +47,7 @@ export function SearchBox() {
         defaultValue={current}
         aria-label="Cerca card"
         placeholder="Cerca card…"
-        className="h-9 rounded-lg border-transparent bg-muted pr-9 pl-8 shadow-none focus-visible:border-input focus-visible:bg-background"
+        className="h-9 rounded-lg border-transparent bg-muted pr-2 pl-8 shadow-none focus-visible:border-input focus-visible:bg-background sm:pr-9"
         onKeyDown={(event) => {
           if (event.key === "Escape") event.currentTarget.blur();
         }}

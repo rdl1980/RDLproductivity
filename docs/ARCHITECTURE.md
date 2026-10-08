@@ -258,3 +258,14 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - Campi `Card.completedAt` (impostato al completamento, azzerato alla riapertura) e `Card.listEnteredAt` (alla creazione e a ogni cambio di lista). Per le card già esistenti la migrazione usa `updatedAt` e `createdAt` come approssimazione.
 - `/stats` (menu utente): quattro indicatori (aperte, completate negli ultimi 7 giorni, scadute, P0/P1 aperte), colonne delle completate per settimana (lunedì-domenica nel fuso del browser, ultime 12), barre delle scadute per board e del tempo medio nella lista attuale (liste omonime unite). Ogni grafico ha la vista tabella completa; il grafico mostra le prime 10 righe.
 - Grafici in SVG/HTML senza librerie: una sola serie, colore `--chart-1` (blu validato ≥ 3:1 su sfondo chiaro e scuro), colonne ≤ 24 px con estremo arrotondato di 4 px, etichette solo su picco e settimana corrente, tooltip su hover e focus.
+
+## Calendario KDP
+
+- Pagina `/kdp`, separata dalle board: attività settimanali (modello `KdpTask`: titolo, note, fatto) in due lane, **Account principale** (`main`) e **Account secondario** (`secondary`, vincolo CHECK nel database).
+- Ogni attività appartiene a una settimana, salvata come data del lunedì (`week`, tipo `date`, senza fuso). Le righe sono le settimane (lunedì-domenica) che toccano il mese scelto (`?month=AAAA-MM`); la settimana corrente è evidenziata secondo `DEFAULT_TIME_ZONE`.
+- Ordine dentro la cella con fractional indexing (`position` con collation `"C"`); il drag sposta l'attività in fondo alla cella di arrivo, con aggiornamento ottimistico e rollback.
+- Le modifiche passano dallo storico attività e si possono annullare (anche l'eliminazione). Tool MCP: `list_kdp_tasks`, `create_kdp_task`, `update_kdp_task` (anche spostamento), `delete_kdp_task`.
+
+## Icona dell'app
+
+- Sorgente unica (`RDL Self Publishing`): `src/app/icon.png` (512), `src/app/apple-icon.png` (180, opaca), `src/app/favicon.ico` (16/32/48), `public/icons/icon-192.png` e `icon-512.png` per il manifest (`src/app/manifest.ts`), `src/components/brand-icon.png` per il logo nell'header e nel login (`BrandMark`).

@@ -82,6 +82,8 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Template di board (liste, etichette, opzionalmente card) e di card (descrizione, priorità, etichette, checklist); pagina `/templates`, tool MCP
 - [x] Dashboard statistiche `/stats`: indicatori, completate per settimana, scadute per board, tempo medio nella lista; tool MCP `get_stats`
 - [x] Restyling "pulito e moderno": nuovi token di colore e ombre, logo, navigazione con pagina attiva, board e card più leggibili, dettaglio card con breadcrumb, intestazioni comuni nelle pagine secondarie, griglia board con conteggi, login
+- [x] Calendario KDP `/kdp`: settimane come righe, due lane (account principale e secondario), attività con note e stato fatto, drag tra settimane e account, tool MCP
+- [x] Icona dell'app RDL Self Publishing: favicon, icona per la home del telefono, manifest, logo nell'header e nel login
 
 ## Dopo l'MVP (idee)
 
