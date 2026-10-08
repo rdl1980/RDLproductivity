@@ -181,6 +181,27 @@ test("an MCP client authorizes via OAuth and edits boards through tools", async 
   })) as unknown as { id: string }[];
   expect(found.map((result) => result.id)).toContain(card.id);
 
+  // KDP calendar: a far week, so it does not clutter the current month.
+  const kdp = await callTool(request, tokens.access_token, "create_kdp_task", {
+    title: `KDP ${title}`,
+    week: "2030-03-14",
+    account: "main",
+  });
+  expect(kdp).toMatchObject({ week: "2030-03-11", account: "main", done: false });
+  await callTool(request, tokens.access_token, "update_kdp_task", {
+    taskId: kdp.id,
+    done: true,
+    account: "secondary",
+  });
+  const kdpTasks = (await callTool(request, tokens.access_token, "list_kdp_tasks", {
+    month: "2030-03",
+  })) as unknown as { id: string; account: string; done: boolean }[];
+  expect(kdpTasks.find((task) => task.id === kdp.id)).toMatchObject({
+    account: "secondary",
+    done: true,
+  });
+  await callTool(request, tokens.access_token, "delete_kdp_task", { taskId: kdp.id });
+
   // Claude's changes are logged with Claude as the actor.
   const log = (await callTool(request, tokens.access_token, "list_activity", {
     cardId: card.id,

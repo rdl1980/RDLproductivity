@@ -36,7 +36,10 @@ import {
   saveBoardAsTemplate,
   saveCardAsTemplate,
 } from "@/server/actions/templates";
+import { mondayOf, monthWeeks, parseMonth } from "@/lib/kdp";
+import { createKdpTask, deleteKdpTask, moveKdpTask, updateKdpTask } from "@/server/actions/kdp";
 import { getSuperBoard } from "@/server/queries/aggregate";
+import { getKdpTasks } from "@/server/queries/kdp";
 import { getStats } from "@/server/queries/stats";
 import { getArchive } from "@/server/queries/archive";
 import { getBoard, getBoards } from "@/server/queries/boards";
@@ -839,5 +842,115 @@ export function registerTools(server: McpServer) {
       annotations: DELETE,
     },
     ({ itemId }) => deleteChecklistItem(itemId),
+  );
+
+  // ---- KDP calendar ----
+
+  const kdpAccount = z
+    .enum(["main", "secondary"])
+    .describe('KDP account lane: "main" (Account principale) or "secondary" (Account secondario)');
+  const kdpWeek = z
+    .string()
+    .describe(
+      "Any day of the week as YYYY-MM-DD; weeks run Monday to Sunday and are stored by their Monday",
+    );
+
+  defineTool(
+    server,
+    "list_kdp_tasks",
+    {
+      title: "List KDP calendar tasks",
+      description:
+        "Lists the tasks of the KDP calendar (separate from boards): weekly tasks in two lanes, " +
+        "main and secondary KDP account. Give a month (YYYY-MM, all weeks touching it) or a range of weeks.",
+      inputSchema: z.object({
+        month: z.string().optional().describe("Month as YYYY-MM"),
+        fromWeek: kdpWeek.optional(),
+        toWeek: kdpWeek.optional(),
+      }),
+      annotations: READ,
+    },
+    async ({ month, fromWeek, toWeek }) => {
+      if (month !== undefined) {
+        const valid = parseMonth(month);
+        if (!valid) return fail("Mese non valido (usa AAAA-MM).");
+        const weeks = monthWeeks(valid);
+        return ok(await getKdpTasks(weeks[0], weeks[weeks.length - 1]));
+      }
+      const from = fromWeek ? mondayOf(fromWeek) : null;
+      const to = toWeek ? mondayOf(toWeek) : from;
+      if (!from || !to) return fail("Indica month oppure fromWeek (e opzionalmente toWeek).");
+      return ok(await getKdpTasks(from, to));
+    },
+  );
+
+  defineTool(
+    server,
+    "create_kdp_task",
+    {
+      title: "Create KDP calendar task",
+      description: "Adds a task to a week of the KDP calendar, at the end of the account's lane.",
+      inputSchema: z.object({
+        title: z.string(),
+        week: kdpWeek,
+        account: kdpAccount,
+        notes: z.string().optional(),
+      }),
+      annotations: WRITE,
+    },
+    (input) => createKdpTask(input),
+  );
+
+  defineTool(
+    server,
+    "update_kdp_task",
+    {
+      title: "Update KDP calendar task",
+      description:
+        "Edits a KDP task's title, notes or done flag, and/or moves it to another week or account " +
+        "(appended at the end of the target lane).",
+      inputSchema: z.object({
+        taskId: id("KDP task"),
+        title: z.string().optional(),
+        notes: z.string().nullable().optional().describe("null clears the notes"),
+        done: z.boolean().optional(),
+        week: kdpWeek.optional(),
+        account: kdpAccount.optional(),
+      }),
+      annotations: WRITE,
+    },
+    async ({ taskId, week, account, ...changes }) => {
+      const steps: (() => Promise<ActionResult<unknown>>)[] = [];
+      if (Object.values(changes).some((value) => value !== undefined)) {
+        steps.push(() => updateKdpTask({ id: taskId, ...changes }));
+      }
+      if (week !== undefined || account !== undefined) {
+        steps.push(async () => {
+          const task = await db.kdpTask.findUnique({
+            where: { id: taskId },
+            select: { week: true, account: true },
+          });
+          if (!task) return fail("Attività non trovata.");
+          return moveKdpTask({
+            id: taskId,
+            week: week ?? task.week.toISOString().slice(0, 10),
+            account: account ?? (task.account as "main" | "secondary"),
+          });
+        });
+      }
+      return chain(...steps);
+    },
+  );
+
+  defineTool(
+    server,
+    "delete_kdp_task",
+    {
+      title: "Delete KDP calendar task",
+      description: "Deletes a KDP calendar task (can be undone from the activity log).",
+      inputSchema: z.object({ taskId: id("KDP task") }),
+      annotations: DELETE,
+    },
+    ({ taskId }) => deleteKdpTask(taskId),
   );
 }

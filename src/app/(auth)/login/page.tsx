@@ -27,7 +27,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       />
       <div className="relative flex w-full max-w-sm flex-col gap-6 rounded-2xl border bg-card p-8 shadow-card-hover">
         <div className="flex flex-col items-center gap-3 text-center">
-          <BrandMark className="size-11 rounded-xl [&_svg]:size-6" />
+          <BrandMark className="size-20" />
           <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-semibold tracking-tight">RDL Productivity</h1>
             <p className="text-sm text-muted-foreground">Accedi per continuare</p>

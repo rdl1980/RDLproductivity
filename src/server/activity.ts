@@ -4,12 +4,13 @@ import { db, Prisma } from "@/server/db";
 import { getMcpUser } from "@/server/mcp-context";
 
 /** Models whose fields an undo may restore. */
-export type UndoModel = "board" | "list" | "card" | "label" | "checklist" | "checklistItem";
+export type UndoModel =
+  "board" | "list" | "card" | "label" | "checklist" | "checklistItem" | "kdpTask";
 
 /** Inverse operations, applied in order to undo an activity. */
 export type UndoOp =
   | { op: "update"; model: UndoModel; id: string; data: Record<string, unknown> }
-  | { op: "delete"; model: "label" | "checklist" | "checklistItem"; id: string }
+  | { op: "delete"; model: "label" | "checklist" | "checklistItem" | "kdpTask"; id: string }
   | { op: "cardLabel"; cardId: string; labelId: string; assigned: boolean }
   | {
       op: "restoreLabel";
@@ -29,6 +30,19 @@ export type UndoOp =
   | {
       op: "restoreItem";
       item: { id: string; checklistId: string; text: string; done: boolean; position: string };
+    }
+  | {
+      op: "restoreKdpTask";
+      task: {
+        id: string;
+        title: string;
+        notes: string | null;
+        account: string;
+        /** "YYYY-MM-DD" */
+        week: string;
+        position: string;
+        done: boolean;
+      };
     };
 
 export type ActivityEntry = {
@@ -72,7 +86,7 @@ export async function logActivity(entry: ActivityEntry, client: Client = db): Pr
   }
 }
 
-const DATE_FIELDS = new Set(["startDate", "dueDate", "completedAt", "listEnteredAt"]);
+const DATE_FIELDS = new Set(["startDate", "dueDate", "completedAt", "listEnteredAt", "week"]);
 
 /** JSON-safe snapshot of fields, for an update op. */
 export function snapshot<T extends Record<string, unknown>>(fields: T): Record<string, unknown> {
@@ -140,6 +154,9 @@ async function applyOp(tx: Prisma.TransactionClient, op: UndoOp) {
     }
     case "restoreItem":
       await tx.checklistItem.create({ data: op.item });
+      return;
+    case "restoreKdpTask":
+      await tx.kdpTask.create({ data: { ...op.task, week: new Date(op.task.week) } });
       return;
   }
 }

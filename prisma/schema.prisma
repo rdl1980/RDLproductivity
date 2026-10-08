@@ -205,3 +205,21 @@ model Attachment {
 
   @@index([cardId, createdAt])
 }
+
+// KDP publishing calendar: weekly tasks in two lanes (main and secondary
+// account), independent from boards.
+model KdpTask {
+  id        String   @id @default(cuid())
+  title     String
+  notes     String?
+  /// "main" | "secondary". Checked in the database.
+  account   String
+  /// Monday of the task's week (date only).
+  week      DateTime @db.Date
+  position  String // fractional index within (week, account)
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([week, account, position])
+}
