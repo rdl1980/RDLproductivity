@@ -15,6 +15,8 @@ import { updateCardDetails } from "@/server/actions/card-details";
 
 import { AggregateCardBody, applyPatch } from "./aggregate-card";
 import { useCardParam } from "./use-card-param";
+import { SunIcon } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 
 const NETWORK_ERROR = "Errore di rete, modifica annullata.";
 
@@ -54,7 +56,11 @@ export function TodayView({ cards: initialCards }: { cards: AggregateCard[] }) {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Oggi</h1>
+      <PageHeader
+        icon={SunIcon}
+        title="Oggi"
+        description="Scadute, in scadenza oggi e nei prossimi 7 giorni, da tutte le board."
+      />
       {groups &&
         AGENDA_SECTIONS.map((section) => (
           <section key={section.key} aria-label={section.title} className="flex flex-col gap-2">

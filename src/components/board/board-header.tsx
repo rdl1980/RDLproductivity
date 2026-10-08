@@ -49,15 +49,15 @@ export function BoardHeader({
 
   return (
     <div className="flex items-center gap-2 px-4 py-3 text-white">
-      <h1 className="min-w-0 text-lg font-semibold">
+      <h1 className="min-w-0 text-xl font-semibold tracking-tight drop-shadow-sm">
         <InlineTitle
           value={board.title}
           label="Titolo della board"
           editing={editing}
           onEditingChange={setEditing}
           onSave={(title) => save({ title })}
-          className="max-w-[60vw] rounded px-2 py-1 hover:bg-white/20"
-          inputClassName="text-lg font-semibold"
+          className="max-w-[60vw] rounded-lg px-2 py-1 hover:bg-white/15"
+          inputClassName="text-xl font-semibold"
         />
       </h1>
       <DropdownMenu modal={false}>
@@ -65,7 +65,7 @@ export function BoardHeader({
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 text-white hover:bg-white/20 hover:text-white"
+            className="size-8 rounded-lg text-white hover:bg-white/15 hover:text-white"
             aria-label="Azioni board"
           >
             <MoreHorizontalIcon />

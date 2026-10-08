@@ -76,7 +76,7 @@ export function BoardFiltersButton({
           <Button
             variant="ghost"
             size="sm"
-            className="text-white hover:bg-white/20 hover:text-white data-[state=open]:bg-white/20"
+            className="rounded-lg bg-white/15 text-white backdrop-blur-sm hover:bg-white/25 hover:text-white data-[state=open]:bg-white/25"
           >
             <FilterIcon />
             Filtri

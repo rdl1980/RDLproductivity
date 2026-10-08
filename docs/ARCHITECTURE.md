@@ -158,6 +158,9 @@ e2e/                       test Playwright
 ## Tema, mobile e accessibilità
 
 - Tema chiaro, scuro o di sistema con `next-themes` (classe `dark` su `<html>`); le superfici di liste e card usano i token `--list` e `--list-card`.
+- Design "pulito e moderno": neutri caldi in OKLCH, accento indaco (`--primary`/`--brand`, `#4f46e5` chiaro, `#818cf8` scuro), raggio base 0,75rem, ombre delle card nei token `--elevation-card*` (utility `shadow-card`, `shadow-card-hover`), altezza dell'header in `--header-height`. Logo e nome in `src/components/brand.tsx`, navigazione principale con link attivo in `src/components/app-nav.tsx`, intestazioni delle pagine secondarie con `PageHeader`.
+- Badge di priorità e scadenza tinti (sfondo chiaro + testo scuro, in scuro sfondo al 15% + testo chiaro); pieni solo P0 e le scadenze superate, per farli risaltare. Lo sfondo della board è un gradiente che scurisce soltanto il colore scelto, così il titolo bianco mantiene il contrasto.
+- `DndContext` ha un `id` fisso, altrimenti gli id generati da dnd-kit differiscono fra server e client (errore di hydration).
 - Su touch il drag parte con una pressione prolungata (250 ms), così lo scorrimento resta libero; la board scorre in orizzontale dentro il proprio contenitore.
 - Colori di board ed etichette con contrasto WCAG AA: il testo delle etichette è bianco o scuro in base allo sfondo (`labelTextColor`), verificato da test unitari.
 - Niente controlli annidati: card e header delle liste ricevono i listener di mouse e touch, mentre il drag da tastiera parte dal bottone del titolo (Spazio sposta, Invio apre o rinomina).

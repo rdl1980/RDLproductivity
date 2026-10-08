@@ -4,6 +4,8 @@ import {
   ArchiveIcon,
   ArchiveRestoreIcon,
   ArrowRightIcon,
+  ChevronRightIcon,
+  LayoutGridIcon,
   CalendarIcon,
   CheckSquareIcon,
   CopyIcon,
@@ -87,7 +89,7 @@ export function CardDetailDialog({ cardId, onClose, ...callbacks }: Props) {
   return (
     <Dialog open={cardId !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto sm:max-w-3xl"
+        className="max-h-[90vh] overflow-y-auto sm:max-w-3xl sm:rounded-2xl sm:p-7"
         aria-describedby={undefined}
         // Text fields use Escape to cancel their own editing; a second Escape closes.
         onEscapeKeyDown={(event) => isTypingTarget(event.target) && event.preventDefault()}
@@ -535,12 +537,13 @@ function CardDetailContent({
     toast.success("Card ripristinata");
   }
 
-  const sidebarButton = "w-full justify-start";
+  const sidebarButton =
+    "w-full justify-start rounded-lg bg-muted/70 font-normal hover:bg-accent hover:text-accent-foreground";
 
   return (
     <div className="flex flex-col gap-5">
       {card.archived && (
-        <div className="flex items-center justify-between gap-2 rounded-md bg-amber-100 p-3 text-sm text-amber-950">
+        <div className="flex items-center justify-between gap-2 rounded-xl bg-amber-100 p-3 text-sm text-amber-950 dark:bg-amber-500/15 dark:text-amber-200">
           Questa card è archiviata.
           <Button size="sm" variant="secondary" onClick={restore}>
             <ArchiveRestoreIcon />
@@ -549,8 +552,22 @@ function CardDetailContent({
         </div>
       )}
 
-      <header className="flex flex-col gap-1 pr-8">
-        <DialogTitle className="text-xl">
+      <header className="flex flex-col gap-2 pr-8">
+        <DialogDescription
+          data-testid="card-location"
+          className="flex flex-wrap items-center gap-1.5 px-1 text-xs"
+        >
+          <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 font-medium text-foreground">
+            <LayoutGridIcon className="size-3 text-muted-foreground" aria-hidden />
+            {card.board.title}
+          </span>
+          <ChevronRightIcon className="size-3 text-muted-foreground" aria-hidden />
+          <span>
+            <span className="sr-only">nella lista </span>
+            <span className="font-medium text-foreground">{card.list.title}</span>
+          </span>
+        </DialogDescription>
+        <DialogTitle className="text-2xl leading-tight tracking-tight">
           <InlineTitle
             value={card.title}
             label="Titolo della card"
@@ -558,12 +575,9 @@ function CardDetailContent({
             onEditingChange={setEditingTitle}
             onSave={rename}
             className="w-full rounded px-1 text-left break-words whitespace-normal"
-            inputClassName="text-lg"
+            inputClassName="text-xl"
           />
         </DialogTitle>
-        <DialogDescription className="px-1">
-          nella lista <span className="font-medium">{card.list.title}</span> · {card.board.title}
-        </DialogDescription>
       </header>
 
       <div className="grid gap-6 md:grid-cols-[1fr_11rem]">
@@ -571,13 +585,17 @@ function CardDetailContent({
           <div className="flex flex-wrap gap-6">
             {card.labelIds.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <h3 className="text-xs font-medium text-muted-foreground">Etichette</h3>
+                <h3 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  Etichette
+                </h3>
                 <LabelChips labelIds={card.labelIds} labels={card.board.labels} size="md" />
               </div>
             )}
             {card.dueDate && (
               <div className="flex flex-col gap-1.5">
-                <h3 className="text-xs font-medium text-muted-foreground">Scadenza</h3>
+                <h3 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  Scadenza
+                </h3>
                 <label className="flex items-center gap-2 text-sm">
                   <Checkbox
                     aria-label="Completata"
@@ -589,7 +607,9 @@ function CardDetailContent({
               </div>
             )}
             <div className="flex flex-col gap-1.5">
-              <h3 className="text-xs font-medium text-muted-foreground">Priorità</h3>
+              <h3 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                Priorità
+              </h3>
               <Select
                 value={card.priority === null ? NO_PRIORITY : String(card.priority)}
                 onValueChange={(value) => setPriority(value === NO_PRIORITY ? null : Number(value))}
@@ -602,7 +622,7 @@ function CardDetailContent({
                   {PRIORITY_VALUES.map((value) => (
                     <SelectItem key={value} value={String(value)}>
                       <span
-                        className={`rounded px-1 text-xs font-semibold ${PRIORITIES[value].className}`}
+                        className={`rounded-md px-1.5 text-[11px] leading-4 font-semibold ${PRIORITIES[value].className}`}
                       >
                         {PRIORITIES[value].label}
                       </span>
@@ -614,7 +634,9 @@ function CardDetailContent({
             </div>
             {card.recurrence && (
               <div className="flex flex-col gap-1.5">
-                <h3 className="text-xs font-medium text-muted-foreground">Ripetizione</h3>
+                <h3 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  Ripetizione
+                </h3>
                 <button
                   type="button"
                   onClick={() => setOpenPopover("repeat")}
@@ -688,7 +710,9 @@ function CardDetailContent({
         </div>
 
         <aside className="flex flex-col gap-2" aria-label="Azioni card">
-          <h3 className="text-xs font-medium text-muted-foreground">Aggiungi alla card</h3>
+          <h3 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            Aggiungi alla card
+          </h3>
           <Popover
             open={openPopover === "labels"}
             onOpenChange={(open) => setOpenPopover(open ? "labels" : null)}
@@ -787,7 +811,9 @@ function CardDetailContent({
             </PopoverContent>
           </Popover>
 
-          <h3 className="mt-3 text-xs font-medium text-muted-foreground">Azioni</h3>
+          <h3 className="mt-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            Azioni
+          </h3>
           <Button
             variant="secondary"
             size="sm"

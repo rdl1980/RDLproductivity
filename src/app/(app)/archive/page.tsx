@@ -5,6 +5,8 @@ import { ArchiveActions } from "@/components/archive/archive-actions";
 import { DEFAULT_BOARD_COLOR } from "@/lib/board-colors";
 import { getArchive } from "@/server/queries/archive";
 import { requireSession } from "@/server/session";
+import { ArchiveIcon } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 
 export const metadata: Metadata = { title: "Archivio · RDL Productivity" };
 
@@ -37,13 +39,11 @@ export default async function ArchivePage() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Archivio</h1>
-        <p className="text-sm text-muted-foreground">
-          Ripristina gli elementi archiviati oppure eliminali definitivamente. Ripristinando una
-          lista o una card vengono ripristinate anche la board e la lista che le contengono.
-        </p>
-      </div>
+      <PageHeader
+        icon={ArchiveIcon}
+        title="Archivio"
+        description="Ripristina gli elementi archiviati oppure eliminali definitivamente. Ripristinando una lista o una card vengono ripristinate anche la board e la lista che le contengono."
+      />
 
       <Section title="Board" count={boards.length}>
         {boards.map((board) => (

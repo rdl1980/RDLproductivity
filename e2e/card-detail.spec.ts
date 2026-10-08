@@ -100,7 +100,7 @@ test("card detail: move, copy and archive", async ({ page }) => {
   await moveDialog.getByRole("combobox", { name: "Lista" }).click();
   await page.getByRole("option", { name: "Due" }).click();
   await moveDialog.getByRole("button", { name: "Sposta" }).click();
-  await expect(dialog.getByText("nella lista")).toContainText("Due");
+  await expect(dialog.getByTestId("card-location")).toContainText("nella lista Due");
   await page.keyboard.press("Escape");
   await expect(cardIn(list(page, "Due"), "Beta")).toBeVisible();
   await expect(cardIn(list(page, "Uno"), "Beta")).toHaveCount(0);

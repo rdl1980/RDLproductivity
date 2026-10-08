@@ -1,20 +1,37 @@
 import type { Metadata } from "next";
 
 import { BoardGrid } from "@/components/boards/board-grid";
-import { getBoards } from "@/server/queries/boards";
+import { getBoardCounts, getBoards } from "@/server/queries/boards";
 import { requireSession } from "@/server/session";
 import { listTemplates } from "@/server/templates";
+import { LayoutGridIcon } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 
 export const metadata: Metadata = { title: "Board · RDL Productivity" };
 
 export default async function BoardsPage() {
   await requireSession();
-  const [boards, templates] = await Promise.all([getBoards(), listTemplates("board")]);
+  const [boards, templates, counts] = await Promise.all([
+    getBoards(),
+    listTemplates("board"),
+    getBoardCounts(),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-5xl p-6">
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight">Le tue board</h1>
-      <BoardGrid boards={boards} templates={templates} />
+      <PageHeader
+        icon={LayoutGridIcon}
+        title="Le tue board"
+        description={`${boards.length} ${boards.length === 1 ? "board attiva" : "board attive"}`}
+        className="mb-8"
+      />
+      <BoardGrid
+        boards={boards.map((board) => ({
+          ...board,
+          ...(counts.get(board.id) ?? { lists: 0, openCards: 0 }),
+        }))}
+        templates={templates}
+      />
     </main>
   );
 }

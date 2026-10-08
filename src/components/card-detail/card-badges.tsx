@@ -13,9 +13,9 @@ import { cn } from "@/lib/utils";
 const DUE_STYLES = {
   none: "",
   upcoming: "text-muted-foreground",
-  soon: "bg-amber-400 text-amber-950",
-  overdue: "bg-red-600 text-white",
-  completed: "bg-green-700 text-white",
+  soon: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
+  overdue: "bg-red-700 text-white",
+  completed: "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300",
 } as const;
 
 export function DueBadge({
@@ -37,7 +37,7 @@ export function DueBadge({
       data-status={status}
       title={label ? `${label}: ${formatDue(dueDate)}` : formatDue(dueDate)}
       className={cn(
-        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs",
+        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums",
         DUE_STYLES[status],
         className,
       )}
@@ -66,8 +66,8 @@ export function LabelChips({
           key={label.id}
           title={label.name || undefined}
           className={cn(
-            "rounded font-medium",
-            size === "sm" ? "min-w-10 px-1.5 text-[11px] leading-4" : "px-2 py-1 text-xs",
+            "rounded-md font-medium",
+            size === "sm" ? "min-w-10 px-1.5 py-px text-[11px] leading-4" : "px-2 py-1 text-xs",
           )}
           style={{ backgroundColor: label.color, color: labelTextColor(label.color) }}
         >
@@ -91,7 +91,11 @@ export function PriorityBadge({
     <span
       data-testid="priority-badge"
       title={`Priorità ${label}: ${name}`}
-      className={cn("relative rounded px-1.5 py-0.5 text-xs font-semibold", colors, className)}
+      className={cn(
+        "relative rounded-md px-1.5 py-0.5 text-[11px] leading-4 font-semibold tracking-wide",
+        colors,
+        className,
+      )}
     >
       {label}
       <span className="sr-only"> priorità {name}</span>
@@ -141,8 +145,9 @@ export function CardBadges({ card }: { card: CardItem }) {
         <span
           data-testid="checklist-badge"
           className={cn(
-            "inline-flex items-center gap-1 rounded px-1.5 py-0.5",
-            done === total && "bg-green-700 text-white",
+            "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 tabular-nums",
+            done === total &&
+              "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300",
           )}
           title="Elementi della checklist completati"
         >
