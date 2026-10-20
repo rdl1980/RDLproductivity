@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { createKdpTask, deleteKdpTask, moveKdpTask, updateKdpTask } from "@/server/actions/kdp";
 import type { ActionResult } from "@/server/actions/result";
 
+import { KdpTabs } from "./kdp-tabs";
 import { KdpTaskDialog } from "./kdp-task-dialog";
 
 const NETWORK_ERROR = "Errore di rete, modifica annullata.";
@@ -155,6 +156,7 @@ export function KdpCalendarView({ month, weeks, tasks: initialTasks, today }: Pr
           </nav>
         }
       />
+      <KdpTabs current="calendar" />
       <h2 className="text-lg font-semibold" data-testid="kdp-month">
         {monthLabel(month)}
       </h2>

@@ -68,6 +68,7 @@ import { DatesForm } from "./dates-form";
 import { DescriptionEditor } from "./description-editor";
 import { LabelPicker } from "./label-picker";
 import { AttachmentsSection } from "./attachments-section";
+import { KdpBooksSection } from "./kdp-books-section";
 import { MoveCopyDialog } from "./move-copy-dialog";
 import { RecurrenceForm } from "./recurrence-form";
 
@@ -685,6 +686,8 @@ function CardDetailContent({
             onDelete={removeAttachment}
             onSetCover={setCover}
           />
+
+          <KdpBooksSection cardId={card.id} />
 
           {card.activity.length > 0 && (
             <details className="group flex flex-col gap-2">

@@ -11,4 +11,6 @@ export type BoardActions = {
   addCardFromTemplate: (listId: string) => void;
   renameCard: (card: CardItem, title: string) => void;
   archiveCard: (listId: string, card: CardItem) => void;
+  /** Archives every card of the list, or only the completed ones. */
+  archiveCards: (listId: string, which: "all" | "completed") => void;
 };

@@ -266,6 +266,20 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - Ordine dentro la cella con fractional indexing (`position` con collation `"C"`); il drag sposta l'attività in fondo alla cella di arrivo, con aggiornamento ottimistico e rollback.
 - Le modifiche passano dallo storico attività e si possono annullare (anche l'eliminazione). Tool MCP: `list_kdp_tasks`, `create_kdp_task`, `update_kdp_task` (anche spostamento), `delete_kdp_task`.
 
+## Libri KDP
+
+- Modelli `KdpBook` (account, id del Bookshelf, titolo, collana, `formats` JSON validato con zod in `src/lib/kdp-books.ts`: formato, stato normalizzato e testo originale, ASIN, prezzo, mercato) e `KdpBookLink` (libro ↔ card, `status` = `confirmed` | `suggested` | `rejected`, `auto`, `score`). Unicità `(account, kdpId)` e `(bookId, cardId)`, vincoli CHECK su account e stato.
+- **Import**: KDP non ha API per il Bookshelf. Il bookmarklet (`src/lib/kdp-bookmarklet.ts`, in Libri KDP → Aggiorna da KDP) gira su kdp.amazon.com con la sessione dell'utente, porta la tabella a 50 righe, legge tutte le pagine (interfaccia inglese o italiana) e apre `/kdp/libri/importa#<base64url JSON>`. Il fragment non arriva al server: la pagina lo legge nel browser, mostra l'anteprima, si sceglie l'account e la Server Action `importKdpBooks` fa l'upsert. I libri dell'account assenti dall'import vengono segnati `missingSince`, non eliminati. L'import registra un'attività non annullabile.
+- **Mercato** di un formato: dalla valuta (USD → US, GBP → UK…); per l'euro dalla lingua del titolo (`euroMarket`). Serve per l'abbinamento e per il link Amazon `amazon.<dominio>/dp/<ASIN>`.
+- **Abbinamento** (`proposeLinks`, puro e testato): del titolo della card si usa la parte prima di " — " senza i tag di mercato tra parentesi (`(US)`, `(EN, UK + US)`); del libro il titolo principale (prima di ": "). Punteggio = max(Dice sui token del titolo principale, 0,85 × copertura dei token della card nel titolo completo), +0,1 se il mercato coincide, ×0,4 se è diverso. Titolo identico, mercato compatibile e unico candidato esatto → collegamento automatico (`auto`); altrimenti fino a 3 suggerimenti con punteggio ≥ 0,5 e distanti al massimo 0,2 dal migliore. Si ricalcola a ogni import e con "Ricalcola abbinamenti": i suggerimenti pendenti vengono sostituiti, le coppie confermate o scartate restano e non vengono più proposte.
+- Conferma, collegamento manuale e scollegamento (= scartato) passano da `setKdpBookLink`, con attività annullabile (`UndoOp` `kdpLink`, che ripristina lo stato precedente del collegamento).
+- UI: `/kdp/libri` (schede Calendario / Libri e ASIN), sezione "Abbinamenti da confermare", ricerca per titolo, collana o ASIN, filtro account e "Solo senza card"; nel dettaglio card la sezione "Libri KDP" con formati, ASIN copiabili e link Amazon. Tool MCP: `list_kdp_books`, `set_kdp_book_link`, `refresh_kdp_suggestions`.
+
+## Archiviazione in blocco
+
+- Menu lista → "Archivia le card completate" / "Archivia tutte le card": la Server Action `archiveCards` archivia le card indicate (solo se attive e nella lista) e registra una sola attività che le ripristina tutte; il toast offre "Annulla" (come Ctrl/Cmd+Z). Tool MCP `archive_list_cards`.
+- Il bottone azioni della card, visibile al passaggio del mouse, su dispositivi touch (`pointer: coarse`) è sempre visibile.
+
 ## Icona dell'app
 
 - Sorgente unica (`RDL Self Publishing`): `src/app/icon.png` (512), `src/app/apple-icon.png` (180, opaca), `src/app/favicon.ico` (16/32/48), `public/icons/icon-192.png` e `icon-512.png` per il manifest (`src/app/manifest.ts`), `src/components/brand-icon.png` per il logo nell'header e nel login (`BrandMark`).

@@ -10,6 +10,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { LabelItem, ListItem } from "@/lib/board-state";
@@ -121,6 +122,14 @@ export const ListColumn = memo(function ListColumn({
                 Aggiungi card da template…
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setEditing(true)}>Rinomina</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => actions.archiveCards(list.id, "completed")}>
+                Archivia le card completate
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => actions.archiveCards(list.id, "all")}>
+                Archivia tutte le card
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onSelect={() => actions.archiveList(list)}>
                 Archivia lista
               </DropdownMenuItem>

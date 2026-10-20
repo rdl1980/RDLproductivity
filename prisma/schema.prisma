@@ -56,6 +56,7 @@ model Card {
   coverId       String?      @unique
   cover         Attachment?  @relation("CardCover", fields: [coverId], references: [id], onDelete: SetNull)
   attachments   Attachment[] @relation("CardAttachments")
+  kdpBookLinks  KdpBookLink[]
   archived      Boolean      @default(false)
   labels        CardLabel[]
   checklists    Checklist[]
@@ -222,4 +223,47 @@ model KdpTask {
   updatedAt DateTime @updatedAt
 
   @@index([week, account, position])
+}
+
+// Books of a KDP account, imported from the Bookshelf (titles, formats, ASINs),
+// linked to the board cards about them.
+model KdpBook {
+  id           String        @id @default(cuid())
+  /// "main" | "secondary". Checked in the database.
+  account      String
+  /// Bookshelf title id (the row id on kdp.amazon.com).
+  kdpId        String
+  title        String
+  series       String?
+  /// KdpBookFormat[] (see src/lib/kdp-books.ts): status, ASIN, price, link.
+  formats      Json
+  /// Set when the last import of the account no longer listed the book.
+  missingSince DateTime?
+  importedAt   DateTime
+  links        KdpBookLink[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([account, kdpId])
+}
+
+/// Card-book link: "confirmed" (by the user, or automatically for a certain
+/// match), "suggested" (waiting for confirmation) or "rejected" (never proposed again).
+model KdpBookLink {
+  id        String   @id @default(cuid())
+  bookId    String
+  book      KdpBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  cardId    String
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  /// "confirmed" | "suggested" | "rejected". Checked in the database.
+  status    String
+  /// Confirmed by the matcher, not by the user.
+  auto      Boolean  @default(false)
+  score     Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([bookId, cardId])
+  @@index([cardId])
+  @@index([status])
 }
