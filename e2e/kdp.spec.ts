@@ -46,10 +46,10 @@ test("KDP calendar: add, complete, move between accounts and tracks, edit and de
     await expect(task(main).getByRole("checkbox")).toBeChecked();
   });
 
-  // Later in the month the current week sits near the bottom: centre it, or the
-  // drag lands outside the viewport or triggers auto-scroll.
-  await secondary.evaluate((cell) => cell.scrollIntoView({ block: "center" }));
-  await dragTo(page, task(main), secondary);
+  // The week can sit low on the page and its cells grow with other tests' tasks:
+  // centre the task and drop at its own height, inside the target cell of the same row.
+  await task(main).evaluate((item) => item.scrollIntoView({ block: "center" }));
+  await dragTo(page, task(main), secondary, { keepY: true });
   await expect(task(secondary)).toBeVisible();
   await expectPersisted(page, async () => {
     await expect(task(secondary)).toBeVisible();

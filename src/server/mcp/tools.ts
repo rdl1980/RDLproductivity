@@ -42,6 +42,7 @@ import { createKdpTask, deleteKdpTask, moveKdpTask, updateKdpTask } from "@/serv
 import { getSuperBoard } from "@/server/queries/aggregate";
 import { getKdpTasks } from "@/server/queries/kdp";
 import { getKdpBooks } from "@/server/queries/kdp-books";
+import { getSalesSummary } from "@/server/queries/kdp-sales";
 import { getStats } from "@/server/queries/stats";
 import { getArchive } from "@/server/queries/archive";
 import { getBoard, getBoards } from "@/server/queries/boards";
@@ -1034,6 +1035,32 @@ export function registerTools(server: McpServer) {
       annotations: WRITE,
     },
     () => refreshKdpSuggestions(),
+  );
+
+  defineTool(
+    server,
+    "get_kdp_sales",
+    {
+      title: "Get KDP sales",
+      description:
+        "Sales imported from the KDP Reports (both accounts): units, KENP pages read and royalties " +
+        "(EUR, KDP estimates) between two dates, with totals per month, marketplace and book " +
+        "(ASINs included). Use it for data-driven questions: best sellers, trends, markets, formats.",
+      inputSchema: z.object({
+        from: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .describe("First day, YYYY-MM-DD"),
+        to: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .describe("Last day, YYYY-MM-DD"),
+        account: kdpAccount.optional(),
+      }),
+      annotations: READ,
+    },
+    async ({ from, to, account }) =>
+      from > to ? fail("Intervallo non valido.") : ok(await getSalesSummary(from, to, account)),
   );
 
   defineTool(

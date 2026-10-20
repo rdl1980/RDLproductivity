@@ -1,4 +1,4 @@
-import { CalendarRangeIcon, LibraryIcon } from "lucide-react";
+import { CalendarRangeIcon, LibraryIcon, TrendingUpIcon } from "lucide-react";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
@@ -6,12 +6,19 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { key: "calendar", href: "/kdp", label: "Calendario", icon: CalendarRangeIcon },
   { key: "books", href: "/kdp/libri", label: "Libri e ASIN", icon: LibraryIcon },
+  { key: "sales", href: "/kdp/vendite", label: "Vendite", icon: TrendingUpIcon },
 ] as const;
 
 /** Switches between the KDP calendar and the imported books. */
-export function KdpTabs({ current, badge }: { current: "calendar" | "books"; badge?: number }) {
+export function KdpTabs({
+  current,
+  badge,
+}: {
+  current: (typeof TABS)[number]["key"];
+  badge?: number;
+}) {
   return (
-    <nav aria-label="Sezioni KDP" className="flex gap-1">
+    <nav aria-label="Sezioni KDP" className="flex flex-wrap gap-1">
       {TABS.map(({ key, href, label, icon: Icon }) => (
         <Link
           key={key}

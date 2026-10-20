@@ -78,6 +78,11 @@
   --elevation-card-hover: 0 4px 12px oklch(0.2 0.02 60 / 0.12), 0 1px 3px oklch(0.2 0.02 60 / 0.08);
   /* Statistics: single-series marks (validated ≥ 3:1 on the surface). */
   --chart-1: #2a78d6;
+  /* Sales: categorical slots for eBook, paperback, hardcover, KENP (validated, fixed order). */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
@@ -117,6 +122,10 @@
   --elevation-card: 0 1px 2px oklch(0 0 0 / 0.35);
   --elevation-card-hover: 0 6px 16px oklch(0 0 0 / 0.45), 0 1px 3px oklch(0 0 0 / 0.35);
   --chart-1: #3987e5;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
