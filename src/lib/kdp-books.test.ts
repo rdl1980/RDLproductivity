@@ -126,6 +126,18 @@ describe("matchScore", () => {
     ).toBeLessThan(0.5);
   });
 
+  it("never matches on a shared number alone", () => {
+    const book = { id: "x", title: "Zebra Quiz 1792: Questions", markets: ["US"] };
+    expect(matchScore({ id: "c", title: "Uno 1792" }, book).score).toBe(0);
+  });
+
+  it("penalizes another year or volume", () => {
+    const book = { id: "x", title: "Agenda Estetista 2026: Appuntamenti", markets: [] };
+    const card = { id: "c", title: "Agenda Estetista 2027 — pronta" };
+    expect(matchScore(card, book).score).toBeLessThan(0.5);
+    expect(matchScore({ id: "c", title: "Agenda Estetista 2026" }, book).exact).toBe(true);
+  });
+
   it("ignores accents and case", () => {
     const book = { id: "x", title: "Le favole del calcio: Storie vere", markets: ["IT"] };
     expect(matchScore({ id: "c", title: "LE FAVOLE DEL CALCIO (IT)" }, book).exact).toBe(true);

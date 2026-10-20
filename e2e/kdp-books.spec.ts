@@ -41,8 +41,12 @@ test("KDP books: import from the bookmarklet link, auto-link and confirm a sugge
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/libri$/);
 
-  const book = (title: string) => page.getByTestId("kdp-book").filter({ hasText: title });
-  const exact = book("300 Questions for Young Players");
+  // Earlier runs leave books with other stamps: match the heading exactly.
+  const book = (title: string) =>
+    page
+      .getByTestId("kdp-book")
+      .filter({ has: page.getByRole("heading", { name: title, exact: true }) });
+  const exact = book(name);
   await expect(exact).toContainText("B0TESTAAA1");
   await expect(exact).toContainText("Account secondario");
   // Exact title in the same market: linked without asking.
@@ -55,7 +59,9 @@ test("KDP books: import from the bookmarklet link, auto-link and confirm a sugge
   await entry.getByRole("button", { name: "Scarta" }).click();
   await expect(suggestions.filter({ hasText: exactCard })).toHaveCount(0);
   await expectPersisted(page, async () => {
-    await expect(book("Deluxe Edition").getByRole("link", { name: exactCard })).toHaveCount(0);
+    await expect(book(`${name} Deluxe Edition`).getByRole("link", { name: exactCard })).toHaveCount(
+      0,
+    );
     await expect(page.getByTestId("kdp-suggestions").filter({ hasText: exactCard })).toHaveCount(0);
   });
 
@@ -86,18 +92,28 @@ test("lists: archive the completed cards, then all the cards, and undo", async (
   await page.getByRole("menuitem", { name: "Archivia le card completate" }).click();
   await expect(cardIn(column, titles[0])).toHaveCount(0);
   await expect(cardIn(column, titles[1])).toBeVisible();
+  await expect(page.getByText("1 card archiviata")).toBeVisible();
+  // Reopen only once the previous menu has closed and the save is done.
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await settle(page);
 
   await menu.click();
   await page.getByRole("menuitem", { name: "Archivia tutte le card" }).click();
   await expect(column.getByTestId("card")).toHaveCount(0);
   await expect(column).toBeVisible();
-  await expectPersisted(page, async () => {
-    await expect(list(page, listTitle).getByTestId("card")).toHaveCount(0);
-  });
+  await settle(page);
 
   // One undo brings back the whole batch.
-  await page.keyboard.press("Control+z");
-  await expect(cardIn(list(page, listTitle), titles[1])).toBeVisible();
-  await expect(cardIn(list(page, listTitle), titles[2])).toBeVisible();
-  await expect(cardIn(list(page, listTitle), titles[0])).toHaveCount(0);
+  await page
+    .locator("[data-sonner-toast]")
+    .filter({ hasText: "2 card archiviate" })
+    .getByRole("button", { name: "Annulla" })
+    .click();
+  await expect(cardIn(column, titles[1])).toBeVisible();
+  await expect(cardIn(column, titles[2])).toBeVisible();
+  await expectPersisted(page, async () => {
+    await expect(cardIn(list(page, listTitle), titles[1])).toBeVisible();
+    await expect(cardIn(list(page, listTitle), titles[2])).toBeVisible();
+    await expect(cardIn(list(page, listTitle), titles[0])).toHaveCount(0);
+  });
 });

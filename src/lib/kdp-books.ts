@@ -310,8 +310,16 @@ export function matchScore(card: MatchCard, book: MatchBook): { score: number; e
   for (const token of cardTokens) if (fullTokens.has(token)) covered++;
   const coverage = covered / cardTokens.size;
 
+  // Numbers alone (years, volumes, ids) never make a match.
+  const isNumber = (token: string) => /^\d+$/.test(token);
+  const cardWords = [...cardTokens].filter((token) => !isNumber(token));
+  if (!cardWords.some((token) => fullTokens.has(token))) return { score: 0, exact: false };
+
   const exact = normalize(core) === normalize(main);
   let score = exact ? 1 : Math.max(dice(cardTokens, mainTokens), 0.85 * coverage);
+  // A card naming a year or volume the book does not have is likely another edition.
+  const cardNumbers = [...cardTokens].filter(isNumber);
+  if (cardNumbers.length > 0 && !cardNumbers.some((n) => fullTokens.has(n))) score *= 0.5;
 
   // A card tagged for some markets fits only a book sold there.
   const marketKnown = markets.size > 0 && book.markets.length > 0;
