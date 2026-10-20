@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   addWeeks,
   cellTasks,
+  laneLabel,
   isoWeekNumber,
   type KdpTaskItem,
   mondayOf,
@@ -76,15 +77,29 @@ describe("months", () => {
 });
 
 describe("cellTasks", () => {
-  it("filters by week and account and sorts by position", () => {
-    const task = (id: string, week: string, account: "main" | "secondary", position: string) =>
-      ({ id, title: id, notes: null, account, week, position, done: false }) as KdpTaskItem;
-    const tasks = [
-      task("b", "2026-10-05", "main", "a1"),
-      task("a", "2026-10-05", "main", "a0"),
-      task("c", "2026-10-05", "secondary", "a0"),
-      task("d", "2026-10-12", "main", "a0"),
-    ];
-    expect(cellTasks(tasks, "2026-10-05", "main").map((t) => t.id)).toEqual(["a", "b"]);
+  const task = (
+    id: string,
+    week: string,
+    account: "main" | "secondary",
+    position: string,
+    track: "planned" | "actual" = "planned",
+  ) => ({ id, title: id, notes: null, account, track, week, position, done: false }) as KdpTaskItem;
+  const tasks = [
+    task("b", "2026-10-05", "main", "a1"),
+    task("a", "2026-10-05", "main", "a0"),
+    task("c", "2026-10-05", "secondary", "a0"),
+    task("d", "2026-10-12", "main", "a0"),
+    task("e", "2026-10-05", "main", "a0", "actual"),
+  ];
+
+  it("filters by week, account and track and sorts by position", () => {
+    expect(cellTasks(tasks, "2026-10-05", "main", "planned").map((t) => t.id)).toEqual(["a", "b"]);
+    expect(cellTasks(tasks, "2026-10-05", "main", "actual").map((t) => t.id)).toEqual(["e"]);
+  });
+});
+
+describe("laneLabel", () => {
+  it("names the account and the track", () => {
+    expect(laneLabel("secondary", "actual")).toBe("Account secondario · Reale");
   });
 });

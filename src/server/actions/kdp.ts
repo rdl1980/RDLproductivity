@@ -3,7 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { accountLabel, KDP_ACCOUNT_VALUES, type KdpAccount, mondayOf } from "@/lib/kdp";
+import {
+  KDP_ACCOUNT_VALUES,
+  KDP_TRACK_VALUES,
+  type KdpAccount,
+  type KdpTrack,
+  laneLabel,
+  mondayOf,
+} from "@/lib/kdp";
 import { positionAfter, positionBetween } from "@/lib/position";
 import { logActivity, q, snapshot } from "@/server/activity";
 import { db } from "@/server/db";
@@ -12,6 +19,7 @@ import { isAuthenticated } from "@/server/session";
 import { type ActionResult, fail, idSchema, ok, parse, titleSchema, UNAUTHORIZED } from "./result";
 
 const accountSchema = z.enum(KDP_ACCOUNT_VALUES);
+const trackSchema = z.enum(KDP_TRACK_VALUES);
 /** Any day of the week; stored as its Monday. */
 const weekSchema = z.string().transform((value, ctx) => {
   const monday = mondayOf(value);
@@ -26,9 +34,19 @@ const notesSchema = z.string().max(5000, "Le note sono troppo lunghe.").nullable
 const weekDate = (week: string) => new Date(`${week}T00:00:00Z`);
 const weekKey = (date: Date) => date.toISOString().slice(0, 10);
 
-async function lastPosition(week: string, account: KdpAccount, excludeId?: string) {
+async function lastPosition(
+  week: string,
+  account: KdpAccount,
+  track: KdpTrack,
+  excludeId?: string,
+) {
   const last = await db.kdpTask.findFirst({
-    where: { week: weekDate(week), account, ...(excludeId ? { id: { not: excludeId } } : {}) },
+    where: {
+      week: weekDate(week),
+      account,
+      track,
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
     orderBy: { position: "desc" },
     select: { position: true },
   });
@@ -43,6 +61,7 @@ const createSchema = z.object({
   title: titleSchema,
   week: weekSchema,
   account: accountSchema,
+  track: trackSchema.default("planned"),
   notes: notesSchema.optional(),
 });
 
@@ -51,6 +70,7 @@ export type KdpTaskResult = {
   title: string;
   notes: string | null;
   account: KdpAccount;
+  track: KdpTrack;
   week: string;
   position: string;
   done: boolean;
@@ -61,11 +81,17 @@ function toResult(task: {
   title: string;
   notes: string | null;
   account: string;
+  track: string;
   week: Date;
   position: string;
   done: boolean;
 }): KdpTaskResult {
-  return { ...task, account: task.account as KdpAccount, week: weekKey(task.week) };
+  return {
+    ...task,
+    account: task.account as KdpAccount,
+    track: task.track as KdpTrack,
+    week: weekKey(task.week),
+  };
 }
 
 export async function createKdpTask(
@@ -75,19 +101,20 @@ export async function createKdpTask(
   const { data, error } = parse(createSchema, input);
   if (!data) return fail(error);
 
-  const position = positionAfter(await lastPosition(data.week, data.account));
+  const position = positionAfter(await lastPosition(data.week, data.account, data.track));
   const task = await db.kdpTask.create({
     data: {
       title: data.title,
       notes: data.notes || null,
       account: data.account,
+      track: data.track,
       week: weekDate(data.week),
       position,
     },
   });
   await logActivity({
     kind: "kdp.create",
-    summary: `Attività KDP ${q(task.title)} aggiunta (${accountLabel(data.account)}, settimana del ${data.week})`,
+    summary: `Attività KDP ${q(task.title)} aggiunta (${laneLabel(data.account, data.track)}, settimana del ${data.week})`,
     entityIds: [task.id],
     undo: [{ op: "delete", model: "kdpTask", id: task.id }],
   });
@@ -142,6 +169,8 @@ const moveSchema = z.object({
   id: idSchema,
   week: weekSchema,
   account: accountSchema,
+  /** Omitted: the task keeps its track. */
+  track: trackSchema.optional(),
   /** Neighbours in the target cell; both null = append at the end. */
   beforeId: idSchema.nullable().default(null),
   afterId: idSchema.nullable().default(null),
@@ -156,17 +185,18 @@ export async function moveKdpTask(
 
   const task = await db.kdpTask.findUnique({
     where: { id: data.id },
-    select: { title: true, week: true, account: true, position: true },
+    select: { title: true, week: true, account: true, track: true, position: true },
   });
   if (!task) return fail("Attività non trovata.");
+  const track = data.track ?? (task.track as KdpTrack);
 
   let position: string;
   if (data.beforeId === null && data.afterId === null) {
-    position = positionAfter(await lastPosition(data.week, data.account, data.id));
+    position = positionAfter(await lastPosition(data.week, data.account, track, data.id));
   } else {
     const ids = [data.beforeId, data.afterId].filter((id): id is string => id !== null);
     const neighbours = await db.kdpTask.findMany({
-      where: { id: { in: ids }, week: weekDate(data.week), account: data.account },
+      where: { id: { in: ids }, week: weekDate(data.week), account: data.account, track },
       select: { id: true, position: true },
     });
     const positionOf = (id: string | null) =>
@@ -183,18 +213,23 @@ export async function moveKdpTask(
 
   await db.kdpTask.update({
     where: { id: data.id },
-    data: { week: weekDate(data.week), account: data.account, position },
+    data: { week: weekDate(data.week), account: data.account, track, position },
   });
   await logActivity({
     kind: "kdp.move",
-    summary: `Attività KDP ${q(task.title)} spostata (${accountLabel(data.account)}, settimana del ${data.week})`,
+    summary: `Attività KDP ${q(task.title)} spostata (${laneLabel(data.account, track)}, settimana del ${data.week})`,
     entityIds: [data.id],
     undo: [
       {
         op: "update",
         model: "kdpTask",
         id: data.id,
-        data: snapshot({ week: task.week, account: task.account, position: task.position }),
+        data: snapshot({
+          week: task.week,
+          account: task.account,
+          track: task.track,
+          position: task.position,
+        }),
       },
     ],
   });
@@ -222,6 +257,7 @@ export async function deleteKdpTask(id: string): Promise<ActionResult> {
           title: task.title,
           notes: task.notes,
           account: task.account,
+          track: task.track,
           week: weekKey(task.week),
           position: task.position,
           done: task.done,

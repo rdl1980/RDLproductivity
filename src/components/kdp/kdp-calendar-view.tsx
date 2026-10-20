@@ -22,12 +22,14 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
-  accountLabel,
   cellTasks,
   isoWeekNumber,
   KDP_ACCOUNTS,
+  KDP_TRACKS,
   type KdpAccount,
   type KdpTaskItem,
+  type KdpTrack,
+  laneLabel,
   mondayOf,
   monthLabel,
   shiftMonth,
@@ -85,20 +87,21 @@ export function KdpCalendarView({ month, weeks, tasks: initialTasks, today }: Pr
   const patch = (id: string, fields: Partial<KdpTaskItem>) => (current: KdpTaskItem[]) =>
     current.map((task) => (task.id === id ? { ...task, ...fields } : task));
 
-  async function addTask(week: string, account: KdpAccount, title: string) {
+  async function addTask(week: string, account: KdpAccount, track: KdpTrack, title: string) {
     const tempId = `temp-${crypto.randomUUID()}`;
-    const last = cellTasks(tasks, week, account).at(-1);
+    const last = cellTasks(tasks, week, account, track).at(-1);
     const temp: KdpTaskItem = {
       id: tempId,
       title,
       notes: null,
       account,
+      track,
       week,
       position: positionAfter(last?.position ?? null),
       done: false,
     };
     setTasks((current) => [...current, temp]);
-    const result = await createKdpTask({ title, week, account }).catch(
+    const result = await createKdpTask({ title, week, account, track }).catch(
       (): ActionResult<KdpTaskItem> => ({ ok: false, error: NETWORK_ERROR }),
     );
     setTasks((current) =>
@@ -118,26 +121,45 @@ export function KdpCalendarView({ month, weeks, tasks: initialTasks, today }: Pr
   function onDragEnd({ active, over }: DragEndEvent) {
     setDragging(null);
     const task = tasks.find((t) => t.id === active.id);
-    const [, week, account] = String(over?.id ?? "").split("|") as [string, string, KdpAccount];
-    if (!task || !week || (task.week === week && task.account === account)) return;
+    const [, week, account, track] = String(over?.id ?? "").split("|") as [
+      string,
+      string,
+      KdpAccount,
+      KdpTrack,
+    ];
+    if (!task || !week) return;
+    if (task.week === week && task.account === account && task.track === track) return;
 
-    const last = cellTasks(tasks, week, account).at(-1);
-    const previous = { week: task.week, account: task.account, position: task.position };
+    const last = cellTasks(tasks, week, account, track).at(-1);
+    const previous = {
+      week: task.week,
+      account: task.account,
+      track: task.track,
+      position: task.position,
+    };
     void optimistic(
-      patch(task.id, { week, account, position: positionAfter(last?.position ?? null) }),
+      patch(task.id, { week, account, track, position: positionAfter(last?.position ?? null) }),
       patch(task.id, previous),
-      () => moveKdpTask({ id: task.id, week, account, beforeId: last?.id ?? null, afterId: null }),
+      () =>
+        moveKdpTask({
+          id: task.id,
+          week,
+          account,
+          track,
+          beforeId: last?.id ?? null,
+          afterId: null,
+        }),
     );
   }
 
   const editing = tasks.find((task) => task.id === editingId) ?? null;
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-4 sm:p-6">
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:p-6">
       <PageHeader
         icon={BookOpenIcon}
         title="Calendario KDP"
-        description="Attività settimanali per i due account KDP. Trascina un'attività per spostarla in un'altra settimana o nell'altro account."
+        description="Attività settimanali per i due account KDP, divise fra pianificato e reale. Trascina un'attività per spostarla in un'altra settimana, colonna o account."
         actions={
           <nav aria-label="Mese" className="flex items-center gap-1">
             <Button asChild variant="outline" size="icon" aria-label="Mese precedente">
@@ -172,75 +194,101 @@ export function KdpCalendarView({ month, weeks, tasks: initialTasks, today }: Pr
         onDragEnd={onDragEnd}
         onDragCancel={() => setDragging(null)}
       >
-        <div
-          role="table"
-          aria-label="Calendario KDP"
-          data-testid="kdp-calendar"
-          className="grid grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,1fr)] gap-1.5 sm:grid-cols-[6.5rem_1fr_1fr] sm:gap-2"
-        >
-          <div role="row" className="contents">
-            <div
-              role="columnheader"
-              className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase"
-            >
-              <span aria-hidden className="sm:hidden">
-                Sett.
-              </span>
-              <span className="sr-only sm:not-sr-only">Settimana</span>
-            </div>
-            {KDP_ACCOUNTS.map((account) => (
+        {/* Four lanes do not fit a phone: there the grid scrolls sideways, weeks stay put. */}
+        <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+          <div
+            role="table"
+            aria-label="Calendario KDP"
+            data-testid="kdp-calendar"
+            className="grid grid-cols-[4.5rem_repeat(4,minmax(8.5rem,1fr))] gap-1.5 sm:grid-cols-[6.5rem_repeat(4,minmax(0,1fr))] sm:gap-2"
+          >
+            <div role="row" className="contents">
               <div
-                key={account.value}
                 role="columnheader"
-                className="rounded-lg bg-muted px-3 py-1.5 text-sm font-semibold"
+                className="sticky left-0 z-10 row-span-2 self-stretch bg-background px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase sm:static sm:self-end sm:bg-transparent"
               >
-                {account.label}
+                <span aria-hidden className="sm:hidden">
+                  Sett.
+                </span>
+                <span className="sr-only sm:not-sr-only">Settimana</span>
               </div>
-            ))}
-          </div>
-          {weeks.map((week) => {
-            const current = week === currentWeek;
-            return (
-              <div key={week} role="row" className="contents" data-testid="kdp-week">
+              {KDP_ACCOUNTS.map((account) => (
                 <div
-                  role="rowheader"
-                  aria-current={current ? "date" : undefined}
-                  className={cn(
-                    "flex flex-col gap-0.5 rounded-lg px-2 py-2",
-                    current && "bg-accent text-accent-foreground",
-                  )}
+                  key={account.value}
+                  role="columnheader"
+                  aria-colspan={2}
+                  className="col-span-2 rounded-lg bg-muted px-3 py-1.5 text-center text-sm font-semibold"
                 >
-                  <span className="text-sm font-semibold">Sett. {isoWeekNumber(week)}</span>
-                  <span
+                  {account.label}
+                </div>
+              ))}
+            </div>
+            <div role="row" className="contents">
+              {KDP_ACCOUNTS.flatMap((account) =>
+                KDP_TRACKS.map((track) => (
+                  <div
+                    key={`${account.value}-${track.value}`}
+                    role="columnheader"
+                    aria-label={laneLabel(account.value, track.value)}
                     className={cn(
-                      "text-xs tabular-nums",
-                      current ? "text-accent-foreground" : "text-muted-foreground",
+                      "px-2 text-center text-xs font-semibold tracking-wide uppercase",
+                      track.value === "actual"
+                        ? "text-emerald-700 dark:text-emerald-300"
+                        : "text-muted-foreground",
                     )}
                   >
-                    {weekRangeLabel(week)}
-                  </span>
-                </div>
-                {KDP_ACCOUNTS.map((account) => (
-                  <Cell
-                    key={account.value}
-                    id={`cell|${week}|${account.value}`}
-                    label={`${account.label}, settimana ${weekRangeLabel(week)}`}
-                    current={current}
-                    onAdd={(title) => addTask(week, account.value, title)}
+                    {track.label}
+                  </div>
+                )),
+              )}
+            </div>
+            {weeks.map((week) => {
+              const current = week === currentWeek;
+              return (
+                <div key={week} role="row" className="contents" data-testid="kdp-week">
+                  <div
+                    role="rowheader"
+                    aria-current={current ? "date" : undefined}
+                    className={cn(
+                      "sticky left-0 z-10 flex flex-col gap-0.5 rounded-lg bg-background px-2 py-2 sm:static",
+                      current && "bg-accent text-accent-foreground",
+                    )}
                   >
-                    {cellTasks(tasks, week, account.value).map((task) => (
-                      <TaskItem
-                        key={task.id}
-                        task={task}
-                        onOpen={() => setEditingId(task.id)}
-                        onDoneChange={(done) => setDone(task, done)}
-                      />
-                    ))}
-                  </Cell>
-                ))}
-              </div>
-            );
-          })}
+                    <span className="text-sm font-semibold">Sett. {isoWeekNumber(week)}</span>
+                    <span
+                      className={cn(
+                        "text-xs tabular-nums",
+                        current ? "text-accent-foreground" : "text-muted-foreground",
+                      )}
+                    >
+                      {weekRangeLabel(week)}
+                    </span>
+                  </div>
+                  {KDP_ACCOUNTS.flatMap((account) =>
+                    KDP_TRACKS.map((track) => (
+                      <Cell
+                        key={`${account.value}-${track.value}`}
+                        id={`cell|${week}|${account.value}|${track.value}`}
+                        label={`${laneLabel(account.value, track.value)}, settimana ${weekRangeLabel(week)}`}
+                        current={current}
+                        actual={track.value === "actual"}
+                        onAdd={(title) => addTask(week, account.value, track.value, title)}
+                      >
+                        {cellTasks(tasks, week, account.value, track.value).map((task) => (
+                          <TaskItem
+                            key={task.id}
+                            task={task}
+                            onOpen={() => setEditingId(task.id)}
+                            onDoneChange={(done) => setDone(task, done)}
+                          />
+                        ))}
+                      </Cell>
+                    )),
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
         <DragOverlay>
           {dragging ? (
@@ -273,7 +321,7 @@ export function KdpCalendarView({ month, weeks, tasks: initialTasks, today }: Pr
             if (result.ok) toast.success(`Attività «${removed.title}» eliminata.`);
           });
         }}
-        accountName={editing ? accountLabel(editing.account) : ""}
+        accountName={editing ? laneLabel(editing.account, editing.track) : ""}
         weekName={editing ? weekRangeLabel(editing.week) : ""}
       />
     </main>
@@ -284,12 +332,15 @@ function Cell({
   id,
   label,
   current,
+  actual,
   onAdd,
   children,
 }: {
   id: string;
   label: string;
   current: boolean;
+  /** "Reale" lane: tinted to tell it from the plan. */
+  actual: boolean;
   onAdd: (title: string) => void;
   children: React.ReactNode;
 }) {
@@ -312,6 +363,7 @@ function Cell({
       data-testid="kdp-cell"
       className={cn(
         "flex min-h-24 min-w-0 flex-col gap-1.5 rounded-xl bg-list p-1.5 ring-1 ring-black/5 sm:p-2 dark:ring-white/5",
+        actual && "bg-emerald-50/70 dark:bg-emerald-400/[0.06]",
         current && "ring-2 ring-primary/40 dark:ring-primary/40",
         isOver && "ring-2 ring-ring",
       )}

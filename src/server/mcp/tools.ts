@@ -851,6 +851,11 @@ export function registerTools(server: McpServer) {
   const kdpAccount = z
     .enum(["main", "secondary"])
     .describe('KDP account lane: "main" (Account principale) or "secondary" (Account secondario)');
+  const kdpTrack = z
+    .enum(["planned", "actual"])
+    .describe(
+      'Sub-lane of the account: "planned" (Pianificato, what is scheduled) or "actual" (Reale, what really happened)',
+    );
   const kdpWeek = z
     .string()
     .describe(
@@ -863,8 +868,9 @@ export function registerTools(server: McpServer) {
     {
       title: "List KDP calendar tasks",
       description:
-        "Lists the tasks of the KDP calendar (separate from boards): weekly tasks in two lanes, " +
-        "main and secondary KDP account. Give a month (YYYY-MM, all weeks touching it) or a range of weeks.",
+        "Lists the tasks of the KDP calendar (separate from boards): weekly tasks in two account lanes " +
+        '(main and secondary), each split into "planned" and "actual". Give a month (YYYY-MM, all ' +
+        "weeks touching it) or a range of weeks.",
       inputSchema: z.object({
         month: z.string().optional().describe("Month as YYYY-MM"),
         fromWeek: kdpWeek.optional(),
@@ -891,11 +897,14 @@ export function registerTools(server: McpServer) {
     "create_kdp_task",
     {
       title: "Create KDP calendar task",
-      description: "Adds a task to a week of the KDP calendar, at the end of the account's lane.",
+      description:
+        "Adds a task to a week of the KDP calendar, at the end of the account's planned (default) " +
+        "or actual lane.",
       inputSchema: z.object({
         title: z.string(),
         week: kdpWeek,
         account: kdpAccount,
+        track: kdpTrack.optional(),
         notes: z.string().optional(),
       }),
       annotations: WRITE,
@@ -909,8 +918,8 @@ export function registerTools(server: McpServer) {
     {
       title: "Update KDP calendar task",
       description:
-        "Edits a KDP task's title, notes or done flag, and/or moves it to another week or account " +
-        "(appended at the end of the target lane).",
+        "Edits a KDP task's title, notes or done flag, and/or moves it to another week, account or " +
+        "track (appended at the end of the target lane).",
       inputSchema: z.object({
         taskId: id("KDP task"),
         title: z.string().optional(),
@@ -918,15 +927,16 @@ export function registerTools(server: McpServer) {
         done: z.boolean().optional(),
         week: kdpWeek.optional(),
         account: kdpAccount.optional(),
+        track: kdpTrack.optional(),
       }),
       annotations: WRITE,
     },
-    async ({ taskId, week, account, ...changes }) => {
+    async ({ taskId, week, account, track, ...changes }) => {
       const steps: (() => Promise<ActionResult<unknown>>)[] = [];
       if (Object.values(changes).some((value) => value !== undefined)) {
         steps.push(() => updateKdpTask({ id: taskId, ...changes }));
       }
-      if (week !== undefined || account !== undefined) {
+      if (week !== undefined || account !== undefined || track !== undefined) {
         steps.push(async () => {
           const task = await db.kdpTask.findUnique({
             where: { id: taskId },
@@ -937,6 +947,7 @@ export function registerTools(server: McpServer) {
             id: taskId,
             week: week ?? task.week.toISOString().slice(0, 10),
             account: account ?? (task.account as "main" | "secondary"),
+            track,
           });
         });
       }
