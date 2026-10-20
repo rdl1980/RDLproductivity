@@ -43,6 +43,13 @@ export type UndoOp =
         position: string;
         done: boolean;
       };
+    }
+  | {
+      /** Puts a card-book link back as it was; `previous: null` removes it. */
+      op: "kdpLink";
+      bookId: string;
+      cardId: string;
+      previous: { status: string; auto: boolean; score: number } | null;
     };
 
 export type ActivityEntry = {
@@ -158,6 +165,19 @@ async function applyOp(tx: Prisma.TransactionClient, op: UndoOp) {
     case "restoreKdpTask":
       await tx.kdpTask.create({ data: { ...op.task, week: new Date(op.task.week) } });
       return;
+    case "kdpLink": {
+      const key = { bookId: op.bookId, cardId: op.cardId };
+      if (op.previous === null) {
+        await tx.kdpBookLink.deleteMany({ where: key });
+      } else {
+        await tx.kdpBookLink.upsert({
+          where: { bookId_cardId: key },
+          create: { ...key, ...op.previous },
+          update: op.previous,
+        });
+      }
+      return;
+    }
   }
 }
 

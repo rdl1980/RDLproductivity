@@ -29,8 +29,11 @@ test("completing a recurring card creates the next occurrence", async ({ page })
 
   await dialog.getByRole("checkbox", { name: "Completata" }).click();
   await expect(page.getByText(/Creata la prossima occorrenza/)).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(dialog).toBeHidden();
+  // A first Escape may only end an edit inside the dialog (by design): repeat it.
+  await expect(async () => {
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden({ timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
 
   // The completed card no longer repeats; the new one does, two weeks later.
   const cards = cardIn(list(page, "Routine"), title);

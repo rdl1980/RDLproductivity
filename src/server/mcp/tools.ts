@@ -14,7 +14,8 @@ import {
   restoreCard,
   updateCardDetails,
 } from "@/server/actions/card-details";
-import { createCard, moveCard, updateCard } from "@/server/actions/cards";
+import { archiveCards, createCard, moveCard, updateCard } from "@/server/actions/cards";
+import { refreshKdpSuggestions, setKdpBookLink } from "@/server/actions/kdp-books";
 import {
   createChecklist,
   createChecklistItem,
@@ -40,6 +41,7 @@ import { mondayOf, monthWeeks, parseMonth } from "@/lib/kdp";
 import { createKdpTask, deleteKdpTask, moveKdpTask, updateKdpTask } from "@/server/actions/kdp";
 import { getSuperBoard } from "@/server/queries/aggregate";
 import { getKdpTasks } from "@/server/queries/kdp";
+import { getKdpBooks } from "@/server/queries/kdp-books";
 import { getStats } from "@/server/queries/stats";
 import { getArchive } from "@/server/queries/archive";
 import { getBoard, getBoards } from "@/server/queries/boards";
@@ -952,5 +954,98 @@ export function registerTools(server: McpServer) {
       annotations: DELETE,
     },
     ({ taskId }) => deleteKdpTask(taskId),
+  );
+
+  // ---- KDP books ----
+
+  defineTool(
+    server,
+    "list_kdp_books",
+    {
+      title: "List KDP books",
+      description:
+        "Lists the books imported from the KDP Bookshelf (both accounts): title, series, formats " +
+        "with status, ASIN, price and Amazon link, and the board cards linked to each book " +
+        '(status "confirmed", or "suggested" = waiting for the user\'s confirmation). ' +
+        "Filter by text (title, series or ASIN), account or link state.",
+      inputSchema: z.object({
+        query: z.string().max(200).optional(),
+        account: kdpAccount.optional(),
+        links: z
+          .enum(["any", "unlinked", "suggested"])
+          .default("any")
+          .describe('"unlinked": no confirmed card; "suggested": has suggestions to confirm'),
+      }),
+      annotations: READ,
+    },
+    async ({ query, account, links }) => {
+      const needle = query?.trim().toLowerCase();
+      const books = (await getKdpBooks()).filter(
+        (book) =>
+          (!account || book.account === account) &&
+          (links !== "unlinked" || !book.links.some((l) => l.status === "confirmed")) &&
+          (links !== "suggested" || book.links.some((l) => l.status === "suggested")) &&
+          (!needle ||
+            `${book.title} ${book.series ?? ""}`.toLowerCase().includes(needle) ||
+            book.formats.some((f) => f.asin?.toLowerCase().includes(needle))),
+      );
+      return ok(books);
+    },
+  );
+
+  defineTool(
+    server,
+    "set_kdp_book_link",
+    {
+      title: "Link or unlink a KDP book and a card",
+      description:
+        'Links a card to a KDP book ("confirmed", also to confirm a suggestion) or unlinks it ' +
+        '("rejected": a rejected pair is never suggested again). Can be undone.',
+      inputSchema: z.object({
+        bookId: id("KDP book"),
+        cardId: id("card"),
+        status: z.enum(["confirmed", "rejected"]),
+      }),
+      annotations: WRITE,
+    },
+    (input) => setKdpBookLink(input),
+  );
+
+  defineTool(
+    server,
+    "refresh_kdp_suggestions",
+    {
+      title: "Recompute KDP book-card suggestions",
+      description:
+        "Matches the active cards against the KDP books by title and market: certain matches are " +
+        "linked, the others become suggestions to confirm. Confirmed and rejected pairs are kept.",
+      inputSchema: z.object({}),
+      annotations: WRITE,
+    },
+    () => refreshKdpSuggestions(),
+  );
+
+  defineTool(
+    server,
+    "archive_list_cards",
+    {
+      title: "Archive the cards of a list",
+      description:
+        "Archives all the active cards of a list, or only the completed ones, keeping the list. " +
+        "One activity, undoable.",
+      inputSchema: z.object({
+        listId: id("list"),
+        onlyCompleted: z.boolean().default(false),
+      }),
+      annotations: WRITE,
+    },
+    async ({ listId, onlyCompleted }) => {
+      const cards = await db.card.findMany({
+        where: { listId, archived: false, ...(onlyCompleted ? { completed: true } : {}) },
+        select: { id: true },
+      });
+      if (cards.length === 0) return fail("Nessuna card da archiviare.");
+      return archiveCards({ listId, cardIds: cards.map((card) => card.id) });
+    },
   );
 }

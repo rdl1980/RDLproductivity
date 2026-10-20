@@ -93,6 +93,42 @@ export async function updateCard(input: z.input<typeof updateSchema>): Promise<A
   return ok(undefined);
 }
 
+const archiveManySchema = z.object({
+  listId: idSchema,
+  cardIds: z.array(idSchema).min(1).max(1000),
+});
+
+/** Archives several cards of one list at once; a single activity undoes them all. */
+export async function archiveCards(
+  input: z.input<typeof archiveManySchema>,
+): Promise<ActionResult<{ count: number }>> {
+  if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
+  const { data, error } = parse(archiveManySchema, input);
+  if (!data) return fail(error);
+
+  const list = await db.list.findUnique({
+    where: { id: data.listId },
+    select: { title: true, boardId: true },
+  });
+  if (!list) return fail("Lista non trovata.");
+  const cards = await db.card.findMany({
+    where: { id: { in: data.cardIds }, listId: data.listId, archived: false },
+    select: { id: true },
+  });
+  if (cards.length === 0) return fail("Nessuna card da archiviare.");
+  const ids = cards.map((card) => card.id);
+
+  await db.card.updateMany({ where: { id: { in: ids } }, data: { archived: true } });
+  await logActivity({
+    kind: "card.archiveMany",
+    summary: `${ids.length === 1 ? "1 card archiviata" : `${ids.length} card archiviate`} dalla lista ${q(list.title)}`,
+    boardId: list.boardId,
+    entityIds: ids,
+    undo: ids.map((id) => ({ op: "update", model: "card", id, data: { archived: false } })),
+  });
+  return ok({ count: ids.length });
+}
+
 const moveSchema = z.object({
   id: idSchema,
   listId: idSchema,

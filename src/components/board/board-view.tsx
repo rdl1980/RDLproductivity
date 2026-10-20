@@ -58,7 +58,12 @@ import { positionAfter } from "@/lib/position";
 import { useIsClient } from "@/lib/use-is-client";
 import { useStableCallbacks } from "@/lib/use-stable-callbacks";
 import { undoLatestAction } from "@/server/actions/activity";
-import { createCard, moveCard, updateCard } from "@/server/actions/cards";
+import {
+  archiveCards as archiveCardsAction,
+  createCard,
+  moveCard,
+  updateCard,
+} from "@/server/actions/cards";
 import { createList, moveList, updateList } from "@/server/actions/lists";
 import type { ActionResult } from "@/server/actions/result";
 
@@ -321,6 +326,42 @@ export function BoardView({
     );
   }
 
+  function archiveCards(listId: string, which: "all" | "completed") {
+    const list = lists.find((l) => l.id === listId);
+    const cards = (list?.cards ?? []).filter(
+      (card) => !isTempId(card.id) && (which === "all" || card.completed),
+    );
+    if (cards.length === 0) {
+      toast.info(
+        which === "all" ? "La lista è vuota." : "Nessuna card completata in questa lista.",
+      );
+      return;
+    }
+    const ids = new Set(cards.map((card) => card.id));
+    mutate(
+      (current) =>
+        current.map((l) =>
+          l.id === listId ? { ...l, cards: l.cards.filter((c) => !ids.has(c.id)) } : l,
+        ),
+      (current) => cards.reduce((acc, card) => upsertCard(acc, listId, card), current),
+      () => archiveCardsAction({ listId, cardIds: [...ids] }),
+      ({ count }) =>
+        toast.success(count === 1 ? "1 card archiviata" : `${count} card archiviate`, {
+          action: {
+            label: "Annulla",
+            onClick: () =>
+              undoLatestAction(board.id)
+                .catch(() => ({ ok: false as const, error: "Errore di rete." }))
+                .then((result) => {
+                  if (!result.ok) return void toast.error(result.error);
+                  setResyncPending(true);
+                  router.refresh();
+                }),
+          },
+        }),
+    );
+  }
+
   // --- Drag & drop -----------------------------------------------------------
 
   function listIdOf(id: string, type: unknown) {
@@ -438,6 +479,7 @@ export function BoardView({
     addCardFromTemplate: (listId) => setTemplateListId(listId),
     renameCard,
     archiveCard,
+    archiveCards,
   });
 
   const activeCard =

@@ -84,6 +84,8 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Restyling "pulito e moderno": nuovi token di colore e ombre, logo, navigazione con pagina attiva, board e card più leggibili, dettaglio card con breadcrumb, intestazioni comuni nelle pagine secondarie, griglia board con conteggi, login
 - [x] Calendario KDP `/kdp`: settimane come righe, due lane (account principale e secondario), attività con note e stato fatto, drag tra settimane e account, tool MCP
 - [x] Icona dell'app RDL Self Publishing: favicon, icona per la home del telefono, manifest, logo nell'header e nel login
+- [x] Libri KDP `/kdp/libri`: import dal Bookshelf (bookmarklet, entrambi gli account) di titoli, collane, formati, stato, ASIN e prezzo; abbinamento automatico alle card per titolo e mercato, abbinamenti incerti da confermare; libri collegati nel dettaglio card; tool MCP
+- [x] Archiviazione in blocco dal menu lista: tutte le card o solo le completate, annullabile; menu della card visibile anche su touch
 
 ## Dopo l'MVP (idee)
 

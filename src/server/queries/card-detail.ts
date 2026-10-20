@@ -4,6 +4,7 @@ import type { CardDetail } from "@/server/actions/card-details";
 import { parseRecurrence } from "@/lib/recurrence";
 import { listActivity } from "@/server/activity";
 import { db } from "@/server/db";
+import { getCardKdpBooks } from "@/server/queries/kdp-books";
 
 /** Full card data for the detail dialog, or null when the card does not exist. */
 export async function loadCardDetail(cardId: string): Promise<CardDetail | null> {
@@ -53,7 +54,10 @@ export async function loadCardDetail(cardId: string): Promise<CardDetail | null>
     },
   });
   if (!card) return null;
-  const activity = await listActivity({ cardId, take: 20 });
+  const [activity, kdpBooks] = await Promise.all([
+    listActivity({ cardId, take: 20 }),
+    getCardKdpBooks(cardId),
+  ]);
 
   const { board, ...list } = card.list;
   return {
@@ -81,5 +85,6 @@ export async function loadCardDetail(cardId: string): Promise<CardDetail | null>
       actor: item.actor,
       summary: item.summary,
     })),
+    kdpBooks,
   };
 }
