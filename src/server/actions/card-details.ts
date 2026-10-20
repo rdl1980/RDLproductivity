@@ -2,6 +2,8 @@
 
 import { z } from "zod";
 
+import type { CardKdpBook } from "@/server/queries/kdp-books";
+
 import type { CardItem, LabelItem } from "@/lib/board-state";
 import { positionAfter, positionBetween } from "@/lib/position";
 import {
@@ -56,6 +58,8 @@ export type CardDetail = {
   coverId: string | null;
   /** Latest changes, newest first (ISO dates). */
   activity: { id: string; createdAt: string; actor: string; summary: string }[];
+  /** KDP books linked to the card, or suggested for it. */
+  kdpBooks: CardKdpBook[];
 };
 
 const detailsSchema = z.object({

@@ -156,10 +156,13 @@ export function KdpCalendarView({ month, weeks, tasks: initialTasks, today }: Pr
           </nav>
         }
       />
-      <KdpTabs current="calendar" />
-      <h2 className="text-lg font-semibold" data-testid="kdp-month">
-        {monthLabel(month)}
-      </h2>
+      {/* Tabs on the month row: the grid keeps its height on screen. */}
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+        <h2 className="text-lg font-semibold" data-testid="kdp-month">
+          {monthLabel(month)}
+        </h2>
+        <KdpTabs current="calendar" />
+      </div>
 
       <DndContext
         // Stable id: generated ids differ between server and client (hydration).

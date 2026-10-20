@@ -687,7 +687,7 @@ function CardDetailContent({
             onSetCover={setCover}
           />
 
-          <KdpBooksSection cardId={card.id} />
+          <KdpBooksSection cardId={card.id} books={card.kdpBooks} />
 
           {card.activity.length > 0 && (
             <details className="group flex flex-col gap-2">

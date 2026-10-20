@@ -13,7 +13,7 @@ import {
 } from "@/lib/kdp-books";
 import { logActivity, q } from "@/server/activity";
 import { db, Prisma } from "@/server/db";
-import { type CardKdpBook, getCardKdpBooks, parseFormats } from "@/server/queries/kdp-books";
+import { parseFormats } from "@/server/queries/kdp-books";
 import { searchCards } from "@/server/queries/search";
 import { isAuthenticated } from "@/server/session";
 
@@ -200,13 +200,6 @@ export async function setKdpBookLink(input: z.input<typeof linkSchema>): Promise
   });
   revalidatePath(PATH);
   return ok(undefined);
-}
-
-export async function loadCardKdpBooks(cardId: string): Promise<ActionResult<CardKdpBook[]>> {
-  if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
-  const { data: id, error } = parse(idSchema, cardId);
-  if (error !== null) return fail(error);
-  return ok(await getCardKdpBooks(id));
 }
 
 export type LinkableCard = {
