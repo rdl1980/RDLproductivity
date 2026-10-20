@@ -281,6 +281,20 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - Menu lista → "Archivia le card completate" / "Archivia tutte le card": la Server Action `archiveCards` archivia le card indicate (solo se attive e nella lista) e registra una sola attività che le ripristina tutte; il toast offre "Annulla" (come Ctrl/Cmd+Z). Tool MCP `archive_list_cards`.
 - Il bottone azioni della card, visibile al passaggio del mouse, su dispositivi touch (`pointer: coarse`) è sempre visibile.
 
+## Vendite KDP
+
+- Modello `KdpSale`: una riga per (account, giorno, marketplace, `titleKey`), dove `titleKey` è la chiave KDP della famiglia di formati (`DIGITAL=…:PRINT=…:HARDCOVER=…:`, ASIN separati nelle colonne). Copie per formato, pagine KENP, royalty totali e per formato/KENP in EUR (stime KDP, valuta preferita EUR).
+- **Raccolta**: KDP non ha API pubbliche. Il bookmarklet "Vendite KDP" (`src/lib/kdp-sales-collector.ts`) gira su kdpreports.amazon.com con la sessione dell'utente e usa gli stessi endpoint JSON della UI dei Report: istogrammi per mercato (anni, poi mesi) per trovare le coppie (mese, mercato) attive, poi per ciascuna `orders/view/compare` (ordini elaborati per giorno e titolo), `royalties/chart/tooltip/titles` (royalty per giorno e titolo) e `kenp/view/compare` (pagine per giorno e ASIN eBook, ricondotte al `titleKey`). Tre richieste in parallelo, con nuovi tentativi; un riquadro mostra l'avanzamento. Le righe vanno compresse con gzip nel fragment di `/kdp/vendite/importa#gz.…`.
+- **Import**: la pagina decomprime e mostra l'anteprima nel browser; la Server Action `importKdpSales` riceve il fragment ancora compresso (resta piccolo anche con anni di dati), lo decomprime con un tetto di 64 MB, lo valida con zod e sostituisce le righe dell'account nel periodo importato (KDP rivede le cifre recenti). Data e periodo dell'ultimo import in `AppSetting` `kdp.sales.<account>`.
+- **Dashboard** `/kdp/vendite` (scheda Vendite): i dati arrivano tutti al client e i filtri (periodo, account, libro, formati, mercati, raggruppamento, misura) si applicano in memoria con funzioni pure di `src/lib/kdp-sales.ts`, testate; lo stato è nell'URL. Ogni riga è ricondotta al `KdpBook` che possiede uno dei suoi ASIN (stesso account), altrimenti resta come "Titolo non importato".
+- Grafici SVG senza librerie (`src/components/sales/charts.tsx`), larghi quanto il contenitore (ResizeObserver) così il testo resta a 11 px: colonne impilate con 4 px di raccordo e 2 px di stacco, linee da 2 px con punto finale cerchiato, griglia a filo continuo, etichette solo su picco e ultimo valore, tooltip su hover e focus, legenda per ≥ 2 serie, tabella in ogni pannello. Colori dei formati negli slot categoriali `--series-1…4` (validati, ordine fisso: eBook, cartaceo, rigida, KENP), mappa di calore a una tinta (`--chart-1` con opacità crescente).
+- Tool MCP `get_kdp_sales` (totali per mese, mercato e libro con ASIN in un intervallo).
+
+## Automazioni dall'import del Bookshelf
+
+- `statusTransitions` confronta i formati di ogni libro con l'import precedente: un formato diventato Online o Bloccato è una novità; il primo import di un account non genera novità (descrive il passato).
+- `applyBookChanges` (`src/server/kdp-automation.ts`): per un formato online crea l'attività "Online: <titolo> (formati)" con gli ASIN nelle note, nella corsia **Reale** dell'account, settimana corrente; completa le card collegate (confermate, non archiviate) e le sposta in fondo alla prima lista della board il cui nome inizia per Done, Fatto, Completate, Pubblicati, Online o Uscite. Per un formato bloccato porta le card collegate a P0. Ogni modifica è nello storico attività e si annulla.
+
 ## Icona dell'app
 
 - Sorgente unica (`RDL Self Publishing`): `src/app/icon.png` (512), `src/app/apple-icon.png` (180, opaca), `src/app/favicon.ico` (16/32/48), `public/icons/icon-192.png` e `icon-512.png` per il manifest (`src/app/manifest.ts`), `src/components/brand-icon.png` per il logo nell'header e nel login (`BrandMark`).

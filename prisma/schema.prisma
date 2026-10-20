@@ -269,3 +269,30 @@ model KdpBookLink {
   @@index([cardId])
   @@index([status])
 }
+// Daily sales of one title family (DIGITAL/PRINT/HARDCOVER ASINs) in one
+// marketplace, from the KDP Reports pages. Royalties are KDP's estimates in EUR.
+model KdpSale {
+  id               String   @id @default(cuid())
+  /// "main" | "secondary". Checked in the database.
+  account          String
+  date             DateTime @db.Date
+  /// "Amazon.it", "Amazon.com", ...
+  marketplace      String
+  /// KDP's title key, e.g. "DIGITAL=B0..:PRINT=B0..:HARDCOVER=:".
+  titleKey         String
+  ebookAsin        String?
+  paperbackAsin    String?
+  hardcoverAsin    String?
+  ebookUnits       Int      @default(0)
+  paperbackUnits   Int      @default(0)
+  hardcoverUnits   Int      @default(0)
+  kenp             Int      @default(0)
+  royalty          Float    @default(0)
+  royaltyEbook     Float    @default(0)
+  royaltyPaperback Float    @default(0)
+  royaltyHardcover Float    @default(0)
+  royaltyKenp      Float    @default(0)
+
+  @@unique([account, date, marketplace, titleKey])
+  @@index([date])
+}

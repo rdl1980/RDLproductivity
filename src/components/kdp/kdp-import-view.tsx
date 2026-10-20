@@ -52,7 +52,10 @@ export function KdpImportView() {
       const r = result.data;
       toast.success(
         `${r.created} nuovi e ${r.updated} aggiornati (${r.asins} ASIN). ` +
-          `${r.confirmed} card collegate, ${r.suggested} abbinamenti da confermare.`,
+          `${r.confirmed} card collegate, ${r.suggested} abbinamenti da confermare.` +
+          (r.tasks || r.cards
+            ? ` ${r.tasks} uscite segnate nel calendario (Reale), ${r.cards} card aggiornate.`
+            : ""),
       );
       // Drop the data from the URL so a reload does not import it again.
       window.history.replaceState(null, "", window.location.pathname);

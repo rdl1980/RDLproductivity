@@ -87,6 +87,8 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Libri KDP `/kdp/libri`: import dal Bookshelf (bookmarklet, entrambi gli account) di titoli, collane, formati, stato, ASIN e prezzo; abbinamento automatico alle card per titolo e mercato, abbinamenti incerti da confermare; libri collegati nel dettaglio card; tool MCP
 - [x] Archiviazione in blocco dal menu lista: tutte le card o solo le completate, annullabile; menu della card visibile anche su touch
 - [x] Calendario KDP: ogni account diviso in Pianificato e Reale, drag fra le quattro corsie, scorrimento orizzontale su telefono, tool MCP con `track`
+- [x] Vendite KDP `/kdp/vendite`: import dello storico dai Report di KDP (bookmarklet, per giorno, titolo e mercato: copie per formato, pagine KENP, royalty in EUR), dashboard con filtri nell'URL, indicatori con confronto sul periodo precedente, andamento, cumulato, mix formati, mercati, collane, tabella libri con tendenza, giorno della settimana, calendario, curve di lancio; tool MCP `get_kdp_sales`
+- [x] Automazioni dall'import del Bookshelf: un formato che va online crea l'attività nella colonna Reale della settimana e completa la card collegata spostandola nella lista "Done"; un formato bloccato porta la card a P0 (tutto annullabile)
 
 ## Dopo l'MVP (idee)
 

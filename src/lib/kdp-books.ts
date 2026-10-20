@@ -402,3 +402,37 @@ export function amazonUrl(format: KdpBookFormat): string | null {
   if (!format.asin) return null;
   return `https://www.${DOMAIN_BY_MARKET[format.market ?? ""] ?? "amazon.com"}/dp/${format.asin}`;
 }
+
+// --- Status changes between imports -------------------------------------------------
+
+export type StatusTransition = { live: KdpFormat[]; blocked: KdpFormat[] };
+
+/**
+ * Formats that went online or got blocked since the previous import. A book
+ * seen for the first time counts only when the account was imported before:
+ * the very first import describes the past, not news.
+ */
+export function statusTransitions(
+  previous: KdpBookFormat[] | null,
+  next: KdpBookFormat[],
+  accountKnown: boolean,
+): StatusTransition {
+  if (previous === null && !accountKnown) return { live: [], blocked: [] };
+  const before = (format: KdpFormat) => previous?.find((f) => f.format === format)?.status;
+  return {
+    live: next
+      .filter((f) => f.status === "live" && before(f.format) !== "live")
+      .map((f) => f.format),
+    blocked: next
+      .filter((f) => f.status === "blocked" && before(f.format) !== "blocked")
+      .map((f) => f.format),
+  };
+}
+
+/** "Cartaceo US: B0…", one line per format with an ASIN. */
+export function formatSummary(formats: KdpBookFormat[]): string {
+  return formats
+    .filter((f) => f.asin)
+    .map((f) => `${FORMAT_LABELS[f.format]}${f.market ? ` ${f.market}` : ""}: ${f.asin}`)
+    .join("\n");
+}

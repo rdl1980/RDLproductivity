@@ -9,10 +9,12 @@ import {
   importPayloadSchema,
   type MatchBook,
   proposeLinks,
+  statusTransitions,
   toStoredFormats,
 } from "@/lib/kdp-books";
 import { logActivity, q } from "@/server/activity";
 import { db, Prisma } from "@/server/db";
+import { applyBookChanges, type BookChange } from "@/server/kdp-automation";
 import { parseFormats } from "@/server/queries/kdp-books";
 import { searchCards } from "@/server/queries/search";
 import { isAuthenticated } from "@/server/session";
@@ -77,6 +79,10 @@ export type ImportResult = {
   updated: number;
   missing: number;
   asins: number;
+  /** "Actual" tasks created for formats that went online. */
+  tasks: number;
+  /** Linked cards completed, moved or raised to P0. */
+  cards: number;
 } & SuggestionStats;
 
 /** Saves the books of one account's Bookshelf, then refreshes the suggestions. */
@@ -90,16 +96,18 @@ export async function importKdpBooks(
   const { account, payload } = data;
   const importedAt = new Date();
   const kdpIds = payload.books.map((book) => book.kdpId);
-  const existing = new Set(
-    (
-      await db.kdpBook.findMany({
-        where: { account, kdpId: { in: kdpIds } },
-        select: { kdpId: true },
-      })
-    ).map((book) => book.kdpId),
-  );
+  const [previous, accountBooks] = await Promise.all([
+    db.kdpBook.findMany({
+      where: { account, kdpId: { in: kdpIds } },
+      select: { kdpId: true, formats: true },
+    }),
+    db.kdpBook.count({ where: { account } }),
+  ]);
+  const previousFormats = new Map(previous.map((book) => [book.kdpId, parseFormats(book.formats)]));
+  const existing = new Set(previousFormats.keys());
 
   let asins = 0;
+  const changes: BookChange[] = [];
   const missing = await db.$transaction(
     async (tx) => {
       for (const book of payload.books) {
@@ -112,11 +120,20 @@ export async function importKdpBooks(
           missingSince: null,
           importedAt,
         };
-        await tx.kdpBook.upsert({
+        const saved = await tx.kdpBook.upsert({
           where: { account_kdpId: { account, kdpId: book.kdpId } },
           create: { account, kdpId: book.kdpId, ...fields },
           update: fields,
+          select: { id: true },
         });
+        const transition = statusTransitions(
+          previousFormats.get(book.kdpId) ?? null,
+          formats,
+          accountBooks > 0,
+        );
+        if (transition.live.length > 0 || transition.blocked.length > 0) {
+          changes.push({ bookId: saved.id, account, title: book.title, formats, ...transition });
+        }
       }
       const { count } = await tx.kdpBook.updateMany({
         where: { account, kdpId: { notIn: kdpIds }, missingSince: null },
@@ -128,6 +145,8 @@ export async function importKdpBooks(
   );
 
   const stats = await refreshSuggestions();
+  // After the suggestions, so links confirmed just now are updated too.
+  const automation = await applyBookChanges(changes);
   const created = payload.books.filter((book) => !existing.has(book.kdpId)).length;
   const updated = payload.books.length - created;
   await logActivity({
@@ -136,11 +155,15 @@ export async function importKdpBooks(
       `Importati ${payload.books.length} libri KDP (${accountLabel(account)}): ` +
       `${created} nuovi, ${updated} aggiornati` +
       (missing ? `, ${missing} non più presenti` : "") +
-      `; ${stats.confirmed} collegamenti automatici, ${stats.suggested} da confermare`,
+      `; ${stats.confirmed} collegamenti automatici, ${stats.suggested} da confermare` +
+      (automation.tasks || automation.cards
+        ? `; ${automation.tasks} uscite segnate nel calendario, ${automation.cards} card aggiornate`
+        : ""),
     entityIds: [],
   });
   revalidatePath(PATH);
-  return ok({ created, updated, missing, asins, ...stats });
+  revalidatePath("/kdp");
+  return ok({ created, updated, missing, asins, ...stats, ...automation });
 }
 
 export async function refreshKdpSuggestions(): Promise<ActionResult<SuggestionStats>> {

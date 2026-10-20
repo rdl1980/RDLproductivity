@@ -12,6 +12,7 @@ import {
   normalizeStatus,
   parseCardTitle,
   proposeLinks,
+  statusTransitions,
   toStoredFormats,
 } from "./kdp-books";
 
@@ -217,5 +218,39 @@ describe("import payload", () => {
       books: [{ kdpId: "X", title: "T", formats: [{ format: "ebook", asin: "nope" }] }],
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("statusTransitions", () => {
+  const f = (format: "ebook" | "paperback", status: "live" | "draft" | "blocked") => ({
+    format,
+    status,
+    statusText: null,
+    asin: null,
+    price: null,
+    url: null,
+    market: null,
+  });
+
+  it("finds formats that went online or got blocked", () => {
+    expect(
+      statusTransitions(
+        [f("ebook", "draft"), f("paperback", "live")],
+        [f("ebook", "live"), f("paperback", "blocked")],
+        true,
+      ),
+    ).toEqual({ live: ["ebook"], blocked: ["paperback"] });
+  });
+
+  it("ignores unchanged formats", () => {
+    expect(statusTransitions([f("ebook", "live")], [f("ebook", "live")], true)).toEqual({
+      live: [],
+      blocked: [],
+    });
+  });
+
+  it("treats new books as news only after the first import", () => {
+    expect(statusTransitions(null, [f("ebook", "live")], false).live).toEqual([]);
+    expect(statusTransitions(null, [f("ebook", "live")], true).live).toEqual(["ebook"]);
   });
 });

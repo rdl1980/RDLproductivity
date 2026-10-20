@@ -20,16 +20,25 @@ export async function settle(page: Page) {
   await expect.poll(() => pendingSaveCount(page)).toBe(0);
 }
 
-export async function dragTo(page: Page, source: Locator, target: Locator) {
+/** Drags `source` onto the middle of `target` (or, with `keepY`, onto it at the source's height). */
+export async function dragTo(
+  page: Page,
+  source: Locator,
+  target: Locator,
+  options: { keepY?: boolean } = {},
+) {
   const from = (await source.boundingBox())!;
   const to = (await target.boundingBox())!;
-  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  const startY = from.y + from.height / 2;
+  const endX = to.x + to.width / 2;
+  const endY = options.keepY ? startY : to.y + to.height / 2;
+  await page.mouse.move(from.x + from.width / 2, startY);
   await page.mouse.down();
-  await page.mouse.move(from.x + from.width / 2 + 10, from.y + from.height / 2, { steps: 5 });
-  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 15 });
+  await page.mouse.move(from.x + from.width / 2 + 10, startY, { steps: 5 });
+  await page.mouse.move(endX, endY, { steps: 15 });
   // Give dnd-kit a frame to compute collisions before dropping.
   await page.waitForTimeout(100);
-  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2 + 2, { steps: 2 });
+  await page.mouse.move(endX, endY + 2, { steps: 2 });
   await page.waitForTimeout(50);
   await page.mouse.up();
 }
