@@ -20,11 +20,31 @@ export function accountLabel(account: KdpAccount): string {
   return KDP_ACCOUNTS.find((a) => a.value === account)?.label ?? account;
 }
 
+/** Each account lane is split into what was planned and what actually happened. */
+export const KDP_TRACKS = [
+  { value: "planned", label: "Pianificato" },
+  { value: "actual", label: "Reale" },
+] as const;
+
+export type KdpTrack = (typeof KDP_TRACKS)[number]["value"];
+
+export const KDP_TRACK_VALUES = KDP_TRACKS.map((track) => track.value) as [KdpTrack, ...KdpTrack[]];
+
+export function trackLabel(track: KdpTrack): string {
+  return KDP_TRACKS.find((t) => t.value === track)?.label ?? track;
+}
+
+/** "Account principale · Reale" */
+export function laneLabel(account: KdpAccount, track: KdpTrack): string {
+  return `${accountLabel(account)} · ${trackLabel(track)}`;
+}
+
 export type KdpTaskItem = {
   id: string;
   title: string;
   notes: string | null;
   account: KdpAccount;
+  track: KdpTrack;
   /** Monday of the week, "YYYY-MM-DD". */
   week: string;
   position: string;
@@ -121,8 +141,13 @@ export function monthLabel(month: string): string {
 }
 
 /** Tasks of one cell, in order. */
-export function cellTasks(tasks: KdpTaskItem[], week: string, account: KdpAccount) {
+export function cellTasks(
+  tasks: KdpTaskItem[],
+  week: string,
+  account: KdpAccount,
+  track: KdpTrack,
+) {
   return tasks
-    .filter((task) => task.week === week && task.account === account)
+    .filter((task) => task.week === week && task.account === account && task.track === track)
     .sort((a, b) => (a.position < b.position ? -1 : a.position > b.position ? 1 : 0));
 }

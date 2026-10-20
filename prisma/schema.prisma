@@ -215,14 +215,16 @@ model KdpTask {
   notes     String?
   /// "main" | "secondary". Checked in the database.
   account   String
+  /// "planned" (Pianificato) | "actual" (Reale): the sub-lane within the account. Checked in the database.
+  track     String   @default("planned")
   /// Monday of the task's week (date only).
   week      DateTime @db.Date
-  position  String // fractional index within (week, account)
+  position  String // fractional index within (week, account, track)
   done      Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([week, account, position])
+  @@index([week, account, track, position])
 }
 
 // Books of a KDP account, imported from the Bookshelf (titles, formats, ASINs),

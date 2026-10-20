@@ -6,15 +6,32 @@ import { mondayOf, shiftMonth, todayIn, weekRangeLabel } from "../src/lib/kdp";
 const today = todayIn(process.env.DEFAULT_TIME_ZONE ?? "Europe/Rome");
 const week = weekRangeLabel(mondayOf(today)!);
 
-test("KDP calendar: add, complete, move between lanes, edit and delete tasks", async ({ page }) => {
+test("KDP calendar: add, complete, move between accounts and tracks, edit and delete tasks", async ({
+  page,
+}) => {
   const title = `Upload manoscritto ${Date.now()}`;
   await page.goto("/kdp");
   await expect(page.getByRole("heading", { name: "Calendario KDP" })).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Account principale" })).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Account secondario" })).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "Account principale", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "Account secondario", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "Account principale · Pianificato" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "Account secondario · Reale" }),
+  ).toBeVisible();
 
-  const main = page.getByRole("cell", { name: `Account principale, settimana ${week}` });
-  const secondary = page.getByRole("cell", { name: `Account secondario, settimana ${week}` });
+  // Planned on the main account, then moved to what really happened on the secondary.
+  const main = page.getByRole("cell", {
+    name: `Account principale · Pianificato, settimana ${week}`,
+  });
+  const secondary = page.getByRole("cell", {
+    name: `Account secondario · Reale, settimana ${week}`,
+  });
 
   await main.getByRole("button", { name: /^Aggiungi attività/ }).click();
   await main.getByRole("textbox").fill(title);
@@ -41,7 +58,7 @@ test("KDP calendar: add, complete, move between lanes, edit and delete tasks", a
 
   await task(secondary).getByRole("button", { name: title }).click();
   const dialog = page.getByRole("dialog", { name: "Attività KDP" });
-  await expect(dialog).toContainText("Account secondario");
+  await expect(dialog).toContainText("Account secondario · Reale");
   await dialog.getByLabel("Note").fill("ASIN B000TEST");
   await dialog.getByRole("button", { name: "Salva" }).click();
   await expectPersisted(page, async () => {

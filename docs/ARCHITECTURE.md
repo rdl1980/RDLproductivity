@@ -262,6 +262,7 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 ## Calendario KDP
 
 - Pagina `/kdp`, separata dalle board: attività settimanali (modello `KdpTask`: titolo, note, fatto) in due lane, **Account principale** (`main`) e **Account secondario** (`secondary`, vincolo CHECK nel database).
+- Ogni account è diviso in due corsie (`KdpTask.track`, vincolo CHECK): **Pianificato** (`planned`, predefinito; le attività create prima della divisione sono qui) e **Reale** (`actual`, ciò che è successo davvero, con sfondo verde). Una cella è (settimana, account, corsia); il drag sposta fra settimane, account e corsie. Su telefono le quattro corsie hanno una larghezza minima e la griglia scorre in orizzontale con la colonna delle settimane fissa.
 - Ogni attività appartiene a una settimana, salvata come data del lunedì (`week`, tipo `date`, senza fuso). Le righe sono le settimane (lunedì-domenica) che toccano il mese scelto (`?month=AAAA-MM`); la settimana corrente è evidenziata secondo `DEFAULT_TIME_ZONE`.
 - Ordine dentro la cella con fractional indexing (`position` con collation `"C"`); il drag sposta l'attività in fondo alla cella di arrivo, con aggiornamento ottimistico e rollback.
 - Le modifiche passano dallo storico attività e si possono annullare (anche l'eliminazione). Tool MCP: `list_kdp_tasks`, `create_kdp_task`, `update_kdp_task` (anche spostamento), `delete_kdp_task`.

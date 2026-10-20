@@ -86,6 +86,7 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Icona dell'app RDL Self Publishing: favicon, icona per la home del telefono, manifest, logo nell'header e nel login
 - [x] Libri KDP `/kdp/libri`: import dal Bookshelf (bookmarklet, entrambi gli account) di titoli, collane, formati, stato, ASIN e prezzo; abbinamento automatico alle card per titolo e mercato, abbinamenti incerti da confermare; libri collegati nel dettaglio card; tool MCP
 - [x] Archiviazione in blocco dal menu lista: tutte le card o solo le completate, annullabile; menu della card visibile anche su touch
+- [x] Calendario KDP: ogni account diviso in Pianificato e Reale, drag fra le quattro corsie, scorrimento orizzontale su telefono, tool MCP con `track`
 
 ## Dopo l'MVP (idee)
 

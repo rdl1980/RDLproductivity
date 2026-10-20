@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { KdpAccount, KdpTaskItem } from "@/lib/kdp";
+import type { KdpAccount, KdpTaskItem, KdpTrack } from "@/lib/kdp";
 import { db } from "@/server/db";
 
 /** Tasks of the weeks from `firstWeek` to `lastWeek` (Mondays, inclusive). */
@@ -9,12 +9,13 @@ export async function getKdpTasks(firstWeek: string, lastWeek: string): Promise<
     where: {
       week: { gte: new Date(`${firstWeek}T00:00:00Z`), lte: new Date(`${lastWeek}T00:00:00Z`) },
     },
-    orderBy: [{ week: "asc" }, { account: "asc" }, { position: "asc" }],
+    orderBy: [{ week: "asc" }, { account: "asc" }, { track: "asc" }, { position: "asc" }],
     select: {
       id: true,
       title: true,
       notes: true,
       account: true,
+      track: true,
       week: true,
       position: true,
       done: true,
@@ -23,6 +24,7 @@ export async function getKdpTasks(firstWeek: string, lastWeek: string): Promise<
   return tasks.map((task) => ({
     ...task,
     account: task.account as KdpAccount,
+    track: task.track as KdpTrack,
     week: task.week.toISOString().slice(0, 10),
   }));
 }

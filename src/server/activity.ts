@@ -38,6 +38,8 @@ export type UndoOp =
         title: string;
         notes: string | null;
         account: string;
+        /** Missing in entries logged before the planned/actual split. */
+        track?: string;
         /** "YYYY-MM-DD" */
         week: string;
         position: string;
