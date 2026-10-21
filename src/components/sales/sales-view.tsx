@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import { BarList } from "@/components/stats/bar-list";
 import { KdpTabs } from "@/components/kdp/kdp-tabs";
+import { ManualBookmark } from "@/components/kdp/manual-bookmark";
 import { LocalDateTime } from "@/components/local-date-time";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -1056,6 +1057,7 @@ function SyncDialog({
               <UploadIcon className="size-3.5" />
               Vendite KDP
             </a>
+            <ManualBookmark href={salesBookmarkletHref(origin)} name="Vendite KDP" />
           </li>
           <li>
             Apri i{" "}

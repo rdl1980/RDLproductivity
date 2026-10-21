@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { accountLabel, KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
 import { bookmarkletHref, scraperSource } from "@/lib/kdp-bookmarklet";
+import { ManualBookmark } from "@/components/kdp/manual-bookmark";
 import { type KdpBookItem, type KdpBookLinkItem, mainTitle, normalize } from "@/lib/kdp-books";
 import { cn } from "@/lib/utils";
 import {
@@ -439,6 +440,7 @@ function SyncDialog({
               <UploadIcon className="size-3.5" />
               Importa da KDP
             </a>
+            <ManualBookmark href={bookmarkletHref(origin)} name="Importa da KDP" />
           </li>
           <li>
             Apri il{" "}
