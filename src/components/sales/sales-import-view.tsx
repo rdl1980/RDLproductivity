@@ -3,12 +3,14 @@
 import { UploadIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { AccountHint } from "@/components/kdp/account-hint";
 import { KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
+import type { AccountMatches } from "@/lib/kdp-accounts";
 import {
   decodeSalesHash,
   formatEuro,
@@ -17,7 +19,7 @@ import {
   type SalesPayload,
   salesPayloadSchema,
 } from "@/lib/kdp-sales";
-import { importKdpSales } from "@/server/actions/kdp-sales";
+import { detectSalesAccount, importKdpSales } from "@/server/actions/kdp-sales";
 
 type State =
   | { kind: "loading" }
@@ -42,7 +44,14 @@ async function readHash(): Promise<State> {
 export function SalesImportView() {
   const router = useRouter();
   const [state, setState] = useState<State>({ kind: "loading" });
-  const [account, setAccount] = useState<KdpAccount>("main");
+  // No default: importing into the wrong account would overwrite its sales.
+  const [account, setAccount] = useState<KdpAccount | null>(null);
+  // A ref, not state: the detection result may arrive after the user picked.
+  const chosen = useRef(false);
+  const [detected, setDetected] = useState<{
+    account: KdpAccount | null;
+    matches: AccountMatches;
+  } | null>(null);
   const [pending, startTransition] = useTransition();
 
   // The fragment exists only in the browser and is decompressed asynchronously.
@@ -56,7 +65,24 @@ export function SalesImportView() {
     };
   }, []);
 
+  // Preselect the account that already knows these titles, unless the user picked one.
+  useEffect(() => {
+    if (state.kind !== "ready") return;
+    let cancelled = false;
+    void detectSalesAccount(state.payload.rows.map((row) => row[2]))
+      .then((result) => {
+        if (cancelled || !result.ok) return;
+        setDetected(result.data);
+        if (result.data.account && !chosen.current) setAccount(result.data.account);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [state]);
+
   function submit(hash: string) {
+    if (!account) return;
     startTransition(async () => {
       const result = await importKdpSales({ account, hash }).catch(() => null);
       if (!result?.ok) return void toast.error(result?.error ?? "Errore di rete, riprova.");
@@ -143,18 +169,22 @@ export function SalesImportView() {
                   name="account"
                   value={value}
                   checked={account === value}
-                  onChange={() => setAccount(value)}
+                  onChange={() => {
+                    chosen.current = true;
+                    setAccount(value);
+                  }}
                   className="size-4 accent-primary"
                 />
                 {label}
               </label>
             ))}
           </fieldset>
+          <AccountHint detected={detected} what="titoli" />
           <p className="text-xs text-muted-foreground">
             Le vendite già importate per questo account nello stesso periodo vengono sostituite.
           </p>
           <div className="flex gap-2">
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={pending || !account}>
               {pending ? "Importazione…" : "Importa"}
             </Button>
             <Button asChild variant="outline">
