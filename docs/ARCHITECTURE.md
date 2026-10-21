@@ -290,6 +290,12 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - Grafici SVG senza librerie (`src/components/sales/charts.tsx`), larghi quanto il contenitore (ResizeObserver) così il testo resta a 11 px: colonne impilate con 4 px di raccordo e 2 px di stacco, linee da 2 px con punto finale cerchiato, griglia a filo continuo, etichette solo su picco e ultimo valore, tooltip su hover e focus, legenda per ≥ 2 serie, tabella in ogni pannello. Colori dei formati negli slot categoriali `--series-1…4` (validati, ordine fisso: eBook, cartaceo, rigida, KENP), mappa di calore a una tinta (`--chart-1` con opacità crescente).
 - Tool MCP `get_kdp_sales` (totali per mese, mercato e libro con ASIN in un intervallo).
 
+## Due account KDP
+
+- Gli import del Bookshelf e dei Report non hanno un account predefinito. La pagina d'import chiede al server quale account conosce già quei dati (`detectBooksAccount` per gli id KDP dei libri, `detectSalesAccount` per i `titleKey` dei report, riconosciuti dalle vendite già importate o dagli ASIN dei libri) e lo preseleziona; se nessuno li conosce (primo import di un account) la scelta resta all'utente e "Importa" è disattivato finché non sceglie.
+- Le Server Action rifiutano l'import se i dati sono già associati in maggioranza all'altro account (`accountMismatch` in `src/lib/kdp-accounts.ts`): eviterebbe di segnare come mancanti i libri dell'account giusto o di sovrascriverne le vendite nel periodo.
+- Ordine consigliato per collegare un account nuovo: prima il Bookshelf, poi i Report, così le vendite vengono riconosciute dagli ASIN.
+
 ## Automazioni dall'import del Bookshelf
 
 - `statusTransitions` confronta i formati di ogni libro con l'import precedente: un formato diventato Online o Bloccato è una novità; il primo import di un account non genera novità (descrive il passato).

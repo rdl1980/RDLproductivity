@@ -3,12 +3,13 @@
 import { UploadIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
+import type { AccountMatches } from "@/lib/kdp-accounts";
 import {
   decodeImportHash,
   type ImportPayload,
@@ -16,7 +17,9 @@ import {
   mainTitle,
 } from "@/lib/kdp-books";
 import { useIsClient } from "@/lib/use-is-client";
-import { importKdpBooks } from "@/server/actions/kdp-books";
+import { detectBooksAccount, importKdpBooks } from "@/server/actions/kdp-books";
+
+import { AccountHint } from "./account-hint";
 
 type State =
   | { kind: "loading" }
@@ -42,10 +45,34 @@ export function KdpImportView() {
   // The fragment exists only in the browser: read it after hydration.
   const isClient = useIsClient();
   const state = useMemo<State>(() => (isClient ? readHash() : { kind: "loading" }), [isClient]);
-  const [account, setAccount] = useState<KdpAccount>("main");
+  // No default: importing into the wrong account would mark its books as missing.
+  const [account, setAccount] = useState<KdpAccount | null>(null);
+  // A ref, not state: the detection result may arrive after the user picked.
+  const chosen = useRef(false);
+  const [detected, setDetected] = useState<{
+    account: KdpAccount | null;
+    matches: AccountMatches;
+  } | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // Preselect the account that already has these books, unless the user picked one.
+  useEffect(() => {
+    if (state.kind !== "ready") return;
+    let cancelled = false;
+    void detectBooksAccount(state.payload.books.map((book) => book.kdpId))
+      .then((result) => {
+        if (cancelled || !result.ok) return;
+        setDetected(result.data);
+        if (result.data.account && !chosen.current) setAccount(result.data.account);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [state]);
+
   function submit(payload: ImportPayload) {
+    if (!account) return;
     startTransition(async () => {
       const result = await importKdpBooks({ account, payload }).catch(() => null);
       if (!result?.ok) return void toast.error(result?.error ?? "Errore di rete, riprova.");
@@ -109,13 +136,17 @@ export function KdpImportView() {
                   name="account"
                   value={value}
                   checked={account === value}
-                  onChange={() => setAccount(value)}
+                  onChange={() => {
+                    chosen.current = true;
+                    setAccount(value);
+                  }}
                   className="size-4 accent-primary"
                 />
                 {label}
               </label>
             ))}
           </fieldset>
+          <AccountHint detected={detected} what="libri" />
           <p className="text-xs text-muted-foreground">
             I libri di questo account non presenti nell&apos;elenco verranno segnati come «non più
             presenti», non eliminati.
@@ -134,7 +165,7 @@ export function KdpImportView() {
             </ul>
           </details>
           <div className="flex gap-2">
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={pending || !account}>
               {pending ? "Importazione…" : "Importa"}
             </Button>
             <Button asChild variant="outline">

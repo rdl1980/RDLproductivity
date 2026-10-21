@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { accountLabel, KDP_ACCOUNT_VALUES } from "@/lib/kdp";
+import { accountLabel, KDP_ACCOUNT_VALUES, type KdpAccount } from "@/lib/kdp";
+import { type AccountMatches, accountMismatch, likelyAccount } from "@/lib/kdp-accounts";
 import { decodeSalesHash, formatEuro, parseTitleKey, salesPayloadSchema } from "@/lib/kdp-sales";
 import { logActivity } from "@/server/activity";
 import { db } from "@/server/db";
+import { titleMatches } from "@/server/queries/kdp-accounts";
 import { salesImportKey, type SalesImportInfo } from "@/server/queries/kdp-sales";
 import { isAuthenticated } from "@/server/session";
 
@@ -40,6 +42,14 @@ export async function importKdpSales(
   }
   const { data: payload, error: payloadError } = parse(salesPayloadSchema, decoded);
   if (!payload) return fail(payloadError);
+  // The import replaces the account's sales in the period: refuse another
+  // account's reports instead of overwriting this one's figures.
+  const mismatch = accountMismatch(
+    account,
+    await titleMatches(payload.rows.map((row) => row[2])),
+    "titoli",
+  );
+  if (mismatch) return fail(mismatch);
   const rows = payload.rows.map(
     ([d, marketplace, titleKey, eu, pu, hu, kenp, r, re, rp, rh, rk]) => {
       const asins = parseTitleKey(titleKey);
@@ -99,4 +109,17 @@ export async function importKdpSales(
   });
   revalidatePath("/kdp/vendite");
   return ok({ rows: rows.length, royalty: Math.round(royalty * 100) / 100, units });
+}
+
+const detectSalesSchema = z.array(z.string().min(1).max(200)).max(20_000);
+
+/** Which account already knows these report titles, to preselect it on the import page. */
+export async function detectSalesAccount(
+  titleKeys: string[],
+): Promise<ActionResult<{ account: KdpAccount | null; matches: AccountMatches }>> {
+  if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
+  const { data, error } = parse(detectSalesSchema, [...new Set(titleKeys)]);
+  if (!data) return fail(error);
+  const matches = await titleMatches(data);
+  return ok({ account: likelyAccount(matches), matches });
 }

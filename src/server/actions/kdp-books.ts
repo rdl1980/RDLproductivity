@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { accountLabel, KDP_ACCOUNT_VALUES } from "@/lib/kdp";
+import { accountLabel, KDP_ACCOUNT_VALUES, type KdpAccount } from "@/lib/kdp";
+import { type AccountMatches, accountMismatch, likelyAccount } from "@/lib/kdp-accounts";
 import {
   cleanSeries,
   importPayloadSchema,
@@ -15,6 +16,7 @@ import {
 import { logActivity, q } from "@/server/activity";
 import { db, Prisma } from "@/server/db";
 import { applyBookChanges, type BookChange } from "@/server/kdp-automation";
+import { bookMatches } from "@/server/queries/kdp-accounts";
 import { parseFormats } from "@/server/queries/kdp-books";
 import { searchCards } from "@/server/queries/search";
 import { isAuthenticated } from "@/server/session";
@@ -96,6 +98,10 @@ export async function importKdpBooks(
   const { account, payload } = data;
   const importedAt = new Date();
   const kdpIds = payload.books.map((book) => book.kdpId);
+  // Importing one account's Bookshelf as the other would mark all of that
+  // account's books as missing and duplicate them here.
+  const mismatch = accountMismatch(account, await bookMatches(kdpIds), "libri");
+  if (mismatch) return fail(mismatch);
   const [previous, accountBooks] = await Promise.all([
     db.kdpBook.findMany({
       where: { account, kdpId: { in: kdpIds } },
@@ -248,4 +254,17 @@ export async function findLinkableCards(query: string): Promise<ActionResult<Lin
       listTitle: card.list.title,
     })),
   );
+}
+
+const detectBooksSchema = z.array(z.string().min(1).max(64)).max(2000);
+
+/** Which account already has these Bookshelf books, to preselect it on the import page. */
+export async function detectBooksAccount(
+  kdpIds: string[],
+): Promise<ActionResult<{ account: KdpAccount | null; matches: AccountMatches }>> {
+  if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
+  const { data, error } = parse(detectBooksSchema, kdpIds);
+  if (!data) return fail(error);
+  const matches = await bookMatches(data);
+  return ok({ account: likelyAccount(matches), matches });
 }
