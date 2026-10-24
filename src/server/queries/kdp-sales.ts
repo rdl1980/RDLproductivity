@@ -3,7 +3,9 @@ import "server-only";
 import { accountLabel, type KdpAccount } from "@/lib/kdp";
 import { mainTitle } from "@/lib/kdp-books";
 import { parseTitleKey, type SaleBook, type SaleRecord } from "@/lib/kdp-sales";
+import type { AdRecord } from "@/lib/kdp-ads";
 import { db } from "@/server/db";
+import { getAdRecords } from "@/server/queries/kdp-ads";
 import { parseFormats } from "@/server/queries/kdp-books";
 
 export const salesImportKey = (account: KdpAccount) => `kdp.sales.${account}`;
@@ -18,6 +20,10 @@ export type SalesData = {
   /** Every imported book, for naming unresolved titles. */
   catalog: CatalogBook[];
   imports: Partial<Record<KdpAccount, SalesImportInfo>>;
+  /** Amazon Ads rows in EUR, on the same book keys as `records`. */
+  ads: AdRecord[];
+  /** EUR per unit of the ad report currencies. */
+  fx: Record<string, number>;
 };
 
 /**
@@ -89,7 +95,26 @@ export async function getSalesData(): Promise<SalesData> {
     };
   });
 
+  // Ads name an ASIN only: the book that owns it, else the sales title family it appears in.
+  const bookByAsin = new Map<string, string>();
+  for (const r of rows) {
+    for (const asin of [r.ebookAsin, r.paperbackAsin, r.hardcoverAsin]) {
+      if (asin) bookByAsin.set(`${r.account}:${asin}`, `key:${r.titleKey}`);
+    }
+  }
+  for (const [key, id] of byAsin) bookByAsin.set(key, id);
+  for (const r of records) {
+    if (!r.book.startsWith("key:")) continue;
+    const alias = aliasOf.get(`${r.a}:${r.book.slice(4)}`);
+    if (alias?.bookId && saleBooks.has(alias.bookId)) {
+      for (const [key, value] of bookByAsin)
+        if (value === r.book) bookByAsin.set(key, alias.bookId);
+    }
+  }
+  const { ads, fx } = await getAdRecords((account, asin) => bookByAsin.get(`${account}:${asin}`));
+
   const used = new Set(records.map((r) => r.book));
+  for (const ad of ads) used.add(ad.book);
   const imports: SalesData["imports"] = {};
   for (const setting of settings) {
     const account = setting.key.slice("kdp.sales.".length) as KdpAccount;
@@ -97,6 +122,18 @@ export async function getSalesData(): Promise<SalesData> {
       imports[account] = JSON.parse(setting.value) as SalesImportInfo;
     } catch {
       // Ignore a malformed setting: it is rewritten by the next import.
+    }
+  }
+  for (const ad of ads) {
+    if (!saleBooks.has(ad.book)) {
+      saleBooks.set(ad.book, {
+        key: ad.book,
+        title: `Solo pubblicità (${ad.asin})`,
+        account: ad.a,
+        series: null,
+        asins: [ad.asin],
+        unresolved: true,
+      });
     }
   }
   return {
@@ -108,13 +145,20 @@ export async function getSalesData(): Promise<SalesData> {
       account: book.account as KdpAccount,
     })),
     imports,
+    ads,
+    fx,
   };
 }
 
 /** Plain-text summary for Claude: totals per book and month over a period. */
 export async function getSalesSummary(from: string, to: string, account?: KdpAccount) {
-  const { records, books } = await getSalesData();
+  const { records, books, ads } = await getSalesData();
   const inRange = records.filter((r) => r.d >= from && r.d <= to && (!account || r.a === account));
+  const adsInRange = ads.filter((r) => r.d >= from && r.d <= to && (!account || r.a === account));
+  const spendByBook = new Map<string, number>();
+  for (const ad of adsInRange) spendByBook.set(ad.book, (spendByBook.get(ad.book) ?? 0) + ad.spend);
+  const adSpend = adsInRange.reduce((sum, ad) => sum + ad.spend, 0);
+  const adSales = adsInRange.reduce((sum, ad) => sum + ad.sales, 0);
   const titles = new Map(books.map((b) => [b.key, b]));
   const perBook = new Map<string, { units: number; kenp: number; royalty: number }>();
   const perMonth = new Map<string, { units: number; kenp: number; royalty: number }>();
@@ -139,15 +183,24 @@ export async function getSalesSummary(from: string, to: string, account?: KdpAcc
   const round = (n: number) => Math.round(n * 100) / 100;
   return {
     period: { from, to, account: account ? accountLabel(account) : "tutti" },
-    currency: "EUR (stime KDP)",
-    totals: [...perMonth.values()].reduce(
-      (t, m) => ({
-        units: t.units + m.units,
-        kenp: t.kenp + m.kenp,
-        royalty: round(t.royalty + m.royalty),
-      }),
-      { units: 0, kenp: 0, royalty: 0 },
-    ),
+    currency: "EUR (stime KDP; spesa Ads convertita con i tassi impostati)",
+    totals: {
+      ...[...perMonth.values()].reduce(
+        (t, m) => ({
+          units: t.units + m.units,
+          kenp: t.kenp + m.kenp,
+          royalty: round(t.royalty + m.royalty),
+        }),
+        { units: 0, kenp: 0, royalty: 0 },
+      ),
+      ...(adsInRange.length
+        ? {
+            adSpend: round(adSpend),
+            adAttributedSales: round(adSales),
+            acosPercent: adSales > 0 ? round((adSpend / adSales) * 100) : null,
+          }
+        : {}),
+    },
     byMonth: Object.fromEntries(
       [...perMonth].sort().map(([k, v]) => [k, { ...v, royalty: round(v.royalty) }]),
     ),
@@ -165,6 +218,9 @@ export async function getSalesSummary(from: string, to: string, account?: KdpAcc
         asins: titles.get(key)?.asins ?? parseTitleKey(key.slice(4)),
         ...v,
         royalty: round(v.royalty),
+        ...(spendByBook.has(key)
+          ? { adSpend: round(spendByBook.get(key)!), net: round(v.royalty - spendByBook.get(key)!) }
+          : {}),
       })),
   };
 }

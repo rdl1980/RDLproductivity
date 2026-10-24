@@ -93,6 +93,7 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Import KDP senza attrito: preferito unico «RDL KDP» per Bookshelf e Report, titoli senza libro segnalati e assegnabili a mano (alias), promemoria in Oggi e badge quando i dati KDP sono vecchi
 - [x] Riepilogo settimanale `/riepilogo`, incassi attesi `/kdp/incassi`, export Excel annuale per il commercialista, obiettivo mensile di royalty per account con proiezione; tool MCP `get_weekly_review`, `get_kdp_payouts`, `set_kdp_goal`
 - [x] KDP integrato: attività della settimana in Oggi, chip settimanale nel calendario, ricerca estesa a libri, ASIN e attività KDP
+- [x] Spesa Amazon Ads: import del report «Prodotto pubblicizzato» (CSV o Excel), tassi di cambio, margine netto, ACoS e spesa per libro nella dashboard Vendite e nel tool MCP
 
 ## Dopo l'MVP (idee)
 

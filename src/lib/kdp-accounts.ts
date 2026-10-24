@@ -20,7 +20,7 @@ export function likelyAccount(matches: AccountMatches): KdpAccount | null {
 export function accountMismatch(
   chosen: KdpAccount,
   matches: AccountMatches,
-  what: "libri" | "titoli",
+  what: "libri" | "titoli" | "ASIN",
 ): string | null {
   const wrong = other(chosen);
   if (matches[wrong] <= matches[chosen]) return null;
