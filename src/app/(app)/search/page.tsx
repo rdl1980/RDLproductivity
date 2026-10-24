@@ -6,7 +6,16 @@ import { Highlighted } from "@/components/search/highlighted";
 import { DEFAULT_BOARD_COLOR } from "@/lib/board-colors";
 import { labelTextColor } from "@/lib/label-colors";
 import { snippet } from "@/lib/search";
-import { SEARCH_LIMIT, searchBoards, searchCards } from "@/server/queries/search";
+import { accountLabel, type KdpAccount, type KdpTrack, laneLabel, weekRangeLabel } from "@/lib/kdp";
+import { mainTitle } from "@/lib/kdp-books";
+import { parseFormats } from "@/server/queries/kdp-books";
+import {
+  SEARCH_LIMIT,
+  searchBoards,
+  searchCards,
+  searchKdpBooks,
+  searchKdpTasks,
+} from "@/server/queries/search";
 import { requireSession } from "@/server/session";
 
 export async function generateMetadata({ searchParams }: PageProps<"/search">): Promise<Metadata> {
@@ -18,7 +27,12 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
   await requireSession();
   const { q: raw } = await searchParams;
   const q = typeof raw === "string" ? raw.trim().slice(0, 200) : "";
-  const [cards, boards] = await Promise.all([searchCards(q), searchBoards(q)]);
+  const [cards, boards, kdpBooks, kdpTasks] = await Promise.all([
+    searchCards(q),
+    searchBoards(q),
+    searchKdpBooks(q),
+    searchKdpTasks(q),
+  ]);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
@@ -35,7 +49,8 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
       {!q && (
         <p className="text-muted-foreground">
           Scrivi nella barra in alto (scorciatoia <kbd className="rounded border px-1">/</kbd>) per
-          cercare nei titoli e nelle descrizioni delle card.
+          cercare nelle card, nei libri KDP (titolo, collana, ASIN) e nelle attività del calendario
+          KDP.
         </p>
       )}
 
@@ -54,6 +69,75 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
                 </Link>
               </li>
             ))}
+          </ul>
+        </section>
+      )}
+
+      {kdpBooks.length > 0 && (
+        <section className="flex flex-col gap-2" aria-label="Libri KDP">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            Libri KDP ({kdpBooks.length})
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {kdpBooks.map((book) => {
+              const asins = parseFormats(book.formats).flatMap((f) => (f.asin ? [f.asin] : []));
+              return (
+                <li key={book.id}>
+                  <Link
+                    href={`/kdp/libri?q=${encodeURIComponent(mainTitle(book.title))}`}
+                    className="flex flex-col gap-0.5 rounded-lg border p-3 hover:bg-muted/60"
+                  >
+                    <span className="text-xs text-muted-foreground">
+                      {accountLabel(book.account as KdpAccount)}
+                      {book.series ? ` · ${book.series}` : ""}
+                    </span>
+                    <span className="font-medium">
+                      <Highlighted text={book.title} query={q} />
+                    </span>
+                    {asins.length > 0 && (
+                      <span className="font-mono text-xs text-muted-foreground">
+                        <Highlighted text={asins.join(" ")} query={q} />
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {kdpTasks.length > 0 && (
+        <section className="flex flex-col gap-2" aria-label="Attività KDP">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            Attività KDP ({kdpTasks.length})
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {kdpTasks.map((task) => {
+              const week = task.week.toISOString().slice(0, 10);
+              return (
+                <li key={task.id}>
+                  <Link
+                    href={`/kdp?month=${week.slice(0, 7)}`}
+                    className="flex flex-col gap-0.5 rounded-lg border p-3 hover:bg-muted/60"
+                  >
+                    <span className="text-xs text-muted-foreground">
+                      {laneLabel(task.account as KdpAccount, task.track as KdpTrack)} · settimana{" "}
+                      {weekRangeLabel(week)} {week.slice(0, 4)}
+                      {task.done ? " · fatta" : ""}
+                    </span>
+                    <span className="font-medium">
+                      <Highlighted text={task.title} query={q} />
+                    </span>
+                    {task.notes && (
+                      <span className="text-sm text-muted-foreground">
+                        <Highlighted text={snippet(task.notes, q)} query={q} />
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

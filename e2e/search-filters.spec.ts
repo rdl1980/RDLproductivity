@@ -19,7 +19,7 @@ test("global search finds cards by title and description and opens them", async 
 
   // `/` focuses the search box from anywhere.
   await page.keyboard.press("/");
-  const search = page.getByRole("searchbox", { name: "Cerca card" });
+  const search = page.getByRole("searchbox", { name: "Cerca" });
   await expect(search).toBeFocused();
   await search.fill(token);
   await search.press("Enter");
