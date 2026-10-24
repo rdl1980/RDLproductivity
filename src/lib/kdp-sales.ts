@@ -145,7 +145,18 @@ export type SaleBook = {
   account: KdpAccount;
   series: string | null;
   asins: string[];
+  /** Set for title families no imported book owns ("key:" entries). */
+  titleKey?: string;
+  /** No book and no alias: shown as "Titolo non importato". */
+  unresolved?: boolean;
 };
+
+/** Title families without a book, per account. */
+export function unresolvedCounts(books: SaleBook[]): Record<KdpAccount, number> {
+  const counts: Record<KdpAccount, number> = { main: 0, secondary: 0 };
+  for (const book of books) if (book.unresolved) counts[book.account]++;
+  return counts;
+}
 
 export type Sums = {
   royalty: number;

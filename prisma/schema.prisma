@@ -243,6 +243,7 @@ model KdpBook {
   missingSince DateTime?
   importedAt   DateTime
   links        KdpBookLink[]
+  aliases      KdpTitleAlias[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -295,4 +296,20 @@ model KdpSale {
 
   @@unique([account, date, marketplace, titleKey])
   @@index([date])
+}
+
+// Title family of the sales reports (titleKey) that no imported book owns,
+// named by hand: either an existing book or a free title.
+model KdpTitleAlias {
+  id        String   @id @default(cuid())
+  /// "main" | "secondary". Checked in the database.
+  account   String
+  titleKey  String
+  bookId    String?
+  book      KdpBook? @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([account, titleKey])
 }
