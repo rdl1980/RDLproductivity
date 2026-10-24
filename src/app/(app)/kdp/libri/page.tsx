@@ -8,8 +8,20 @@ import { requireSession } from "@/server/session";
 
 export const metadata: Metadata = { title: "Libri KDP · RDL Productivity" };
 
-export default async function KdpBooksPage() {
+export default async function KdpBooksPage({ searchParams }: PageProps<"/kdp/libri">) {
   await requireSession();
-  const [books, requestHeaders] = await Promise.all([getKdpBooks(), headers()]);
-  return <KdpBooksView books={books} origin={issuerFromHeaders(requestHeaders)} />;
+  const [books, requestHeaders, params] = await Promise.all([
+    getKdpBooks(),
+    headers(),
+    searchParams,
+  ]);
+  const q = typeof params.q === "string" ? params.q.slice(0, 200) : "";
+  return (
+    <KdpBooksView
+      key={q}
+      books={books}
+      origin={issuerFromHeaders(requestHeaders)}
+      initialQuery={q}
+    />
+  );
 }

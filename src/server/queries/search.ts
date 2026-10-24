@@ -41,3 +41,49 @@ export function searchBoards(query: string) {
     select: { id: true, title: true, color: true },
   });
 }
+
+/** Imported KDP books whose title, series or ASIN contains the query. */
+export async function searchKdpBooks(query: string) {
+  const q = query.trim();
+  if (!q) return [];
+  // ASINs live inside the formats JSON: a text match is enough for a 10-character code.
+  const byAsin = await db.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "KdpBook" WHERE "formats"::text ILIKE ${`%${q}%`} LIMIT 20`;
+  return db.kdpBook.findMany({
+    where: {
+      OR: [
+        { title: { contains: q, mode: "insensitive" } },
+        { series: { contains: q, mode: "insensitive" } },
+        { id: { in: byAsin.map((row) => row.id) } },
+      ],
+    },
+    orderBy: { title: "asc" },
+    take: 20,
+    select: { id: true, account: true, title: true, series: true, formats: true },
+  });
+}
+
+/** KDP calendar tasks whose title or notes contain the query, newest week first. */
+export function searchKdpTasks(query: string) {
+  const q = query.trim();
+  if (!q) return Promise.resolve([]);
+  return db.kdpTask.findMany({
+    where: {
+      OR: [
+        { title: { contains: q, mode: "insensitive" } },
+        { notes: { contains: q, mode: "insensitive" } },
+      ],
+    },
+    orderBy: [{ week: "desc" }, { position: "asc" }],
+    take: 20,
+    select: {
+      id: true,
+      title: true,
+      notes: true,
+      account: true,
+      track: true,
+      week: true,
+      done: true,
+    },
+  });
+}

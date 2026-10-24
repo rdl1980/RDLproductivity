@@ -7,7 +7,9 @@ import { toast } from "sonner";
 import { CardDetailDialog } from "@/components/card-detail/card-detail-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AGENDA_SECTIONS, groupAgenda } from "@/lib/agenda";
+import type { KdpTaskItem } from "@/lib/kdp";
 import type { StaleSource } from "@/lib/kdp-freshness";
+import { KdpWeekTasks } from "@/components/kdp/kdp-week-tasks";
 import type { AggregateCard } from "@/lib/aggregate";
 import type { LabelItem } from "@/lib/board-state";
 import { useIsClient } from "@/lib/use-is-client";
@@ -25,9 +27,11 @@ const NETWORK_ERROR = "Errore di rete, modifica annullata.";
 export function TodayView({
   cards: initialCards,
   kdpReminders = [],
+  kdpWeek,
 }: {
   cards: AggregateCard[];
   kdpReminders?: StaleSource[];
+  kdpWeek?: { week: string; tasks: KdpTaskItem[] };
 }) {
   const router = useRouter();
   const isClient = useIsClient();
@@ -143,6 +147,8 @@ export function TodayView({
             )}
           </section>
         ))}
+
+      {kdpWeek && <KdpWeekTasks week={kdpWeek.week} tasks={kdpWeek.tasks} />}
 
       <CardDetailDialog
         cardId={openCardId}

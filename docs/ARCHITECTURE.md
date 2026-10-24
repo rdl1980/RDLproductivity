@@ -302,6 +302,12 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - **Titoli senza libro**: le famiglie di titoli dei Report (`titleKey`) che nessun libro importato possiede si chiamano «Titolo non importato». Modello `KdpTitleAlias` (`account`, `titleKey` univoci; `bookId` oppure `title`, vincolo CHECK): l'alias a un libro somma le vendite a quel libro, l'alias a un titolo libero le intitola. Si imposta dalla tabella libri della pagina Vendite («Assegna titolo») o col tool MCP `set_kdp_title_alias`; attività annullabile (`UndoOp` `kdpAlias`). Un banner in Vendite conta i titoli senza libro per account e rimanda all'import del Bookshelf.
 - **Dati vecchi** (`src/lib/kdp-freshness.ts`): vendite più vecchie di 7 giorni o libri più vecchi di 30 compaiono in Oggi («Dati KDP da aggiornare») e come badge accanto all'ultimo import in Vendite. Un account mai importato del tutto non viene segnalato.
 
+## KDP in Oggi, nel calendario e nella ricerca
+
+- **Oggi**: sezione «Settimana KDP» con le attività della settimana corrente (fuso `DEFAULT_TIME_ZONE`), spuntabili con aggiornamento ottimistico; le fatte restano barrate.
+- **Calendario**: nella cella del lunedì di ogni settimana un chip «KDP: N da fare» che porta a `/kdp?month=`; non compare con un filtro per board o etichetta attivo.
+- **Ricerca** (`/search`): oltre a card e board, libri KDP (titolo, collana, ASIN tramite `formats::text ILIKE`) con link a `/kdp/libri?q=`, e attività KDP (titolo, note) con link al mese del calendario.
+
 ## Automazioni dall'import del Bookshelf
 
 - `statusTransitions` confronta i formati di ogni libro con l'import precedente: un formato diventato Online o Bloccato è una novità; il primo import di un account non genera novità (descrive il passato).
