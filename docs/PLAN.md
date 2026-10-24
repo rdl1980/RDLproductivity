@@ -92,6 +92,7 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Secondo account KDP: account riconosciuto all'import (Bookshelf e Report), nessun account predefinito, import rifiutato se i dati sono dell'altro account
 - [x] Import KDP senza attrito: preferito unico «RDL KDP» per Bookshelf e Report, titoli senza libro segnalati e assegnabili a mano (alias), promemoria in Oggi e badge quando i dati KDP sono vecchi
 - [x] Riepilogo settimanale `/riepilogo`, incassi attesi `/kdp/incassi`, export Excel annuale per il commercialista, obiettivo mensile di royalty per account con proiezione; tool MCP `get_weekly_review`, `get_kdp_payouts`, `set_kdp_goal`
+- [x] KDP integrato: attività della settimana in Oggi, chip settimanale nel calendario, ricerca estesa a libri, ASIN e attività KDP
 
 ## Dopo l'MVP (idee)
 

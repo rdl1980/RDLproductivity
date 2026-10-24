@@ -51,7 +51,7 @@ import { KdpTabs } from "./kdp-tabs";
 
 const NETWORK_ERROR = "Errore di rete, modifica annullata.";
 
-type Props = { books: KdpBookItem[]; origin: string };
+type Props = { books: KdpBookItem[]; origin: string; initialQuery?: string };
 type LinkCard = KdpBookLinkItem["card"];
 
 const cardHref = (card: { id: string; boardId: string }) =>
@@ -71,7 +71,7 @@ function withLink(
   });
 }
 
-export function KdpBooksView({ books: initialBooks, origin }: Props) {
+export function KdpBooksView({ books: initialBooks, origin, initialQuery = "" }: Props) {
   // Local copy for optimistic changes; reset when the server sends new data.
   const [source, setSource] = useState(initialBooks);
   const [books, setBooks] = useState(initialBooks);
@@ -79,7 +79,7 @@ export function KdpBooksView({ books: initialBooks, origin }: Props) {
     setSource(initialBooks);
     setBooks(initialBooks);
   }
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [account, setAccount] = useState<KdpAccount | "all">("all");
   const [unlinkedOnly, setUnlinkedOnly] = useState(false);
   const [syncOpen, setSyncOpen] = useState(false);

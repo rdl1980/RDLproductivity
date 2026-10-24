@@ -14,7 +14,8 @@ import {
 } from "@dnd-kit/core";
 import { format, isSameMonth, isToday } from "date-fns";
 import { it } from "date-fns/locale";
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { BookOpenIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -38,6 +39,7 @@ import {
   visibleDays,
 } from "@/lib/calendar";
 import { dueStatus } from "@/lib/due";
+import { cellTasks, KDP_ACCOUNTS, KDP_TRACKS, type KdpTaskItem, mondayOf } from "@/lib/kdp";
 import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
 import { updateCardDetails } from "@/server/actions/card-details";
@@ -52,6 +54,7 @@ type BoardOption = {
 
 type Props = {
   cards: CalendarCard[];
+  kdpTasks?: KdpTaskItem[];
   boards: BoardOption[];
   view: View;
   date: string | null;
@@ -62,7 +65,15 @@ type Props = {
 const ALL = "all";
 const WEEKDAYS = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"];
 
-export function CalendarView({ cards: initialCards, boards, view, date, boardId, labelId }: Props) {
+export function CalendarView({
+  cards: initialCards,
+  kdpTasks = [],
+  boards,
+  view,
+  date,
+  boardId,
+  labelId,
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isClient = useIsClient();
@@ -266,13 +277,15 @@ export function CalendarView({ cards: initialCards, boards, view, date, boardId,
                 {weekday}
               </div>
             ))}
-            {days.map((day) => (
+            {days.map((day, index) => (
               <DayCell
                 key={dayKey(day)}
                 day={day}
                 muted={view === "month" && !isSameMonth(day, current)}
                 tall={view === "week"}
                 cards={byDay.get(dayKey(day)) ?? []}
+                // Weekly KDP tasks sit in the Monday cell of their week.
+                kdpTasks={index % 7 === 0 ? weekTasks(kdpTasks, dayKey(day)) : []}
                 onOpen={(card) => setCardParam(card.id)}
               />
             ))}
@@ -309,17 +322,28 @@ export function CalendarView({ cards: initialCards, boards, view, date, boardId,
   );
 }
 
+/** The week's KDP tasks in lane order (main planned, main actual, secondary…). */
+function weekTasks(tasks: KdpTaskItem[], monday: string): KdpTaskItem[] {
+  const week = mondayOf(monday);
+  if (!week) return [];
+  return KDP_ACCOUNTS.flatMap(({ value: account }) =>
+    KDP_TRACKS.flatMap(({ value: track }) => cellTasks(tasks, week, account, track)),
+  );
+}
+
 function DayCell({
   day,
   muted,
   tall,
   cards,
+  kdpTasks,
   onOpen,
 }: {
   day: Date;
   muted: boolean;
   tall: boolean;
   cards: CalendarCard[];
+  kdpTasks: KdpTaskItem[];
   onOpen: (card: CalendarCard) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `day:${dayKey(day)}` });
@@ -353,6 +377,20 @@ function DayCell({
           </li>
         ))}
       </ul>
+      {kdpTasks.length > 0 && (
+        <Link
+          href={`/kdp?month=${dayKey(day).slice(0, 7)}`}
+          data-testid="calendar-kdp"
+          title={kdpTasks.map((t) => t.title).join("\n")}
+          className="mt-auto flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 text-xs text-accent-foreground hover:brightness-95"
+        >
+          <BookOpenIcon className="size-3 shrink-0" />
+          <span className="truncate">
+            KDP: {kdpTasks.filter((t) => !t.done).length} da fare
+            {kdpTasks.some((t) => t.done) ? `, ${kdpTasks.filter((t) => t.done).length} fatte` : ""}
+          </span>
+        </Link>
+      )}
     </div>
   );
 }
