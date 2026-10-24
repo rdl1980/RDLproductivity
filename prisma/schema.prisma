@@ -313,3 +313,26 @@ model KdpTitleAlias {
 
   @@unique([account, titleKey])
 }
+
+// Daily Amazon Ads spend per advertised ASIN, from the "Advertised product"
+// report of the Ads console (one console, and currency, per marketplace).
+model KdpAdSpend {
+  id          String   @id @default(cuid())
+  /// "main" | "secondary". Checked in the database.
+  account     String
+  date        DateTime @db.Date
+  /// ISO 4217 code of the report; spend and sales are in it.
+  currency    String
+  campaign    String
+  asin        String
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  spend       Float    @default(0)
+  /// Sales attributed by Amazon (7 or 14 days), report currency.
+  sales       Float    @default(0)
+  orders      Int      @default(0)
+
+  @@unique([account, date, currency, campaign, asin])
+  @@index([date])
+  @@index([asin])
+}

@@ -23,8 +23,8 @@ const importSchema = z.object({
 const date = (key: string) => new Date(`${key}T00:00:00Z`);
 
 /**
- * Replaces the account's sales in the payload's period with its rows: KDP
- * revises recent figures, so a re-import always wins over older data.
+ * Replaces the account's sales of the report's titles in its period with the
+ * new rows: KDP revises recent figures, so a re-import always wins.
  */
 export async function importKdpSales(
   input: z.input<typeof importSchema>,
@@ -82,8 +82,14 @@ export async function importKdpSales(
   };
   await db.$transaction(
     async (tx) => {
+      // Only the titles the report knows: a partial report (one title, one
+      // marketplace) must not wipe the others.
       await tx.kdpSale.deleteMany({
-        where: { account, date: { gte: date(payload.from), lte: date(payload.to) } },
+        where: {
+          account,
+          date: { gte: date(payload.from), lte: date(payload.to) },
+          titleKey: { in: [...new Set(rows.map((row) => row.titleKey))] },
+        },
       });
       for (let i = 0; i < rows.length; i += 1000) {
         await tx.kdpSale.createMany({ data: rows.slice(i, i + 1000), skipDuplicates: true });

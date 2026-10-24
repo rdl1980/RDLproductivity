@@ -181,7 +181,8 @@ export function SalesImportView() {
           </fieldset>
           <AccountHint detected={detected} what="titoli" />
           <p className="text-xs text-muted-foreground">
-            Le vendite già importate per questo account nello stesso periodo vengono sostituite.
+            Le vendite già importate per questo account, per gli stessi titoli e lo stesso periodo,
+            vengono sostituite.
           </p>
           <div className="flex gap-2">
             <Button type="submit" disabled={pending || !account}>

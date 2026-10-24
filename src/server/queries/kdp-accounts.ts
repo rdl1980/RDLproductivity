@@ -63,3 +63,34 @@ export async function titleMatches(titleKeys: string[]): Promise<AccountMatches>
   }
   return matches;
 }
+
+/** Books (by ASIN) and earlier ad rows each account already has for these ASINs. */
+export async function asinMatches(asins: string[]): Promise<AccountMatches> {
+  const matches = empty();
+  const unique = [...new Set(asins)];
+  if (unique.length === 0) return matches;
+  const [books, ads] = await Promise.all([
+    db.kdpBook.findMany({ select: { account: true, formats: true } }),
+    db.kdpAdSpend.findMany({
+      where: { asin: { in: unique } },
+      distinct: ["account", "asin"],
+      select: { account: true, asin: true },
+    }),
+  ]);
+  const known = new Map<string, Set<string>>();
+  const add = (asin: string, account: string) => {
+    if (!known.has(asin)) known.set(asin, new Set());
+    known.get(asin)!.add(account);
+  };
+  const wanted = new Set(unique);
+  for (const book of books) {
+    const formats = storedFormatsSchema.safeParse(book.formats);
+    if (!formats.success) continue;
+    for (const f of formats.data) if (f.asin && wanted.has(f.asin)) add(f.asin, book.account);
+  }
+  for (const row of ads) add(row.asin, row.account);
+  for (const accounts of known.values()) {
+    for (const account of accounts) matches[account as KdpAccount] += 1;
+  }
+  return matches;
+}

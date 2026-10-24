@@ -3,6 +3,7 @@
 import {
   ArrowDownRightIcon,
   ArrowUpRightIcon,
+  MegaphoneIcon,
   TrendingUpIcon,
   UploadIcon,
   XIcon,
@@ -34,6 +35,7 @@ import {
 import Link from "next/link";
 
 import { accountLabel, KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
+import { type AdRecord, acos, sumAds } from "@/lib/kdp-ads";
 import { daysSince, SALES_STALE_DAYS } from "@/lib/kdp-freshness";
 import { salesBookmarkletHref, salesCollectorSource } from "@/lib/kdp-sales-collector";
 import {
@@ -42,6 +44,7 @@ import {
   bucketLabel,
   change,
   daysBetween,
+  emptySums,
   filterRecords,
   formatCompact,
   formatEuro,
@@ -52,6 +55,7 @@ import {
   groupSums,
   launchCurve,
   marketplaceLabel,
+  nextBucket,
   previousPeriod,
   SALE_SOURCES,
   type SaleBook,
@@ -118,6 +122,7 @@ type Props = {
   imports: Partial<Record<KdpAccount, SalesImportInfo>>;
   goals: KdpGoals;
   monthToDate: Record<KdpAccount, number>;
+  ads: AdRecord[];
   today: string;
   initial: SalesState;
   origin: string;
@@ -171,6 +176,7 @@ export function SalesView({
   imports,
   goals,
   monthToDate,
+  ads,
   today,
   initial,
   origin,
@@ -207,6 +213,16 @@ export function SalesView({
   );
   const totals = sumRecords(current, sources);
   const prevTotals = sumRecords(previous, sources);
+  const adFilter = (r: AdRecord, from: string, to: string) =>
+    r.d >= from &&
+    r.d <= to &&
+    (state.account === "all" || r.a === state.account) &&
+    (state.book === null || r.book === state.book);
+  const adsCurrent = ads.filter((r) => adFilter(r, range.from, range.to));
+  const adsPrevious = ads.filter((r) => adFilter(r, prevRange.from, prevRange.to));
+  const adTotals = sumAds(adsCurrent);
+  const adPrevTotals = sumAds(adsPrevious);
+  const hasAds = ads.length > 0;
   const series = timeSeries(current, range.from, range.to, granularity, sources);
 
   if (records.length === 0) {
@@ -258,12 +274,30 @@ export function SalesView({
     value: (running += b.sums.royalty),
   }));
 
+  const adSeries = series.map((b) => {
+    const next = nextBucket(b.start, granularity);
+    return {
+      start: b.start,
+      spend: adsCurrent
+        .filter((r) => r.d >= b.start && r.d < next)
+        .reduce((sum, r) => sum + r.spend, 0),
+    };
+  });
+  const adTrendSeries: Series[] = [
+    { key: "royalty", label: "Royalty", color: "var(--series-1)" },
+    { key: "spend", label: "Spesa Ads", color: "var(--series-2)" },
+  ];
+
   const byMarket = [...groupSums(current, (r) => r.m, sources)].sort(
     (a, b) => b[1].royalty - a[1].royalty,
   );
-  const byBook = [...groupSums(current, (r) => r.book, sources)].sort(
-    (a, b) => b[1].royalty - a[1].royalty,
-  );
+  const adSpendByBook = new Map<string, number>();
+  for (const ad of adsCurrent)
+    adSpendByBook.set(ad.book, (adSpendByBook.get(ad.book) ?? 0) + ad.spend);
+  const bookSums = groupSums(current, (r) => r.book, sources);
+  // Books advertised but unsold in the period still belong in the table.
+  for (const key of adSpendByBook.keys()) if (!bookSums.has(key)) bookSums.set(key, emptySums());
+  const byBook = [...bookSums].sort((a, b) => b[1].royalty - a[1].royalty);
   const bySeries = [
     ...groupSums(current, (r) => bookTitles.get(r.book)?.series ?? "Senza collana", sources),
   ].sort((a, b) => b[1].royalty - a[1].royalty);
@@ -400,6 +434,44 @@ export function SalesView({
         />
         <GoalTile goals={goals} account={state.account} monthToDate={monthToDate} today={today} />
       </section>
+
+      {hasAds && (
+        <section
+          aria-label="Pubblicità"
+          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+          data-testid="ads-kpis"
+        >
+          <Tile
+            label="Spesa Ads"
+            value={formatEuro(adTotals.spend)}
+            delta={change(adTotals.spend, adPrevTotals.spend)}
+            previous={formatEuro(adPrevTotals.spend)}
+            invert
+          />
+          <Tile
+            label="Netto (royalty meno Ads)"
+            value={formatEuro(totals.royalty - adTotals.spend)}
+            delta={change(totals.royalty - adTotals.spend, prevTotals.royalty - adPrevTotals.spend)}
+            previous={formatEuro(prevTotals.royalty - adPrevTotals.spend)}
+          />
+          <Tile
+            label="ACoS"
+            value={acos(adTotals) === null ? "–" : `${Math.round(acos(adTotals)!)}%`}
+            delta={null}
+            previous={`vendite attribuite ${formatEuro(adTotals.sales)}`}
+            hint="spesa su vendite attribuite da Amazon"
+          />
+          <Tile
+            label="Spesa su royalty"
+            value={
+              totals.royalty > 0 ? `${Math.round((adTotals.spend / totals.royalty) * 100)}%` : "–"
+            }
+            delta={null}
+            previous={`${formatInt(adTotals.clicks)} clic, ${formatInt(adTotals.orders)} ordini`}
+            hint="quanto della royalty se ne va in pubblicità"
+          />
+        </section>
+      )}
 
       <Panel
         title="Andamento"
@@ -554,6 +626,8 @@ export function SalesView({
                 <th className="py-2 pr-3 text-right font-medium">KENP</th>
                 <th className="py-2 pr-3 text-right font-medium">Royalty</th>
                 <th className="py-2 pr-3 text-right font-medium">Quota</th>
+                {hasAds && <th className="py-2 pr-3 text-right font-medium">Ads</th>}
+                {hasAds && <th className="py-2 pr-3 text-right font-medium">Netto</th>}
                 <th className="py-2 pr-3 font-medium">Tendenza</th>
                 <th className="py-2 font-medium">Prima vendita</th>
               </tr>
@@ -605,6 +679,22 @@ export function SalesView({
                         ? `${Math.round((s.royalty / totals.royalty) * 100)}%`
                         : "–"}
                     </td>
+                    {hasAds && (
+                      <td className="py-2 pr-3 text-right text-muted-foreground tabular-nums">
+                        {adSpendByBook.get(key) ? formatEuro(adSpendByBook.get(key)!) : "–"}
+                      </td>
+                    )}
+                    {hasAds && (
+                      <td
+                        className={cn(
+                          "py-2 pr-3 text-right font-medium tabular-nums",
+                          s.royalty - (adSpendByBook.get(key) ?? 0) < 0 &&
+                            "text-red-600 dark:text-red-400",
+                        )}
+                      >
+                        {formatEuro(s.royalty - (adSpendByBook.get(key) ?? 0))}
+                      </td>
+                    )}
                     <td className="py-2 pr-3">
                       <Sparkline
                         values={bookTrend(key)}
@@ -666,6 +756,32 @@ export function SalesView({
           />
         </Panel>
       </div>
+
+      {hasAds && (
+        <Panel
+          title="Pubblicità"
+          description={`Spesa Ads e royalty per ${GRANULARITIES.find((g) => g.value === granularity)!.label.toLowerCase()}`}
+          table={{
+            headers: ["Periodo", "Spesa Ads", "Royalty", "Netto"],
+            rows: adSeries.map((b, i) => [
+              detail(b.start),
+              formatEuro(b.spend),
+              formatEuro(series[i].sums.royalty),
+              formatEuro(series[i].sums.royalty - b.spend),
+            ]),
+          }}
+        >
+          <Legend series={adTrendSeries} />
+          <MultiLine
+            xs={adSeries.map((_, i) => i)}
+            series={adTrendSeries}
+            values={[series.map((b) => b.sums.royalty), adSeries.map((b) => b.spend)]}
+            format={formatEuro}
+            xLabel={(i) => detail(adSeries[i]?.start ?? range.from)}
+            label="Spesa Ads e royalty"
+          />
+        </Panel>
+      )}
 
       {launchSeries.length > 0 && (
         <Panel
@@ -775,10 +891,18 @@ function Header({ onSync }: { onSync: () => void }) {
         title="Vendite KDP"
         description="Storico di copie, pagine KENP e royalty dei tuoi libri, per periodo, mercato, formato e titolo."
         actions={
-          <Button onClick={onSync}>
-            <UploadIcon />
-            Aggiorna dati
-          </Button>
+          <>
+            <Button asChild variant="outline">
+              <Link href="/kdp/ads/importa">
+                <MegaphoneIcon />
+                Spesa Ads
+              </Link>
+            </Button>
+            <Button onClick={onSync}>
+              <UploadIcon />
+              Aggiorna dati
+            </Button>
+          </>
         }
       />
       <KdpTabs current="sales" />
@@ -786,20 +910,29 @@ function Header({ onSync }: { onSync: () => void }) {
   );
 }
 
-function Delta({ value, previous }: { value: number | null; previous: string }) {
+function Delta({
+  value,
+  previous,
+  invert,
+}: {
+  value: number | null;
+  previous: string;
+  invert?: boolean;
+}) {
   if (value === null) {
     return (
       <span className="text-xs text-muted-foreground">Nessun dato nel periodo precedente</span>
     );
   }
   const up = value >= 0;
+  const good = invert ? !up : up;
   const Icon = up ? ArrowUpRightIcon : ArrowDownRightIcon;
   return (
     <span className="flex items-center gap-1 text-xs">
       <span
         className={cn(
           "flex items-center gap-0.5 font-medium",
-          up ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300",
+          good ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300",
         )}
       >
         <Icon className="size-3.5" aria-hidden />
@@ -821,17 +954,29 @@ function Tile({
   value,
   delta,
   previous,
+  invert,
+  hint,
 }: {
   label: string;
   value: string;
   delta: number | null;
   previous: string;
+  /** Up is bad (a cost): swap the colors. */
+  invert?: boolean;
+  /** Shown instead of the comparison when `delta` is null. */
+  hint?: string;
 }) {
   return (
     <div className="flex flex-col gap-1 rounded-xl border p-4" data-testid="stat-tile">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="text-3xl font-semibold">{value}</span>
-      <Delta value={delta} previous={previous} />
+      {delta === null && hint ? (
+        <span className="text-xs text-muted-foreground">
+          {previous} · {hint}
+        </span>
+      ) : (
+        <Delta value={delta} previous={previous} invert={invert} />
+      )}
     </div>
   );
 }
