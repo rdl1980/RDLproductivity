@@ -308,6 +308,7 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - **Incassi** `/kdp/incassi` (scheda KDP): KDP paga le royalty di un mese circa 60 giorni dopo la sua fine (`PAYOUT_DELAY_MONTHS`, `src/lib/kdp-finance.ts`): per ogni mese e account la data attesa (fine del secondo mese successivo) e lo stato pagato o in arrivo, con le somme in arrivo per data. Tool MCP `get_kdp_payouts`.
 - **Export fiscale**: `GET /api/kdp/export?year=` genera con `exceljs` un file Excel con il dettaglio per mese, account e mercato (copie per formato, KENP, royalty per formato) e i totali mensili con la data di pagamento attesa. Richiede la sessione.
 - **Obiettivi**: target mensile di royalty per account in `AppSetting` `kdp.goal.<account>` (`setKdpGoal`, tool MCP `set_kdp_goal`). In Vendite la tile «Obiettivo del mese» mostra royalty del mese in corso, percentuale e proiezione a fine mese al ritmo attuale (`goalProgress`); con «Tutti gli account» somma i target impostati.
+
 ## KDP in Oggi, nel calendario e nella ricerca
 
 - **Oggi**: sezione «Settimana KDP» con le attività della settimana corrente (fuso `DEFAULT_TIME_ZONE`), spuntabili con aggiornamento ottimistico; le fatte restano barrate.
