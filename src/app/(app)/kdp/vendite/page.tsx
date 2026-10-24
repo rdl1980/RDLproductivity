@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { SalesView, type SalesState } from "@/components/sales/sales-view";
 import { KDP_ACCOUNT_VALUES, type KdpAccount, todayIn } from "@/lib/kdp";
 import { addDays, GRANULARITIES, SALE_SOURCES, type SaleSource } from "@/lib/kdp-sales";
+import { getRoyaltyBetween } from "@/server/queries/kdp-finance";
+import { getKdpGoals } from "@/server/queries/kdp-goals";
 import { getSalesData } from "@/server/queries/kdp-sales";
 import { issuerFromHeaders } from "@/server/oauth";
 import { requireSession } from "@/server/session";
@@ -23,12 +25,14 @@ const list = (value: unknown) => (typeof value === "string" && value ? value.spl
 
 export default async function SalesPage({ searchParams }: PageProps<"/kdp/vendite">) {
   await requireSession();
-  const [params, data, requestHeaders] = await Promise.all([
+  const today = todayIn(TIME_ZONE);
+  const [params, data, requestHeaders, goals, monthToDate] = await Promise.all([
     searchParams,
     getSalesData(),
     headers(),
+    getKdpGoals(),
+    getRoyaltyBetween(`${today.slice(0, 7)}-01`, today),
   ]);
-  const today = todayIn(TIME_ZONE);
 
   const sources = list(params.sources).filter((s): s is SaleSource =>
     (SALE_SOURCES as readonly string[]).includes(s),
@@ -51,6 +55,8 @@ export default async function SalesPage({ searchParams }: PageProps<"/kdp/vendit
       books={data.books}
       catalog={data.catalog}
       imports={data.imports}
+      goals={goals}
+      monthToDate={{ main: monthToDate.main.royalty, secondary: monthToDate.secondary.royalty }}
       today={today}
       initial={initial}
       origin={issuerFromHeaders(requestHeaders)}

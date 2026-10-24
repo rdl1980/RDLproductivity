@@ -65,6 +65,7 @@ import {
   weekdayAverages,
 } from "@/lib/kdp-sales";
 import { cn } from "@/lib/utils";
+import type { KdpGoals } from "@/server/queries/kdp-goals";
 import type { CatalogBook, SalesImportInfo } from "@/server/queries/kdp-sales";
 
 import {
@@ -78,6 +79,7 @@ import {
   Sparkline,
   StackedColumns,
 } from "./charts";
+import { GoalTile } from "./goal-tile";
 import { TitleAliasDialog } from "./title-alias-dialog";
 
 const PERIODS = [
@@ -114,6 +116,8 @@ type Props = {
   books: SaleBook[];
   catalog: CatalogBook[];
   imports: Partial<Record<KdpAccount, SalesImportInfo>>;
+  goals: KdpGoals;
+  monthToDate: Record<KdpAccount, number>;
   today: string;
   initial: SalesState;
   origin: string;
@@ -160,7 +164,17 @@ function writeUrl(state: SalesState) {
   window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
 }
 
-export function SalesView({ records, books, catalog, imports, today, initial, origin }: Props) {
+export function SalesView({
+  records,
+  books,
+  catalog,
+  imports,
+  goals,
+  monthToDate,
+  today,
+  initial,
+  origin,
+}: Props) {
   const [state, setState] = useState(initial);
   const [syncOpen, setSyncOpen] = useState(false);
   const [aliasing, setAliasing] = useState<SaleBook | null>(null);
@@ -353,7 +367,7 @@ export function SalesView({ records, books, catalog, imports, today, initial, or
 
       <section
         aria-label="Riepilogo"
-        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
+        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6"
         data-testid="sales-kpis"
       >
         <div className="flex flex-col gap-1 rounded-xl border p-4 lg:col-span-2">
@@ -384,6 +398,7 @@ export function SalesView({ records, books, catalog, imports, today, initial, or
           delta={totals.units && prevTotals.units ? change(avgPerUnit, prevAvgPerUnit) : null}
           previous={prevTotals.units ? formatEuro(prevAvgPerUnit) : "–"}
         />
+        <GoalTile goals={goals} account={state.account} monthToDate={monthToDate} today={today} />
       </section>
 
       <Panel

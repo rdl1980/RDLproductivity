@@ -3,6 +3,7 @@
 import {
   ArchiveIcon,
   BarChart3Icon,
+  ClipboardCheckIcon,
   DownloadIcon,
   HistoryIcon,
   LayoutTemplateIcon,
@@ -64,6 +65,12 @@ export function UserMenu({ name, signOut }: { name: string; signOut: () => Promi
           <Link href="/archive">
             <ArchiveIcon />
             Archivio
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/riepilogo">
+            <ClipboardCheckIcon />
+            Riepilogo settimanale
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
