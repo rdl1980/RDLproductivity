@@ -42,7 +42,13 @@ import { createKdpTask, deleteKdpTask, moveKdpTask, updateKdpTask } from "@/serv
 import { getSuperBoard } from "@/server/queries/aggregate";
 import { getKdpTasks } from "@/server/queries/kdp";
 import { getKdpBooks } from "@/server/queries/kdp-books";
+import { setKdpGoal } from "@/server/actions/kdp-goals";
 import { setKdpTitleAlias } from "@/server/actions/kdp-sales";
+import { mondayOf as kdpMondayOf, todayIn } from "@/lib/kdp";
+import { duePayouts } from "@/lib/kdp-finance";
+import { getPayouts } from "@/server/queries/kdp-finance";
+import { getKdpGoals } from "@/server/queries/kdp-goals";
+import { getWeeklyReview } from "@/server/queries/review";
 import { getSalesSummary } from "@/server/queries/kdp-sales";
 import { getStats } from "@/server/queries/stats";
 import { getArchive } from "@/server/queries/archive";
@@ -1108,5 +1114,66 @@ export function registerTools(server: McpServer) {
     },
     ({ account, titleKey, bookId, title }) =>
       setKdpTitleAlias({ account, titleKey, bookId: bookId ?? null, title: title ?? null }),
+  );
+
+  defineTool(
+    server,
+    "get_weekly_review",
+    {
+      title: "Weekly review",
+      description:
+        "What happened in a week (Monday to Sunday): cards completed and created, overdue cards, " +
+        "cards due next week, KDP calendar tasks with their done state, sales of the week against " +
+        "the previous one per account, top books, and month-to-date progress against royalty goals. " +
+        "Defaults to the current week.",
+      inputSchema: z.object({
+        week: kdpWeek.optional().describe("Any day of the week; default today"),
+      }),
+      annotations: READ,
+    },
+    async ({ week }) => {
+      const today = todayIn(DEFAULT_TIME_ZONE);
+      const monday = week ? kdpMondayOf(week) : kdpMondayOf(today);
+      if (!monday) return fail("Settimana non valida (usa AAAA-MM-GG).");
+      return ok(await getWeeklyReview(monday, today));
+    },
+  );
+
+  defineTool(
+    server,
+    "get_kdp_payouts",
+    {
+      title: "Expected KDP payouts",
+      description:
+        "Royalty per sales month and account with the expected payment date (KDP pays about 60 days " +
+        "after the month ends) and whether it is already paid, plus the sums still due per pay date. " +
+        "EUR, estimates from the imported reports. Also the monthly royalty goals per account.",
+      inputSchema: z.object({}),
+      annotations: READ,
+    },
+    async () => {
+      const payouts = await getPayouts(todayIn(DEFAULT_TIME_ZONE));
+      return ok({
+        due: duePayouts(payouts),
+        payouts: payouts.slice(0, 36),
+        goals: await getKdpGoals(),
+      });
+    },
+  );
+
+  defineTool(
+    server,
+    "set_kdp_goal",
+    {
+      title: "Set monthly royalty goal",
+      description:
+        "Sets (or with null removes) the monthly royalty target in EUR of a KDP account.",
+      inputSchema: z.object({
+        account: kdpAccount,
+        monthlyRoyalty: z.number().min(0).max(1_000_000).nullable(),
+      }),
+      annotations: { ...WRITE, idempotentHint: true },
+    },
+    (input) => setKdpGoal(input),
   );
 }

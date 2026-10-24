@@ -1,4 +1,4 @@
-import { CalendarRangeIcon, LibraryIcon, TrendingUpIcon } from "lucide-react";
+import { CalendarRangeIcon, LibraryIcon, TrendingUpIcon, WalletIcon } from "lucide-react";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
@@ -7,6 +7,7 @@ const TABS = [
   { key: "calendar", href: "/kdp", label: "Calendario", icon: CalendarRangeIcon },
   { key: "books", href: "/kdp/libri", label: "Libri e ASIN", icon: LibraryIcon },
   { key: "sales", href: "/kdp/vendite", label: "Vendite", icon: TrendingUpIcon },
+  { key: "payouts", href: "/kdp/incassi", label: "Incassi", icon: WalletIcon },
 ] as const;
 
 /** Switches between the KDP calendar and the imported books. */

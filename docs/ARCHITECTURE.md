@@ -302,6 +302,13 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - **Titoli senza libro**: le famiglie di titoli dei Report (`titleKey`) che nessun libro importato possiede si chiamano «Titolo non importato». Modello `KdpTitleAlias` (`account`, `titleKey` univoci; `bookId` oppure `title`, vincolo CHECK): l'alias a un libro somma le vendite a quel libro, l'alias a un titolo libero le intitola. Si imposta dalla tabella libri della pagina Vendite («Assegna titolo») o col tool MCP `set_kdp_title_alias`; attività annullabile (`UndoOp` `kdpAlias`). Un banner in Vendite conta i titoli senza libro per account e rimanda all'import del Bookshelf.
 - **Dati vecchi** (`src/lib/kdp-freshness.ts`): vendite più vecchie di 7 giorni o libri più vecchi di 30 compaiono in Oggi («Dati KDP da aggiornare») e come badge accanto all'ultimo import in Vendite. Un account mai importato del tutto non viene segnalato.
 
+## Riepilogo settimanale, incassi, export fiscale, obiettivi
+
+- **Riepilogo** `/riepilogo?week=`: card completate (`completedAt` nella settimana) e create, scadute e in scadenza nella prossima, attività KDP della settimana con stato, vendite della settimana contro la precedente per account con i 5 libri migliori, avanzamento degli obiettivi del mese. Query in `src/server/queries/review.ts`; tool MCP `get_weekly_review`. Link nel menu utente.
+- **Incassi** `/kdp/incassi` (scheda KDP): KDP paga le royalty di un mese circa 60 giorni dopo la sua fine (`PAYOUT_DELAY_MONTHS`, `src/lib/kdp-finance.ts`): per ogni mese e account la data attesa (fine del secondo mese successivo) e lo stato pagato o in arrivo, con le somme in arrivo per data. Tool MCP `get_kdp_payouts`.
+- **Export fiscale**: `GET /api/kdp/export?year=` genera con `exceljs` un file Excel con il dettaglio per mese, account e mercato (copie per formato, KENP, royalty per formato) e i totali mensili con la data di pagamento attesa. Richiede la sessione.
+- **Obiettivi**: target mensile di royalty per account in `AppSetting` `kdp.goal.<account>` (`setKdpGoal`, tool MCP `set_kdp_goal`). In Vendite la tile «Obiettivo del mese» mostra royalty del mese in corso, percentuale e proiezione a fine mese al ritmo attuale (`goalProgress`); con «Tutti gli account» somma i target impostati.
+
 ## KDP in Oggi, nel calendario e nella ricerca
 
 - **Oggi**: sezione «Settimana KDP» con le attività della settimana corrente (fuso `DEFAULT_TIME_ZONE`), spuntabili con aggiornamento ottimistico; le fatte restano barrate.
