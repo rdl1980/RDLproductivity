@@ -52,6 +52,13 @@ export type UndoOp =
       bookId: string;
       cardId: string;
       previous: { status: string; auto: boolean; score: number } | null;
+    }
+  | {
+      /** Puts a sales title alias back as it was; `previous: null` removes it. */
+      op: "kdpAlias";
+      account: string;
+      titleKey: string;
+      previous: { bookId: string | null; title: string | null } | null;
     };
 
 export type ActivityEntry = {
@@ -167,6 +174,19 @@ async function applyOp(tx: Prisma.TransactionClient, op: UndoOp) {
     case "restoreKdpTask":
       await tx.kdpTask.create({ data: { ...op.task, week: new Date(op.task.week) } });
       return;
+    case "kdpAlias": {
+      const key = { account: op.account, titleKey: op.titleKey };
+      if (op.previous === null) {
+        await tx.kdpTitleAlias.deleteMany({ where: key });
+      } else {
+        await tx.kdpTitleAlias.upsert({
+          where: { account_titleKey: key },
+          create: { ...key, ...op.previous },
+          update: op.previous,
+        });
+      }
+      return;
+    }
     case "kdpLink": {
       const key = { bookId: op.bookId, cardId: op.cardId };
       if (op.previous === null) {

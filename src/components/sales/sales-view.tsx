@@ -7,12 +7,12 @@ import {
   UploadIcon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { BarList } from "@/components/stats/bar-list";
 import { KdpTabs } from "@/components/kdp/kdp-tabs";
-import { ManualBookmark } from "@/components/kdp/manual-bookmark";
+import { BookmarkletStep } from "@/components/kdp/bookmarklet-step";
 import { LocalDateTime } from "@/components/local-date-time";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Link from "next/link";
+
 import { accountLabel, KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
+import { daysSince, SALES_STALE_DAYS } from "@/lib/kdp-freshness";
 import { salesBookmarkletHref, salesCollectorSource } from "@/lib/kdp-sales-collector";
 import {
   addDays,
@@ -58,10 +61,11 @@ import {
   SOURCE_LABELS,
   sumRecords,
   timeSeries,
+  unresolvedCounts,
   weekdayAverages,
 } from "@/lib/kdp-sales";
 import { cn } from "@/lib/utils";
-import type { SalesImportInfo } from "@/server/queries/kdp-sales";
+import type { CatalogBook, SalesImportInfo } from "@/server/queries/kdp-sales";
 
 import {
   AreaLine,
@@ -74,6 +78,7 @@ import {
   Sparkline,
   StackedColumns,
 } from "./charts";
+import { TitleAliasDialog } from "./title-alias-dialog";
 
 const PERIODS = [
   { value: "30d", label: "Ultimi 30 giorni" },
@@ -107,6 +112,7 @@ export type SalesState = {
 type Props = {
   records: SaleRecord[];
   books: SaleBook[];
+  catalog: CatalogBook[];
   imports: Partial<Record<KdpAccount, SalesImportInfo>>;
   today: string;
   initial: SalesState;
@@ -154,9 +160,10 @@ function writeUrl(state: SalesState) {
   window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
 }
 
-export function SalesView({ records, books, imports, today, initial, origin }: Props) {
+export function SalesView({ records, books, catalog, imports, today, initial, origin }: Props) {
   const [state, setState] = useState(initial);
   const [syncOpen, setSyncOpen] = useState(false);
+  const [aliasing, setAliasing] = useState<SaleBook | null>(null);
   const update = (patch: Partial<SalesState>) =>
     setState((s) => {
       const next = { ...s, ...patch };
@@ -315,21 +322,8 @@ export function SalesView({ records, books, imports, today, initial, origin }: P
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:p-6">
       <Header onSync={() => setSyncOpen(true)} />
-      <p className="text-sm text-muted-foreground">
-        {KDP_ACCOUNTS.map(({ value, label }) => (
-          <span key={value} className="mr-4 inline-block">
-            {label}:{" "}
-            {imports[value] ? (
-              <>
-                aggiornato <LocalDateTime value={new Date(imports[value]!.importedAt)} />
-              </>
-            ) : (
-              "mai importato"
-            )}
-          </span>
-        ))}
-        <span className="inline-block">Royalty in EUR, stime KDP.</span>
-      </p>
+      <ImportStatus imports={imports} today={today} />
+      <UnresolvedBanner books={books} />
 
       <Filters
         state={state}
@@ -564,6 +558,18 @@ export function SalesView({ records, books, imports, today, initial, origin }: P
                       </button>
                       <span className="block text-xs text-muted-foreground">
                         {book ? accountLabel(book.account) : ""}
+                        {book?.titleKey && (
+                          <>
+                            {" · "}
+                            <button
+                              type="button"
+                              onClick={() => setAliasing(book)}
+                              className="text-primary hover:underline"
+                            >
+                              {book.unresolved ? "Assegna titolo" : "Cambia titolo"}
+                            </button>
+                          </>
+                        )}
                       </span>
                     </td>
                     <td className="py-2 pr-3 text-right tabular-nums">
@@ -673,7 +679,74 @@ export function SalesView({ records, books, imports, today, initial, origin }: P
       )}
 
       <SyncDialog open={syncOpen} onOpenChange={setSyncOpen} origin={origin} />
+      <TitleAliasDialog book={aliasing} catalog={catalog} onClose={() => setAliasing(null)} />
     </main>
+  );
+}
+
+/** Last import per account; amber when older than a week. */
+function ImportStatus({
+  imports,
+  today,
+}: {
+  imports: Partial<Record<KdpAccount, SalesImportInfo>>;
+  today: string;
+}) {
+  const now = new Date(`${today}T23:59:59Z`);
+  return (
+    <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+      {KDP_ACCOUNTS.map(({ value, label }) => {
+        const info = imports[value];
+        const days = daysSince(info?.importedAt ?? null, now);
+        const stale = days === null || days >= SALES_STALE_DAYS;
+        return (
+          <span key={value} className="inline-flex items-center gap-1.5">
+            {label}:{" "}
+            {info ? (
+              <>
+                aggiornato <LocalDateTime value={new Date(info.importedAt)} />
+              </>
+            ) : (
+              "mai importato"
+            )}
+            {stale && (
+              <span
+                data-testid="stale-badge"
+                className="rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
+              >
+                {days === null ? "da importare" : `${days} giorni fa`}
+              </span>
+            )}
+          </span>
+        );
+      })}
+      <span className="inline-block">Royalty in EUR, stime KDP.</span>
+    </p>
+  );
+}
+
+/** Title families the Bookshelf import does not know: the books page fixes most of them. */
+function UnresolvedBanner({ books }: { books: SaleBook[] }) {
+  const counts = unresolvedCounts(books);
+  const entries = KDP_ACCOUNTS.filter(({ value }) => counts[value] > 0);
+  if (entries.length === 0) return null;
+  return (
+    <div
+      role="status"
+      data-testid="unresolved-banner"
+      className="flex flex-col gap-1 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+    >
+      {entries.map(({ value, label }) => (
+        <span key={value}>
+          <strong>{counts[value]}</strong> {counts[value] === 1 ? "titolo" : "titoli"} senza libro
+          in «{label}»: importa il Bookshelf di quell&apos;account da{" "}
+          <Link href="/kdp/libri" className="font-medium underline">
+            Libri e ASIN
+          </Link>
+          , oppure assegna un titolo dalla tabella dei libri qui sotto.
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -1017,12 +1090,6 @@ function SyncDialog({
   onOpenChange: (open: boolean) => void;
   origin: string;
 }) {
-  const linkRef = useRef<HTMLAnchorElement>(null);
-  // React refuses javascript: URLs in props, so the bookmarklet is set directly.
-  useEffect(() => {
-    linkRef.current?.setAttribute("href", salesBookmarkletHref(origin));
-  });
-
   async function copyScript() {
     try {
       await navigator.clipboard.writeText(salesCollectorSource(origin));
@@ -1045,19 +1112,14 @@ function SyncDialog({
         </DialogHeader>
         <ol className="flex list-decimal flex-col gap-3 pl-5 text-sm">
           <li>
-            Trascina questo pulsante nella barra dei preferiti (una volta sola):{" "}
-            <a
-              ref={linkRef}
-              onClick={(event) => {
-                event.preventDefault();
-                toast.info("Trascinalo nella barra dei preferiti, poi usalo dai Report di KDP.");
+            <BookmarkletStep
+              origin={origin}
+              specific={{
+                href: salesBookmarkletHref(origin),
+                name: "Vendite KDP",
+                page: "i Report",
               }}
-              className="ml-1 inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 font-medium text-primary-foreground"
-            >
-              <UploadIcon className="size-3.5" />
-              Vendite KDP
-            </a>
-            <ManualBookmark href={salesBookmarkletHref(origin)} name="Vendite KDP" />
+            />
           </li>
           <li>
             Apri i{" "}

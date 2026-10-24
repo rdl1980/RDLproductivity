@@ -42,6 +42,7 @@ import { createKdpTask, deleteKdpTask, moveKdpTask, updateKdpTask } from "@/serv
 import { getSuperBoard } from "@/server/queries/aggregate";
 import { getKdpTasks } from "@/server/queries/kdp";
 import { getKdpBooks } from "@/server/queries/kdp-books";
+import { setKdpTitleAlias } from "@/server/actions/kdp-sales";
 import { getSalesSummary } from "@/server/queries/kdp-sales";
 import { getStats } from "@/server/queries/stats";
 import { getArchive } from "@/server/queries/archive";
@@ -1085,5 +1086,27 @@ export function registerTools(server: McpServer) {
       if (cards.length === 0) return fail("Nessuna card da archiviare.");
       return archiveCards({ listId, cardIds: cards.map((card) => card.id) });
     },
+  );
+
+  defineTool(
+    server,
+    "set_kdp_title_alias",
+    {
+      title: "Name an unimported sales title",
+      description:
+        'The sales reports list title families by ASIN (titleKey, e.g. "DIGITAL=B0..:PRINT=B0..::"); ' +
+        'one that no imported Bookshelf book owns shows as "Titolo non importato". Assign it to an ' +
+        "imported book of the same account (its sales join the book's) or give it a free title. " +
+        "Both null remove the alias. Find titleKeys in get_kdp_sales (byBook entries with bookId null).",
+      inputSchema: z.object({
+        account: kdpAccount,
+        titleKey: z.string().min(1).max(200),
+        bookId: id("imported KDP book").nullable().optional(),
+        title: z.string().max(200).nullable().optional(),
+      }),
+      annotations: WRITE,
+    },
+    ({ account, titleKey, bookId, title }) =>
+      setKdpTitleAlias({ account, titleKey, bookId: bookId ?? null, title: title ?? null }),
   );
 }

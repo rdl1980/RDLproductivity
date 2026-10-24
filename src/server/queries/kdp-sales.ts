@@ -10,9 +10,13 @@ export const salesImportKey = (account: KdpAccount) => `kdp.sales.${account}`;
 
 export type SalesImportInfo = { importedAt: string; from: string; to: string; rows: number };
 
+export type CatalogBook = { id: string; title: string; account: KdpAccount };
+
 export type SalesData = {
   records: SaleRecord[];
   books: SaleBook[];
+  /** Every imported book, for naming unresolved titles. */
+  catalog: CatalogBook[];
   imports: Partial<Record<KdpAccount, SalesImportInfo>>;
 };
 
@@ -21,13 +25,17 @@ export type SalesData = {
  * that owns one of its ASINs (or kept as "key:<titleKey>" when unknown).
  */
 export async function getSalesData(): Promise<SalesData> {
-  const [rows, books, settings] = await Promise.all([
+  const [rows, books, settings, aliases] = await Promise.all([
     db.kdpSale.findMany({ orderBy: { date: "asc" } }),
     db.kdpBook.findMany({
       select: { id: true, account: true, title: true, series: true, formats: true },
     }),
     db.appSetting.findMany({ where: { key: { startsWith: "kdp.sales." } } }),
+    db.kdpTitleAlias.findMany({
+      select: { account: true, titleKey: true, bookId: true, title: true },
+    }),
   ]);
+  const aliasOf = new Map(aliases.map((a) => [`${a.account}:${a.titleKey}`, a]));
 
   const byAsin = new Map<string, string>();
   const saleBooks = new Map<string, SaleBook>();
@@ -49,15 +57,19 @@ export async function getSalesData(): Promise<SalesData> {
       (asin): asin is string => asin !== null,
     );
     let book = asins.map((asin) => byAsin.get(`${account}:${asin}`)).find(Boolean);
+    const alias = aliasOf.get(`${account}:${row.titleKey}`);
+    if (!book && alias?.bookId && saleBooks.has(alias.bookId)) book = alias.bookId;
     if (!book) {
       book = `key:${row.titleKey}`;
       if (!saleBooks.has(book)) {
         saleBooks.set(book, {
           key: book,
-          title: `Titolo non importato (${asins.join(", ") || row.titleKey})`,
+          title: alias?.title ?? `Titolo non importato (${asins.join(", ") || row.titleKey})`,
           account,
           series: null,
           asins,
+          titleKey: row.titleKey,
+          unresolved: !alias?.title,
         });
       }
     }
@@ -90,6 +102,11 @@ export async function getSalesData(): Promise<SalesData> {
   return {
     records,
     books: [...saleBooks.values()].filter((book) => used.has(book.key)),
+    catalog: books.map((book) => ({
+      id: book.id,
+      title: mainTitle(book.title),
+      account: book.account as KdpAccount,
+    })),
     imports,
   };
 }
@@ -144,6 +161,7 @@ export async function getSalesSummary(from: string, to: string, account?: KdpAcc
       .map(([key, v]) => ({
         book: titles.get(key)?.title ?? key,
         bookId: key.startsWith("key:") ? null : key,
+        titleKey: key.startsWith("key:") ? key.slice(4) : null,
         asins: titles.get(key)?.asins ?? parseTitleKey(key.slice(4)),
         ...v,
         royalty: round(v.royalty),

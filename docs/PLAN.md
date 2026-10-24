@@ -90,6 +90,7 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] Vendite KDP `/kdp/vendite`: import dello storico dai Report di KDP (bookmarklet, per giorno, titolo e mercato: copie per formato, pagine KENP, royalty in EUR), dashboard con filtri nell'URL, indicatori con confronto sul periodo precedente, andamento, cumulato, mix formati, mercati, collane, tabella libri con tendenza, giorno della settimana, calendario, curve di lancio; tool MCP `get_kdp_sales`
 - [x] Automazioni dall'import del Bookshelf: un formato che va online crea l'attività nella colonna Reale della settimana e completa la card collegata spostandola nella lista "Done"; un formato bloccato porta la card a P0 (tutto annullabile)
 - [x] Secondo account KDP: account riconosciuto all'import (Bookshelf e Report), nessun account predefinito, import rifiutato se i dati sono dell'altro account
+- [x] Import KDP senza attrito: preferito unico «RDL KDP» per Bookshelf e Report, titoli senza libro segnalati e assegnabili a mano (alias), promemoria in Oggi e badge quando i dati KDP sono vecchi
 
 ## Dopo l'MVP (idee)
 

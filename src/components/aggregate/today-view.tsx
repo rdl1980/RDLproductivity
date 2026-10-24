@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { CardDetailDialog } from "@/components/card-detail/card-detail-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AGENDA_SECTIONS, groupAgenda } from "@/lib/agenda";
+import type { StaleSource } from "@/lib/kdp-freshness";
 import type { AggregateCard } from "@/lib/aggregate";
 import type { LabelItem } from "@/lib/board-state";
 import { useIsClient } from "@/lib/use-is-client";
@@ -15,12 +16,19 @@ import { updateCardDetails } from "@/server/actions/card-details";
 
 import { AggregateCardBody, applyPatch } from "./aggregate-card";
 import { useCardParam } from "./use-card-param";
-import { SunIcon } from "lucide-react";
+import { RefreshCwIcon, SunIcon } from "lucide-react";
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 
 const NETWORK_ERROR = "Errore di rete, modifica annullata.";
 
-export function TodayView({ cards: initialCards }: { cards: AggregateCard[] }) {
+export function TodayView({
+  cards: initialCards,
+  kdpReminders = [],
+}: {
+  cards: AggregateCard[];
+  kdpReminders?: StaleSource[];
+}) {
   const router = useRouter();
   const isClient = useIsClient();
   const { openCardId, setCardParam } = useCardParam();
@@ -61,6 +69,28 @@ export function TodayView({ cards: initialCards }: { cards: AggregateCard[] }) {
         title="Oggi"
         description="Scadute, in scadenza oggi e nei prossimi 7 giorni, da tutte le board."
       />
+      {kdpReminders.length > 0 && (
+        <section
+          aria-label="Dati KDP da aggiornare"
+          data-testid="kdp-reminders"
+          className="flex flex-col gap-1.5 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+        >
+          <h2 className="flex items-center gap-1.5 font-semibold">
+            <RefreshCwIcon className="size-4" />
+            Dati KDP da aggiornare
+          </h2>
+          <ul className="flex flex-col gap-0.5">
+            {kdpReminders.map((item) => (
+              <li key={`${item.account}-${item.kind}`}>
+                {item.message}{" "}
+                <Link href={item.href} className="font-medium underline">
+                  Aggiorna
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {groups &&
         AGENDA_SECTIONS.map((section) => (
           <section key={section.key} aria-label={section.title} className="flex flex-col gap-2">

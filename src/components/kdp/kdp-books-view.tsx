@@ -11,7 +11,7 @@ import {
   XIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { LocalDateTime } from "@/components/local-date-time";
@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { accountLabel, KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
 import { bookmarkletHref, scraperSource } from "@/lib/kdp-bookmarklet";
-import { ManualBookmark } from "@/components/kdp/manual-bookmark";
+import { BookmarkletStep } from "@/components/kdp/bookmarklet-step";
 import { type KdpBookItem, type KdpBookLinkItem, mainTitle, normalize } from "@/lib/kdp-books";
 import { cn } from "@/lib/utils";
 import {
@@ -401,12 +401,6 @@ function SyncDialog({
   onOpenChange: (open: boolean) => void;
   origin: string;
 }) {
-  const linkRef = useRef<HTMLAnchorElement>(null);
-  // React refuses javascript: URLs in props, so the bookmarklet is set directly.
-  useEffect(() => {
-    linkRef.current?.setAttribute("href", bookmarkletHref(origin));
-  });
-
   async function copyScript() {
     try {
       await navigator.clipboard.writeText(scraperSource(origin));
@@ -428,19 +422,14 @@ function SyncDialog({
         </DialogHeader>
         <ol className="flex list-decimal flex-col gap-3 pl-5 text-sm">
           <li>
-            Trascina questo pulsante nella barra dei preferiti (una volta sola):{" "}
-            <a
-              ref={linkRef}
-              onClick={(event) => {
-                event.preventDefault();
-                toast.info("Trascinalo nella barra dei preferiti, poi usalo dal Bookshelf di KDP.");
+            <BookmarkletStep
+              origin={origin}
+              specific={{
+                href: bookmarkletHref(origin),
+                name: "Importa da KDP",
+                page: "il Bookshelf",
               }}
-              className="ml-1 inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 font-medium text-primary-foreground"
-            >
-              <UploadIcon className="size-3.5" />
-              Importa da KDP
-            </a>
-            <ManualBookmark href={bookmarkletHref(origin)} name="Importa da KDP" />
+            />
           </li>
           <li>
             Apri il{" "}

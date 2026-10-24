@@ -49,6 +49,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/kdp/vendit
     <SalesView
       records={data.records}
       books={data.books}
+      catalog={data.catalog}
       imports={data.imports}
       today={today}
       initial={initial}
