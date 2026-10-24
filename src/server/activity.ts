@@ -5,7 +5,7 @@ import { getMcpUser } from "@/server/mcp-context";
 
 /** Models whose fields an undo may restore. */
 export type UndoModel =
-  "board" | "list" | "card" | "label" | "checklist" | "checklistItem" | "kdpTask";
+  "board" | "list" | "card" | "label" | "checklist" | "checklistItem" | "kdpTask" | "kdpBook";
 
 /** Inverse operations, applied in order to undo an activity. */
 export type UndoOp =

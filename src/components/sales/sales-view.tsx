@@ -37,6 +37,9 @@ import Link from "next/link";
 import { accountLabel, KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
 import { type AdRecord, acos, sumAds } from "@/lib/kdp-ads";
 import { daysSince, SALES_STALE_DAYS } from "@/lib/kdp-freshness";
+import { type PriceChange, priceImpacts } from "@/lib/kdp-prices";
+import { readThrough } from "@/lib/kdp-series";
+import { FORMAT_LABELS } from "@/lib/kdp-books";
 import { salesBookmarkletHref, salesCollectorSource } from "@/lib/kdp-sales-collector";
 import {
   addDays,
@@ -123,6 +126,7 @@ type Props = {
   goals: KdpGoals;
   monthToDate: Record<KdpAccount, number>;
   ads: AdRecord[];
+  prices: PriceChange[];
   today: string;
   initial: SalesState;
   origin: string;
@@ -177,6 +181,7 @@ export function SalesView({
   goals,
   monthToDate,
   ads,
+  prices,
   today,
   initial,
   origin,
@@ -301,6 +306,12 @@ export function SalesView({
   const bySeries = [
     ...groupSums(current, (r) => bookTitles.get(r.book)?.series ?? "Senza collana", sources),
   ].sort((a, b) => b[1].royalty - a[1].royalty);
+  const unitsByBook = new Map([...bookSums].map(([key, sums]) => [key, sums.units]));
+  const seriesReports = readThrough(
+    books.map((b) => ({ ...b, volume: b.volume ?? null })),
+    unitsByBook,
+  );
+  const impacts = state.book ? priceImpacts(records, prices, state.book) : [];
   const weekdays = weekdayAverages(current, range.from, range.to, sources);
   const sparkBuckets = series.slice(-12);
   const bookTrend = (book: string) => {
@@ -715,6 +726,125 @@ export function SalesView({
           </table>
         </div>
       </section>
+
+      {seriesReports.length > 0 && (
+        <Panel
+          title="Read-through delle collane"
+          description="Copie di ogni volume nel periodo e quante ne vende per 100 del volume precedente; l'ordine dei volumi si corregge in Libri e ASIN"
+          table={{
+            headers: ["Collana", "Volume", "Copie", "Dal precedente", "Dal primo"],
+            rows: seriesReports.flatMap((report) =>
+              report.volumes.map((v, i) => [
+                i === 0 ? `${report.series} (${accountLabel(report.account)})` : "",
+                `${v.volume}. ${v.title}`,
+                formatInt(v.units),
+                v.readThrough === null ? "–" : `${Math.round(v.readThrough)}%`,
+                i === report.volumes.length - 1 && report.overall !== null
+                  ? `${Math.round(report.overall)}%`
+                  : "",
+              ]),
+            ),
+          }}
+        >
+          <div className="flex flex-col gap-4" data-testid="read-through">
+            {seriesReports.map((report) => (
+              <div key={`${report.account}-${report.series}`} className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">
+                  {report.series}{" "}
+                  <span className="font-normal text-muted-foreground">
+                    · {accountLabel(report.account)}
+                    {report.overall !== null &&
+                      ` · dal primo all'ultimo volume ${Math.round(report.overall)}%`}
+                  </span>
+                </span>
+                <ol className="flex flex-wrap items-center gap-2 text-sm">
+                  {report.volumes.map((v, i) => (
+                    <li key={v.key} className="flex items-center gap-2">
+                      {i > 0 && (
+                        <span
+                          className={cn(
+                            "rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums",
+                            v.readThrough === null
+                              ? "bg-muted text-muted-foreground"
+                              : v.readThrough >= 50
+                                ? "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300"
+                                : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
+                          )}
+                        >
+                          {v.readThrough === null ? "→" : `→ ${Math.round(v.readThrough)}%`}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => update({ book: v.key })}
+                        className="rounded-md border px-2 py-1 text-left hover:bg-muted"
+                        title={v.title}
+                      >
+                        <span className="font-medium">Vol. {v.volume}</span>{" "}
+                        <span className="text-muted-foreground">{formatInt(v.units)} copie</span>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
+
+      {state.book && impacts.length > 0 && (
+        <Panel
+          title="Storico prezzi"
+          description="Prezzi di listino visti nel Bookshelf a ogni import, con la media giornaliera nei 14 giorni prima e dopo il cambio"
+          table={{
+            headers: [
+              "Dal",
+              "Formato",
+              "Prezzo",
+              "Prima: copie/giorno",
+              "Dopo: copie/giorno",
+              "Prima: royalty/giorno",
+              "Dopo: royalty/giorno",
+            ],
+            rows: impacts.map((i) => [
+              bucketLabel(i.change.date, "day") + " " + i.change.date.slice(0, 4),
+              FORMAT_LABELS[i.change.format],
+              i.previous ? `${i.previous} → ${i.change.price}` : i.change.price,
+              i.before.unitsPerDay.toFixed(2),
+              i.after.unitsPerDay.toFixed(2),
+              formatEuro(i.before.royaltyPerDay),
+              formatEuro(i.after.royaltyPerDay),
+            ]),
+          }}
+        >
+          <ol className="flex flex-col gap-2 text-sm" data-testid="price-history">
+            {impacts.map((i) => (
+              <li
+                key={`${i.change.format}-${i.change.date}`}
+                className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
+              >
+                <span className="w-24 text-muted-foreground tabular-nums">
+                  {bucketLabel(i.change.date, "day")} {i.change.date.slice(0, 4)}
+                </span>
+                <span className="w-24 text-muted-foreground">{FORMAT_LABELS[i.change.format]}</span>
+                <span className="font-medium">
+                  {i.previous
+                    ? `${i.previous} → ${i.change.price}`
+                    : `${i.change.price} (primo prezzo visto)`}
+                </span>
+                {i.previous && (
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {i.days} giorni prima {i.before.unitsPerDay.toFixed(2)} copie/giorno,{" "}
+                    {formatEuro(i.before.royaltyPerDay)}/giorno · dopo{" "}
+                    {i.after.unitsPerDay.toFixed(2)} copie/giorno,{" "}
+                    {formatEuro(i.after.royaltyPerDay)}/giorno
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </Panel>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Panel

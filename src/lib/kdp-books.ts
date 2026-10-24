@@ -386,6 +386,8 @@ export type KdpBookItem = {
   /** Set when the last import of the account no longer listed the book. */
   missingSince: string | null;
   importedAt: string;
+  /** Volume set by hand; null = read from the title. */
+  volume: number | null;
   links: KdpBookLinkItem[];
 };
 

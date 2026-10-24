@@ -321,6 +321,12 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 - La spesa resta nella valuta del report e viene convertita in EUR con i tassi in `AppSetting` `kdp.fx` (default in `DEFAULT_FX`, modificabili dalla pagina d'import con `setKdpFxRates`).
 - In Vendite, quando ci sono dati Ads: tile Spesa Ads, Netto (royalty meno spesa), ACoS (spesa su vendite attribuite) e spesa su royalty; colonne Ads e Netto nella tabella libri (un libro pubblicizzato ma senza vendite compare lo stesso); pannello «Pubblicità» con spesa e royalty nel tempo. Gli ASIN si riconducono allo stesso libro delle vendite (libro importato, alias o famiglia di titoli). `get_kdp_sales` espone `adSpend`, `acosPercent` e per libro `adSpend` e `net`.
 
+## Collane e prezzi
+
+- **Volume**: `volumeNumber` (`src/lib/kdp-series.ts`) legge il numero dal titolo («Libro 2», «Vol. 3», «Volume III», «#4», un numero finale non anno); `KdpBook.volume` lo sovrascrive a mano (campo «vol.» nella pagina Libri, `setKdpBookVolume`, tool MCP `set_kdp_book_volume`, annullabile).
+- **Read-through** (`readThrough`): per collana e account, i volumi in ordine con le copie del periodo e il rapporto con il volume precedente; pannello in Vendite, solo per collane con almeno due volumi numerati.
+- **Storico prezzi**: modello `KdpPriceHistory`; a ogni import del Bookshelf, per ogni formato con prezzo, si registra una riga quando il prezzo differisce dall'ultimo registrato (il primo import dopo l'introduzione fa da base). In Vendite, con un libro selezionato, il pannello «Storico prezzi» mostra ogni cambio con copie e royalty medie al giorno nei 14 giorni prima e dopo (`priceImpacts`).
+
 ## Automazioni dall'import del Bookshelf
 
 - `statusTransitions` confronta i formati di ogni libro con l'import precedente: un formato diventato Online o Bloccato è una novità; il primo import di un account non genera novità (descrive il passato).

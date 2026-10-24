@@ -15,7 +15,11 @@ import {
   updateCardDetails,
 } from "@/server/actions/card-details";
 import { archiveCards, createCard, moveCard, updateCard } from "@/server/actions/cards";
-import { refreshKdpSuggestions, setKdpBookLink } from "@/server/actions/kdp-books";
+import {
+  refreshKdpSuggestions,
+  setKdpBookLink,
+  setKdpBookVolume,
+} from "@/server/actions/kdp-books";
 import {
   createChecklist,
   createChecklistItem,
@@ -1175,5 +1179,22 @@ export function registerTools(server: McpServer) {
       annotations: { ...WRITE, idempotentHint: true },
     },
     (input) => setKdpGoal(input),
+  );
+
+  defineTool(
+    server,
+    "set_kdp_book_volume",
+    {
+      title: "Set a book's volume in its series",
+      description:
+        "Fixes the position of an imported KDP book inside its series (read-through on the sales " +
+        "dashboard follows this order). null goes back to the number read from the title.",
+      inputSchema: z.object({
+        bookId: id("imported KDP book"),
+        volume: z.number().int().min(1).max(999).nullable(),
+      }),
+      annotations: { ...WRITE, idempotentHint: true },
+    },
+    (input) => setKdpBookVolume(input),
   );
 }

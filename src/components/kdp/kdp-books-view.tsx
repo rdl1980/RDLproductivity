@@ -37,12 +37,14 @@ import { accountLabel, KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
 import { bookmarkletHref, scraperSource } from "@/lib/kdp-bookmarklet";
 import { BookmarkletStep } from "@/components/kdp/bookmarklet-step";
 import { type KdpBookItem, type KdpBookLinkItem, mainTitle, normalize } from "@/lib/kdp-books";
+import { volumeNumber } from "@/lib/kdp-series";
 import { cn } from "@/lib/utils";
 import {
   findLinkableCards,
   type LinkableCard,
   refreshKdpSuggestions,
   setKdpBookLink,
+  setKdpBookVolume,
 } from "@/server/actions/kdp-books";
 import type { ActionResult } from "@/server/actions/result";
 
@@ -341,7 +343,12 @@ function BookRow({
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
           <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
             <span>{accountLabel(book.account)}</span>
-            {book.series && <span>Collana: {book.series}</span>}
+            {book.series && (
+              <span className="flex items-center gap-1">
+                Collana: {book.series} ·
+                <VolumeField book={book} />
+              </span>
+            )}
             {book.missingSince && (
               <span className="font-medium text-amber-700 dark:text-amber-300">
                 Non più presente nel Bookshelf
@@ -389,6 +396,45 @@ function BookRow({
         </Button>
       </div>
     </li>
+  );
+}
+
+/** Volume in the series: the number read from the title, or one typed by hand. */
+function VolumeField({ book }: { book: KdpBookItem }) {
+  const inferred = volumeNumber(book.title);
+  const [value, setValue] = useState(book.volume === null ? "" : String(book.volume));
+  async function save() {
+    const volume = value.trim() ? Number(value) : null;
+    if (volume !== null && (!Number.isInteger(volume) || volume < 1)) {
+      return void toast.error("Il volume è un numero intero da 1 in su.");
+    }
+    if (volume === book.volume) return;
+    const result = await setKdpBookVolume({ bookId: book.id, volume }).catch((): ActionResult => ({
+      ok: false,
+      error: NETWORK_ERROR,
+    }));
+    if (!result.ok) {
+      setValue(book.volume === null ? "" : String(book.volume));
+      toast.error(result.error);
+    }
+  }
+  return (
+    <label className="flex items-center gap-1">
+      vol.
+      <input
+        type="text"
+        inputMode="numeric"
+        aria-label={`Volume di ${mainTitle(book.title)}`}
+        value={value}
+        placeholder={inferred === null ? "?" : String(inferred)}
+        onChange={(event) => setValue(event.target.value)}
+        onBlur={save}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") (event.target as HTMLInputElement).blur();
+        }}
+        className="w-9 rounded border bg-background px-1 text-center text-xs text-foreground"
+      />
+    </label>
   );
 }
 

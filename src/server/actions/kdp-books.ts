@@ -132,6 +132,27 @@ export async function importKdpBooks(
           update: fields,
           select: { id: true },
         });
+        // Price history: one row per change, per format (the first import of
+        // a book, or of a book imported before this history existed, baselines it).
+        for (const format of formats) {
+          if (!format.price) continue;
+          const last = await tx.kdpPriceHistory.findFirst({
+            where: { bookId: saved.id, format: format.format },
+            orderBy: { seenAt: "desc" },
+            select: { price: true },
+          });
+          if (last?.price !== format.price) {
+            await tx.kdpPriceHistory.create({
+              data: {
+                bookId: saved.id,
+                format: format.format,
+                price: format.price,
+                market: format.market,
+                seenAt: importedAt,
+              },
+            });
+          }
+        }
         const transition = statusTransitions(
           previousFormats.get(book.kdpId) ?? null,
           formats,
@@ -267,4 +288,33 @@ export async function detectBooksAccount(
   if (!data) return fail(error);
   const matches = await bookMatches(data);
   return ok({ account: likelyAccount(matches), matches });
+}
+
+const volumeSchema = z.object({
+  bookId: idSchema,
+  /** Position in its series; null goes back to the number read from the title. */
+  volume: z.number().int().min(1).max(999).nullable(),
+});
+
+export async function setKdpBookVolume(input: z.input<typeof volumeSchema>): Promise<ActionResult> {
+  if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
+  const { data, error } = parse(volumeSchema, input);
+  if (!data) return fail(error);
+  const book = await db.kdpBook.findUnique({
+    where: { id: data.bookId },
+    select: { title: true, volume: true },
+  });
+  if (!book) return fail("Libro non trovato.");
+  await db.kdpBook.update({ where: { id: data.bookId }, data: { volume: data.volume } });
+  await logActivity({
+    kind: "kdp.volume",
+    summary: data.volume
+      ? `${q(book.title)} segnato come volume ${data.volume} della collana`
+      : `Volume di ${q(book.title)} rimesso a quello letto dal titolo`,
+    entityIds: [data.bookId],
+    undo: [{ op: "update", model: "kdpBook", id: data.bookId, data: { volume: book.volume } }],
+  });
+  revalidatePath(PATH);
+  revalidatePath("/kdp/vendite");
+  return ok(undefined);
 }
