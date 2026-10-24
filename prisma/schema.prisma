@@ -242,8 +242,11 @@ model KdpBook {
   /// Set when the last import of the account no longer listed the book.
   missingSince DateTime?
   importedAt   DateTime
+  /// Volume number in its series, set by hand; null = read from the title.
+  volume       Int?
   links        KdpBookLink[]
   aliases      KdpTitleAlias[]
+  prices       KdpPriceHistory[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -335,4 +338,19 @@ model KdpAdSpend {
   @@unique([account, date, currency, campaign, asin])
   @@index([date])
   @@index([asin])
+}
+
+// A list price seen on the Bookshelf: one row per change, per book and format.
+model KdpPriceHistory {
+  id     String   @id @default(cuid())
+  bookId String
+  book   KdpBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  /// "ebook" | "paperback" | "hardcover"
+  format String
+  /// Price text as shown by KDP, e.g. "€4,99 EUR".
+  price  String
+  market String?
+  seenAt DateTime
+
+  @@index([bookId, format, seenAt])
 }

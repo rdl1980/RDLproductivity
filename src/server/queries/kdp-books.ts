@@ -77,6 +77,7 @@ export async function getKdpBooks(): Promise<KdpBookItem[]> {
     formats: parseFormats(book.formats),
     missingSince: book.missingSince?.toISOString() ?? null,
     importedAt: book.importedAt.toISOString(),
+    volume: book.volume,
     links: book.links.map(toLinkItem),
   }));
 }

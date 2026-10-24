@@ -57,6 +57,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/kdp/vendit
       imports={data.imports}
       goals={goals}
       ads={data.ads}
+      prices={data.prices}
       monthToDate={{ main: monthToDate.main.royalty, secondary: monthToDate.secondary.royalty }}
       today={today}
       initial={initial}

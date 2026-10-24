@@ -4,6 +4,9 @@ import { accountLabel, type KdpAccount } from "@/lib/kdp";
 import { mainTitle } from "@/lib/kdp-books";
 import { parseTitleKey, type SaleBook, type SaleRecord } from "@/lib/kdp-sales";
 import type { AdRecord } from "@/lib/kdp-ads";
+import type { KdpFormat } from "@/lib/kdp-books";
+import type { PriceChange } from "@/lib/kdp-prices";
+import { volumeNumber } from "@/lib/kdp-series";
 import { db } from "@/server/db";
 import { getAdRecords } from "@/server/queries/kdp-ads";
 import { parseFormats } from "@/server/queries/kdp-books";
@@ -24,6 +27,8 @@ export type SalesData = {
   ads: AdRecord[];
   /** EUR per unit of the ad report currencies. */
   fx: Record<string, number>;
+  /** List prices seen on the Bookshelf, one per change. */
+  prices: PriceChange[];
 };
 
 /**
@@ -34,7 +39,18 @@ export async function getSalesData(): Promise<SalesData> {
   const [rows, books, settings, aliases] = await Promise.all([
     db.kdpSale.findMany({ orderBy: { date: "asc" } }),
     db.kdpBook.findMany({
-      select: { id: true, account: true, title: true, series: true, formats: true },
+      select: {
+        id: true,
+        account: true,
+        title: true,
+        series: true,
+        formats: true,
+        volume: true,
+        prices: {
+          orderBy: { seenAt: "asc" },
+          select: { format: true, price: true, market: true, seenAt: true },
+        },
+      },
     }),
     db.appSetting.findMany({ where: { key: { startsWith: "kdp.sales." } } }),
     db.kdpTitleAlias.findMany({
@@ -54,8 +70,18 @@ export async function getSalesData(): Promise<SalesData> {
       account: book.account as KdpAccount,
       series: book.series,
       asins,
+      volume: book.volume ?? volumeNumber(book.title),
     });
   }
+  const prices: PriceChange[] = books.flatMap((book) =>
+    book.prices.map((p) => ({
+      book: book.id,
+      format: p.format as KdpFormat,
+      price: p.price,
+      market: p.market,
+      date: p.seenAt.toISOString().slice(0, 10),
+    })),
+  );
 
   const records: SaleRecord[] = rows.map((row) => {
     const account = row.account as KdpAccount;
@@ -147,6 +173,7 @@ export async function getSalesData(): Promise<SalesData> {
     imports,
     ads,
     fx,
+    prices,
   };
 }
 

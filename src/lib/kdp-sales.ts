@@ -149,6 +149,8 @@ export type SaleBook = {
   titleKey?: string;
   /** No book and no alias: shown as "Titolo non importato". */
   unresolved?: boolean;
+  /** Position in its series (set by hand or read from the title). */
+  volume?: number | null;
 };
 
 /** Title families without a book, per account. */
