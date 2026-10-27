@@ -63,7 +63,7 @@ function toReviewCard(card: {
 }
 
 /**
- * Everything that happened in the week starting on `week` (a Monday), plus
+ * Everything that happened in the week starting on `week` (a Sunday), plus
  * what is coming next: the "how is it going" page. `today` decides the
  * month-to-date goals.
  */

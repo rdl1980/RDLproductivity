@@ -217,7 +217,7 @@ model KdpTask {
   account   String
   /// "planned" (Pianificato) | "actual" (Reale): the sub-lane within the account. Checked in the database.
   track     String   @default("planned")
-  /// Monday of the task's week (date only).
+  /// Sunday of the task's week (date only).
   week      DateTime @db.Date
   position  String // fractional index within (week, account, track)
   done      Boolean  @default(false)

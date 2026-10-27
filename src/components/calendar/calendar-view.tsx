@@ -39,7 +39,7 @@ import {
   visibleDays,
 } from "@/lib/calendar";
 import { dueStatus } from "@/lib/due";
-import { cellTasks, KDP_ACCOUNTS, KDP_TRACKS, type KdpTaskItem, mondayOf } from "@/lib/kdp";
+import { cellTasks, KDP_ACCOUNTS, KDP_TRACKS, type KdpTaskItem, weekStartOf } from "@/lib/kdp";
 import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
 import { updateCardDetails } from "@/server/actions/card-details";
@@ -324,7 +324,8 @@ export function CalendarView({
 
 /** The week's KDP tasks in lane order (main planned, main actual, secondary…). */
 function weekTasks(tasks: KdpTaskItem[], monday: string): KdpTaskItem[] {
-  const week = mondayOf(monday);
+  // KDP weeks start on Sunday: the Monday cell shows the week that contains it.
+  const week = weekStartOf(monday);
   if (!week) return [];
   return KDP_ACCOUNTS.flatMap(({ value: account }) =>
     KDP_TRACKS.flatMap(({ value: track }) => cellTasks(tasks, week, account, track)),
@@ -379,7 +380,7 @@ function DayCell({
       </ul>
       {kdpTasks.length > 0 && (
         <Link
-          href={`/kdp?month=${dayKey(day).slice(0, 7)}`}
+          href={`/kdp?week=${dayKey(day)}`}
           data-testid="calendar-kdp"
           title={kdpTasks.map((t) => t.title).join("\n")}
           className="mt-auto flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 text-xs text-accent-foreground hover:brightness-95"

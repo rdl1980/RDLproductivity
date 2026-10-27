@@ -1,6 +1,6 @@
 /**
- * KDP calendar: tasks belong to a week (its Monday, "YYYY-MM-DD") and to one
- * of two accounts. Dates here are calendar dates, computed in UTC so they do
+ * KDP calendar: tasks belong to a week (its Sunday, "YYYY-MM-DD", as KDP's
+ * own reporting weeks run Sunday to Saturday) and to one of two accounts. Dates here are calendar dates, computed in UTC so they do
  * not depend on the machine's time zone.
  */
 
@@ -45,7 +45,7 @@ export type KdpTaskItem = {
   notes: string | null;
   account: KdpAccount;
   track: KdpTrack;
-  /** Monday of the week, "YYYY-MM-DD". */
+  /** Sunday of the week, "YYYY-MM-DD". */
   week: string;
   position: string;
   done: boolean;
@@ -65,12 +65,19 @@ export function parseDateKey(value: string | null | undefined): Date | null {
   return !Number.isNaN(date.getTime()) && toKey(date) === match[0] ? date : null;
 }
 
-/** Monday of the week containing `day` ("YYYY-MM-DD"); null when invalid. */
-export function mondayOf(day: string): string | null {
+/** Sunday of the week containing `day` ("YYYY-MM-DD"); null when invalid. */
+export function weekStartOf(day: string): string | null {
   const date = parseDateKey(day);
   if (!date) return null;
-  const offset = (date.getUTCDay() + 6) % 7;
-  return toKey(new Date(date.getTime() - offset * DAY));
+  return toKey(new Date(date.getTime() - date.getUTCDay() * DAY));
+}
+
+/** Weeks shown by the KDP calendar at once. */
+export const WEEKS_SHOWN = 8;
+
+/** `count` consecutive weeks from `start` (a week start). */
+export function weeksFrom(start: string, count: number): string[] {
+  return Array.from({ length: count }, (_, i) => addWeeks(start, i));
 }
 
 export function addWeeks(week: string, count: number): string {
@@ -96,12 +103,12 @@ export function shiftMonth(month: string, step: number): string {
   return toKey(date).slice(0, 7);
 }
 
-/** Mondays of the weeks (Monday to Sunday) that include a day of `month`. */
+/** Starts of the weeks (Sunday to Saturday) that include a day of `month`. */
 export function monthWeeks(month: string): string[] {
   const [y, m] = month.split("-").map(Number);
   const last = toKey(new Date(Date.UTC(y, m, 0)));
   const weeks: string[] = [];
-  for (let week = mondayOf(`${month}-01`)!; week <= last; week = addWeeks(week, 1)) {
+  for (let week = weekStartOf(`${month}-01`)!; week <= last; week = addWeeks(week, 1)) {
     weeks.push(week);
   }
   return weeks;
@@ -113,6 +120,12 @@ const dayMonth = new Intl.DateTimeFormat("it-IT", {
   timeZone: "UTC",
 });
 const dayOnly = new Intl.DateTimeFormat("it-IT", { day: "numeric", timeZone: "UTC" });
+const dayMonthYear = new Intl.DateTimeFormat("it-IT", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
 /** "5 – 11 ott" or "29 set – 5 ott". */
 export function weekRangeLabel(week: string): string {
@@ -122,11 +135,18 @@ export function weekRangeLabel(week: string): string {
   return `${(sameMonth ? dayOnly : dayMonth).format(start)} – ${dayMonth.format(end)}`;
 }
 
-/** ISO 8601 week number. */
+/** "27 set – 21 nov 2026": from the first day of `first` to the last of `last`. */
+export function spanLabel(first: string, last: string): string {
+  const start = parseDateKey(first)!;
+  const end = new Date(parseDateKey(last)!.getTime() + 6 * DAY);
+  return `${dayMonth.format(start)} – ${dayMonthYear.format(end)}`;
+}
+
+/** ISO 8601 number of the week whose Sunday is `week` (the Monday after it starts the ISO week). */
 export function isoWeekNumber(week: string): number {
   const date = parseDateKey(week)!;
   // The Thursday of the week decides its year.
-  const thursday = new Date(date.getTime() + 3 * DAY);
+  const thursday = new Date(date.getTime() + 4 * DAY);
   const yearStart = Date.UTC(thursday.getUTCFullYear(), 0, 1);
   return Math.floor((thursday.getTime() - yearStart) / (7 * DAY)) + 1;
 }

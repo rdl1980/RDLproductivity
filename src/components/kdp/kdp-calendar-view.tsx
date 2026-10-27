@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
+  addWeeks,
   cellTasks,
   isoWeekNumber,
   KDP_ACCOUNTS,
@@ -30,10 +31,9 @@ import {
   type KdpTaskItem,
   type KdpTrack,
   laneLabel,
-  mondayOf,
-  monthLabel,
-  shiftMonth,
+  spanLabel,
   weekRangeLabel,
+  weekStartOf,
 } from "@/lib/kdp";
 import { positionAfter } from "@/lib/position";
 import { cn } from "@/lib/utils";
@@ -45,10 +45,12 @@ import { KdpTaskDialog } from "./kdp-task-dialog";
 
 const NETWORK_ERROR = "Errore di rete, modifica annullata.";
 const isTemp = (id: string) => id.startsWith("temp-");
+/** The arrows move the view by this many weeks. */
+const STEP = 4;
 
-type Props = { month: string; weeks: string[]; tasks: KdpTaskItem[]; today: string };
+type Props = { weeks: string[]; tasks: KdpTaskItem[]; today: string };
 
-export function KdpCalendarView({ month, weeks, tasks: initialTasks, today }: Props) {
+export function KdpCalendarView({ weeks, tasks: initialTasks, today }: Props) {
   // Local copy for optimistic changes; reset when the server sends new data.
   const [source, setSource] = useState(initialTasks);
   const [tasks, setTasks] = useState(initialTasks);
@@ -58,7 +60,9 @@ export function KdpCalendarView({ month, weeks, tasks: initialTasks, today }: Pr
   }
   const [dragging, setDragging] = useState<KdpTaskItem | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const currentWeek = mondayOf(today);
+  const currentWeek = weekStartOf(today);
+  const first = weeks[0];
+  const last = weeks[weeks.length - 1];
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -161,27 +165,27 @@ export function KdpCalendarView({ month, weeks, tasks: initialTasks, today }: Pr
         title="Calendario KDP"
         description="Attività settimanali per i due account KDP, divise fra pianificato e reale. Trascina un'attività per spostarla in un'altra settimana, colonna o account."
         actions={
-          <nav aria-label="Mese" className="flex items-center gap-1">
-            <Button asChild variant="outline" size="icon" aria-label="Mese precedente">
-              <Link href={`/kdp?month=${shiftMonth(month, -1)}`}>
+          <nav aria-label="Settimane" className="flex items-center gap-1">
+            <Button asChild variant="outline" size="icon" aria-label="Settimane precedenti">
+              <Link href={`/kdp?week=${addWeeks(first, -STEP)}`}>
                 <ChevronLeftIcon />
               </Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/kdp">Oggi</Link>
             </Button>
-            <Button asChild variant="outline" size="icon" aria-label="Mese successivo">
-              <Link href={`/kdp?month=${shiftMonth(month, 1)}`}>
+            <Button asChild variant="outline" size="icon" aria-label="Settimane successive">
+              <Link href={`/kdp?week=${addWeeks(first, STEP)}`}>
                 <ChevronRightIcon />
               </Link>
             </Button>
           </nav>
         }
       />
-      {/* Tabs on the month row: the grid keeps its height on screen. */}
+      {/* Tabs on the range row: the grid keeps its height on screen. */}
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-        <h2 className="text-lg font-semibold" data-testid="kdp-month">
-          {monthLabel(month)}
+        <h2 className="text-lg font-semibold" data-testid="kdp-range">
+          {spanLabel(first, last)}
         </h2>
         <KdpTabs current="calendar" />
       </div>

@@ -12,7 +12,7 @@ import {
   isoWeekNumber,
   KDP_ACCOUNT_VALUES,
   laneLabel,
-  mondayOf,
+  weekStartOf,
   todayIn,
   weekRangeLabel,
 } from "@/lib/kdp";
@@ -30,8 +30,8 @@ export default async function ReviewPage({ searchParams }: PageProps<"/riepilogo
   await requireSession();
   const params = await searchParams;
   const today = todayIn(TIME_ZONE);
-  const current = mondayOf(today)!;
-  const week = (typeof params.week === "string" && mondayOf(params.week)) || current;
+  const current = weekStartOf(today)!;
+  const week = (typeof params.week === "string" && weekStartOf(params.week)) || current;
   const review = await getWeeklyReview(week, today);
 
   const totals = (which: "current" | "previous") =>
