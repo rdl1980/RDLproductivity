@@ -2,14 +2,18 @@
  * Bookmarklet that reads every page of the KDP Bookshelf (English or Italian
  * interface) and opens the app's import page with the books in the URL
  * fragment, which never reaches a server. Plain JavaScript: it runs on
- * kdp.amazon.com, outside the app.
+ * kdp.amazon.com, outside the app. The browser extension runs the same
+ * code with other `deliver`/`fail` hooks (see `extension/generate.ts`).
  */
 const SCRAPER = String.raw`
 (async () => {
   const TABLE = "table.refreshedbookshelftable";
   const ROWS = TABLE + " > tbody > tr";
-  if (!location.hostname.endsWith("kdp.amazon.com") || !document.querySelector(TABLE)) {
-    alert("Apri il Bookshelf di KDP (kdp.amazon.com) e riprova.");
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // The table is filled by the page's own scripts: give it a moment.
+  for (let i = 0; i < 80 && !document.querySelector(TABLE); i++) await sleep(250);
+  if (!(__ON_PAGE__) || !document.querySelector(TABLE)) {
+    __FAIL__("Apri il Bookshelf di KDP (kdp.amazon.com) e riprova.");
     return;
   }
   const FORMATS = {
@@ -18,7 +22,6 @@ const SCRAPER = String.raw`
     "Hardcover": "hardcover", "Copertina rigida": "hardcover",
   };
   const STATUS = /^(Draft|Bozza|Live|Online|Pubblicato|In review|In revisione|Publishing|In pubblicazione|Blocked|Bloccato|Unpublished|Non pubblicato)$/i;
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const firstId = () => document.querySelector(ROWS)?.id;
   async function waitChange(before) {
     for (let i = 0; i < 60; i++) {
@@ -71,13 +74,34 @@ const SCRAPER = String.raw`
   let bin = "";
   for (const b of bytes) bin += String.fromCharCode(b);
   const hash = btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  location.href = __APP__ + "/kdp/libri/importa#" + hash;
+  __DELIVER__(hash);
 })();
 `;
 
+/** JavaScript expressions (functions) the scraper calls at the end or on failure. */
+export type ScraperHooks = {
+  /** `(hash: string) => void`: the books, base64url JSON. */
+  deliver: string;
+  /** `(message: string) => void` */
+  fail: string;
+  /** Boolean expression: whether this is the Bookshelf (the extension opened it itself). */
+  onPage?: string;
+};
+
+export function scraperSourceWith(hooks: ScraperHooks): string {
+  return SCRAPER.replace("__DELIVER__", `(${hooks.deliver})`)
+    .replace("__FAIL__", `(${hooks.fail})`)
+    .replace("__ON_PAGE__", hooks.onPage ?? 'location.hostname.endsWith("kdp.amazon.com")')
+    .trim();
+}
+
 /** Scraper source for the given app origin (also usable from the console). */
 export function scraperSource(origin: string): string {
-  return SCRAPER.replace("__APP__", JSON.stringify(origin)).trim();
+  const app = JSON.stringify(origin);
+  return scraperSourceWith({
+    deliver: `(hash) => { location.href = ${app} + "/kdp/libri/importa#" + hash; }`,
+    fail: "(message) => alert(message)",
+  });
 }
 
 /** `javascript:` URL to drag to the bookmarks bar. */

@@ -36,6 +36,7 @@ import {
 import { accountLabel, KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
 import { bookmarkletHref, scraperSource } from "@/lib/kdp-bookmarklet";
 import { BookmarkletStep } from "@/components/kdp/bookmarklet-step";
+import { ExtensionSync } from "@/components/kdp/extension-sync";
 import { type KdpBookItem, type KdpBookLinkItem, mainTitle, normalize } from "@/lib/kdp-books";
 import { volumeNumber } from "@/lib/kdp-series";
 import { cn } from "@/lib/utils";
@@ -466,6 +467,7 @@ function SyncDialog({
             l&apos;app non conosce la tua password.
           </DialogDescription>
         </DialogHeader>
+        <ExtensionSync defaultSteps={["books", "sales"]} onDone={() => onOpenChange(false)} />
         <ol className="flex list-decimal flex-col gap-3 pl-5 text-sm">
           <li>
             <BookmarkletStep

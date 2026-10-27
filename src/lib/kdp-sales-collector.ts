@@ -10,8 +10,8 @@
  */
 const COLLECTOR = String.raw`
 (async () => {
-  if (location.hostname !== "kdpreports.amazon.com") {
-    alert("Apri i Report di KDP (kdpreports.amazon.com) e riprova.");
+  if (!(__ON_PAGE__)) {
+    __FAIL__("Apri i Report di KDP (kdpreports.amazon.com) e riprova.");
     return;
   }
   const MK = ["Amazon.com","Amazon.co.uk","Amazon.de","Amazon.fr","Amazon.co.jp","Amazon.ca","Amazon.it","Amazon.es","Amazon.in","Amazon.nl","Amazon.pl","Amazon.se","Amazon.com.be","Amazon.ie","Amazon.com.br","Amazon.com.mx","Amazon.com.au"];
@@ -19,7 +19,7 @@ const COLLECTOR = String.raw`
   const box = document.createElement("div");
   box.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:2147483647;max-width:320px;padding:12px 14px;border-radius:10px;background:#111827;color:#fff;font:14px/1.4 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3)";
   document.body.appendChild(box);
-  const say = (text) => { box.textContent = "RDL Productivity · " + text; };
+  const say = (text) => { box.textContent = "RDL Productivity · " + text; __PROGRESS__(text); };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   async function post(path, body) {
     for (let attempt = 0; ; attempt++) {
@@ -63,7 +63,7 @@ const COLLECTOR = String.raw`
       }
     }
     const pairs = [...active.keys()].sort();
-    if (pairs.length === 0) { say("nessuna vendita trovata."); return; }
+    if (pairs.length === 0) { say("nessuna vendita trovata."); __FAIL__("Nessuna vendita trovata nei Report."); return; }
 
     // 2. Daily rows per title for each active (month, marketplace).
     const rows = new Map();
@@ -116,16 +116,42 @@ const COLLECTOR = String.raw`
     let bin = "";
     for (const b of bytes) bin += String.fromCharCode(b);
     const hash = "gz." + btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-    location.href = __APP__ + "/kdp/vendite/importa#" + hash;
+    __DELIVER__(hash);
   } catch (error) {
     say("errore: " + error.message + ". Riprova tra poco.");
+    __FAIL__("Errore nei Report di KDP: " + error.message + ". Riprova tra poco.");
   }
 })();
 `;
 
+/** JavaScript expressions (functions) the collector calls as it goes. */
+export type CollectorHooks = {
+  /** `(hash: string) => void`: the rows, "gz." + base64url gzip JSON. */
+  deliver: string;
+  /** `(message: string) => void` */
+  fail: string;
+  /** `(text: string) => void`: the progress line. */
+  progress: string;
+  /** Boolean expression: whether this is the Reports site (the extension opened it itself). */
+  onPage?: string;
+};
+
+export function salesCollectorSourceWith(hooks: CollectorHooks): string {
+  return COLLECTOR.replace("__DELIVER__", `(${hooks.deliver})`)
+    .replace(/__FAIL__/g, `(${hooks.fail})`)
+    .replace("__PROGRESS__", `(${hooks.progress})`)
+    .replace("__ON_PAGE__", hooks.onPage ?? 'location.hostname === "kdpreports.amazon.com"')
+    .trim();
+}
+
 /** Collector source for the given app origin (also usable from the console). */
 export function salesCollectorSource(origin: string): string {
-  return COLLECTOR.replace("__APP__", JSON.stringify(origin)).trim();
+  const app = JSON.stringify(origin);
+  return salesCollectorSourceWith({
+    deliver: `(hash) => { location.href = ${app} + "/kdp/vendite/importa#" + hash; }`,
+    fail: "(message) => alert(message)",
+    progress: "() => {}",
+  });
 }
 
 /** `javascript:` URL to drag to the bookmarks bar. */
