@@ -5,3 +5,5 @@ prisma/migrations/
 playwright-report/
 test-results/
 coverage/
+extension/scripts/
+public/extension/

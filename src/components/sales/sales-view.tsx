@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { BarList } from "@/components/stats/bar-list";
 import { KdpTabs } from "@/components/kdp/kdp-tabs";
 import { BookmarkletStep } from "@/components/kdp/bookmarklet-step";
+import { ExtensionSync } from "@/components/kdp/extension-sync";
 import { LocalDateTime } from "@/components/local-date-time";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -1493,6 +1494,7 @@ function SyncDialog({
             dell&apos;account con quelli più recenti.
           </DialogDescription>
         </DialogHeader>
+        <ExtensionSync defaultSteps={["sales", "books"]} onDone={() => onOpenChange(false)} />
         <ol className="flex list-decimal flex-col gap-3 pl-5 text-sm">
           <li>
             <BookmarkletStep
