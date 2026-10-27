@@ -64,7 +64,8 @@ export function BookmarkletStep({
       <BookmarkletLink href={launcher} name={LAUNCHER_NAME} hint={hint} primary />
       <span className="mt-1 block text-xs text-muted-foreground">
         Funziona sia sul Bookshelf (libri) sia sui Report (vendite): capisce da solo quale pagina
-        hai aperto. In alternativa, solo per {specific.page}:{" "}
+        hai aperto e, finito il primo import, ti porta sull&apos;altra pagina dove un secondo clic
+        completa la sincronizzazione. In alternativa, solo per {specific.page}:{" "}
         <BookmarkletLink href={specific.href} name={specific.name} hint={hint} />
       </span>
       <ManualBookmark
