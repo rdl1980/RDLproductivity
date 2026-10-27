@@ -34,6 +34,9 @@
     const root = Object.values(json || {})[0] || {};
     return (root.chart || root).histogramList || [];
   };
+  // First day to read ("YYYY-MM-DD") or null for the whole history: the app
+  // asks only for the months KDP may still revise once the rest is archived.
+  const FROM = globalThis.__rdlSalesFrom ?? null;
   const pad = (n) => String(n).padStart(2, "0");
   const today = new Date();
   const todayKey = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
@@ -42,23 +45,37 @@
   try {
     // 1. Years, then months and marketplaces with any activity.
     say("cerco i periodi con vendite…");
+    const scanFrom = FROM || "2010-01-01";
     const years = new Set();
     for (const [path, body] of [["orders/marketplaceHistogramV2", orders], ["royalties/marketplaceHistogramV2", royalties], ["kenp/marketplaceHistogramV2", kenp]]) {
-      const json = await post(path, body("2010-01-01T00:00:00Z", todayKey + "T23:59:59Z", MK));
+      const json = await post(path, body(scanFrom + "T00:00:00Z", todayKey + "T23:59:59Z", MK));
       for (const h of (json.nestedHistogram || {}).histogramList || []) if (h.data.length) years.add(h.title.slice(0, 4));
     }
     const active = new Map();
     for (const year of [...years].sort()) {
+      if (year < scanFrom.slice(0, 4)) continue;
+      const start = year + "-01-01" > scanFrom ? year + "-01-01" : scanFrom;
       const end = year + "-12-31" > todayKey ? todayKey : year + "-12-31";
       for (const [path, body] of [["orders/marketplaceHistogramV2", orders], ["royalties/marketplaceHistogramV2", royalties], ["kenp/marketplaceHistogramV2", kenp]]) {
-        const json = await post(path, body(year + "-01-01T00:00:00Z", end + "T23:59:59Z", MK));
+        const json = await post(path, body(start + "T00:00:00Z", end + "T23:59:59Z", MK));
         for (const h of (json.nestedHistogram || {}).histogramList || []) {
-          for (const d of h.data) active.set(h.title.slice(0, 7) + "|" + d.bin, true);
+          for (const d of h.data) if (h.title.slice(0, 7) >= scanFrom.slice(0, 7)) active.set(h.title.slice(0, 7) + "|" + d.bin, true);
         }
       }
     }
     const pairs = [...active.keys()].sort();
-    if (pairs.length === 0) { say("nessuna vendita trovata."); ((message) => finish({ type: "result", error: message }))("Nessuna vendita trovata nei Report."); return; }
+    const deliver = async (out, from) => {
+      const payload = { v: 1, kind: "sales", currency: "EUR", from, to: todayKey, generatedAt: new Date().toISOString(), rows: out };
+      const stream = new Response(JSON.stringify(payload)).body.pipeThrough(new CompressionStream("gzip"));
+      const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+      let bin = "";
+      for (const b of bytes) bin += String.fromCharCode(b);
+      ((hash) => finish({ type: "result", hash }))("gz." + btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""));
+    };
+    if (pairs.length === 0) {
+      if (FROM) { say("nessuna vendita nel periodo."); await deliver([], FROM); return; }
+      say("nessuna vendita trovata."); ((message) => finish({ type: "result", error: message }))("Nessuna vendita trovata nei Report."); return;
+    }
 
     // 2. Daily rows per title for each active (month, marketplace).
     const rows = new Map();
@@ -96,7 +113,7 @@
       say("scarico le vendite… " + done + "/" + pairs.length + " (" + month + ", " + mk.replace("Amazon.", "") + ")");
     }
     const queue = pairs.slice();
-    await Promise.all(Array.from({ length: 3 }, async () => { while (queue.length) await work(queue.shift()); }));
+    await Promise.all(Array.from({ length: 4 }, async () => { while (queue.length) await work(queue.shift()); }));
     for (const [date, mk, asin, pages] of kenpRows) {
       row(date, mk, digitalKey.get(asin) || "DIGITAL=" + asin + ":::")[6] += pages;
     }
@@ -105,13 +122,7 @@
     say("preparo l'importazione…");
     const round = (n) => Math.round(n * 100) / 100;
     const out = [...rows.values()].filter((x) => x[0].length === 10).map((x) => x.map((v, i) => (i >= 7 ? round(v) : v)));
-    const payload = { v: 1, kind: "sales", currency: "EUR", from: pairs[0].slice(0, 7) + "-01", to: todayKey, generatedAt: new Date().toISOString(), rows: out };
-    const stream = new Response(JSON.stringify(payload)).body.pipeThrough(new CompressionStream("gzip"));
-    const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
-    let bin = "";
-    for (const b of bytes) bin += String.fromCharCode(b);
-    const hash = "gz." + btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-    ((hash) => finish({ type: "result", hash }))(hash);
+    await deliver(out, FROM || pairs[0].slice(0, 7) + "-01");
   } catch (error) {
     say("errore: " + error.message + ". Riprova tra poco.");
     ((message) => finish({ type: "result", error: message }))("Errore nei Report di KDP: " + error.message + ". Riprova tra poco.");

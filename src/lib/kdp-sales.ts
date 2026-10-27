@@ -233,6 +233,22 @@ export function addDays(key: string, days: number): string {
   return toKey(new Date(toDate(key).getTime() + days * DAY));
 }
 
+/** Months KDP may still revise: the incremental sync reads from the first of this many months back. */
+export const SALES_SYNC_MONTHS = 3;
+
+/**
+ * First day the incremental sync reads for an account, or null to read
+ * everything (no sales imported yet). Covers the last `SALES_SYNC_MONTHS`
+ * months, and never leaves a gap after the last import.
+ */
+export function salesSyncFrom(lastImportTo: string | null, today: string): string | null {
+  if (!lastImportTo) return null;
+  const [y, m] = today.split("-").map(Number);
+  const windowStart = new Date(Date.UTC(y, m - SALES_SYNC_MONTHS, 1)).toISOString().slice(0, 10);
+  const lastMonthStart = `${lastImportTo.slice(0, 7)}-01`;
+  return lastMonthStart < windowStart ? lastMonthStart : windowStart;
+}
+
 export function daysBetween(from: string, to: string): number {
   return Math.round((toDate(to).getTime() - toDate(from).getTime()) / DAY);
 }

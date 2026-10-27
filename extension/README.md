@@ -20,6 +20,10 @@ del browser, con la sessione KDP già aperta, e importa i risultati.
   Lo stesso comando produce gli zip in `public/extension/`.
 - L'account si sceglie nell'app, non nell'estensione: un browser (o profilo)
   per account.
+- Vendite incrementali: l'app passa `options.salesFrom` (primo giorno da
+  leggere, di norma 3 mesi fa) e il background lo mette in
+  `globalThis.__rdlSalesFrom` prima di iniettare `sales.js`; `null` legge
+  tutto lo storico.
 - `chrome.storage.local.stepUrls` (`{ books, sales }`) sostituisce gli URL
   delle pagine KDP: lo usano i test e2e con un server finto.
 

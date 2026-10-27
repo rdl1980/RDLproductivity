@@ -15,13 +15,20 @@ import {
   runExtensionSync,
   useKdpExtension,
 } from "@/lib/kdp-extension";
-import { formatEuro, formatInt } from "@/lib/kdp-sales";
+import { formatEuro, formatInt, SALES_SYNC_MONTHS } from "@/lib/kdp-sales";
 import type { SyncStep } from "@/lib/kdp-sync";
 import { cn } from "@/lib/utils";
 import { importKdpBooks } from "@/server/actions/kdp-books";
-import { importKdpSales } from "@/server/actions/kdp-sales";
+import { getSalesSyncWindow, importKdpSales } from "@/server/actions/kdp-sales";
 
 type StepState = { status: "idle" | "running" | "done" | "error"; message: string };
+const dayMonthYear = (day: string) =>
+  new Intl.DateTimeFormat("it-IT", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${day}T00:00:00Z`));
 const LABELS: Record<SyncStep, string> = { books: "Libri", sales: "Vendite" };
 
 function readAccount(): KdpAccount | null {
@@ -50,6 +57,8 @@ export function ExtensionSync({
   const [account, setAccount] = useState<KdpAccount | null>(readAccount);
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<Partial<Record<SyncStep, StepState>>>({});
+  // Sales: the last months only once there is an archive, unless asked for everything.
+  const [fullHistory, setFullHistory] = useState(false);
 
   if (!version) {
     return (
@@ -131,11 +140,26 @@ export function ExtensionSync({
     const chosen = account;
     setRunning(true);
     setSteps(Object.fromEntries(which.map((s) => [s, { status: "running", message: "In coda…" }])));
+    let salesFrom: string | null = null;
+    if (which.includes("sales") && !fullHistory) {
+      const window = await getSalesSyncWindow({ account: chosen }).catch(() => null);
+      salesFrom = window?.ok ? window.data.from : null;
+      if (salesFrom) {
+        update("sales", {
+          status: "running",
+          message: `In coda (dal ${dayMonthYear(salesFrom)}, il resto è già in archivio)…`,
+        });
+      }
+    }
     const outcome = new Map<SyncStep, StepState["status"]>();
-    await runExtensionSync(which, async (event) => {
-      const status = await handle(event, chosen);
-      if (status && event.type === "result") outcome.set(event.step, status);
-    });
+    await runExtensionSync(
+      which,
+      async (event) => {
+        const status = await handle(event, chosen);
+        if (status && event.type === "result") outcome.set(event.step, status);
+      },
+      { salesFrom },
+    );
     setRunning(false);
     router.refresh();
     // Errors stay on screen; a clean run closes the dialog.
@@ -169,6 +193,17 @@ export function ExtensionSync({
           </label>
         ))}
       </fieldset>
+      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <input
+          type="checkbox"
+          checked={fullHistory}
+          disabled={running}
+          onChange={(event) => setFullHistory(event.target.checked)}
+          className="size-3.5 accent-primary"
+        />
+        Vendite: rileggi tutto lo storico (di norma bastano gli ultimi {SALES_SYNC_MONTHS} mesi,
+        quelli che KDP può ancora correggere)
+      </label>
       <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"

@@ -36,6 +36,8 @@ export function generatedScripts(): Record<string, string> {
         fail: '(message) => finish({ type: "result", error: message })',
         progress: '(text) => send({ type: "progress", text })',
         onPage: "true",
+        // Set by the background before injection (see runStep).
+        from: "globalThis.__rdlSalesFrom ?? null",
       }),
     ),
   };

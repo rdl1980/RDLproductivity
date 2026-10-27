@@ -34,9 +34,15 @@ export type ExtensionEvent =
  * one result per step (the hash the bookmarklet would put in the URL, or an
  * error) and a final "done". Resolves at "done".
  */
+export type ExtensionSyncOptions = {
+  /** First day of sales to read ("YYYY-MM-DD"); null or absent reads everything. */
+  salesFrom?: string | null;
+};
+
 export function runExtensionSync(
   steps: SyncStep[],
   onEvent: (event: ExtensionEvent) => void | Promise<void>,
+  options: ExtensionSyncOptions = {},
 ): Promise<void> {
   const requestId = crypto.randomUUID();
   return new Promise((resolve) => {
@@ -56,7 +62,7 @@ export function runExtensionSync(
       }
     };
     window.addEventListener("message", listener);
-    window.postMessage({ type: "rdl-kdp:sync", requestId, steps }, window.location.origin);
+    window.postMessage({ type: "rdl-kdp:sync", requestId, steps, options }, window.location.origin);
   });
 }
 
