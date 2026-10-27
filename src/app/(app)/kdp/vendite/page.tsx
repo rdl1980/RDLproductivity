@@ -55,6 +55,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/kdp/vendit
       books={data.books}
       catalog={data.catalog}
       imports={data.imports}
+      booksImportedAt={data.booksImportedAt}
       goals={goals}
       ads={data.ads}
       prices={data.prices}

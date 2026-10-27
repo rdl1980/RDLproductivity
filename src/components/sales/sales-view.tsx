@@ -132,6 +132,7 @@ type Props = {
   books: SaleBook[];
   catalog: CatalogBook[];
   imports: Partial<Record<KdpAccount, SalesImportInfo>>;
+  booksImportedAt: Partial<Record<KdpAccount, string>>;
   goals: KdpGoals;
   monthToDate: Record<KdpAccount, number>;
   ads: AdRecord[];
@@ -189,6 +190,7 @@ export function SalesView({
   books,
   catalog,
   imports,
+  booksImportedAt,
   goals,
   monthToDate,
   ads,
@@ -200,6 +202,8 @@ export function SalesView({
   const [state, setState] = useState(initial);
   const [syncOpen, setSyncOpen] = useState(false);
   const [aliasing, setAliasing] = useState<SaleBook | null>(null);
+  // Books table narrowed to the title families without a book (from the banner).
+  const [onlyUnresolved, setOnlyUnresolved] = useState(false);
   const update = (patch: Partial<SalesState>) =>
     setState((s) => {
       const next = { ...s, ...patch };
@@ -231,6 +235,21 @@ export function SalesView({
   );
   const totals = sumRecords(current, sources);
   const prevTotals = sumRecords(previous, sources);
+  // Marketplace where each book sold most: the Amazon site to look an ASIN up on.
+  const topMarket = useMemo(() => {
+    const units = new Map<string, Map<string, number>>();
+    for (const r of records) {
+      const byMarket = units.get(r.book) ?? new Map<string, number>();
+      byMarket.set(r.m, (byMarket.get(r.m) ?? 0) + r.eu + r.pu + r.hu + r.k);
+      units.set(r.book, byMarket);
+    }
+    const top = new Map<string, string>();
+    for (const [book, byMarket] of units) {
+      const best = [...byMarket].sort((a, b) => b[1] - a[1])[0];
+      if (best) top.set(book, best[0].toLowerCase());
+    }
+    return top;
+  }, [records]);
 
   // Month forecast: the filters apply, the period does not (it always reads
   // the current month and the three before it).
@@ -452,7 +471,15 @@ export function SalesView({
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:p-6">
       <Header onSync={() => setSyncOpen(true)} />
       <ImportStatus imports={imports} today={today} />
-      <UnresolvedBanner books={books} />
+      <UnresolvedBanner
+        books={books}
+        imports={imports}
+        booksImportedAt={booksImportedAt}
+        onShow={() => {
+          setOnlyUnresolved(true);
+          document.getElementById("sales-books")?.scrollIntoView({ behavior: "smooth" });
+        }}
+      />
 
       <Filters
         state={state}
@@ -708,13 +735,29 @@ export function SalesView({
         </Panel>
       </div>
 
-      <section className="flex flex-col gap-3 rounded-xl border p-4" aria-label="Libri">
+      <section
+        id="sales-books"
+        className="flex flex-col gap-3 rounded-xl border p-4"
+        aria-label="Libri"
+      >
         <div className="flex flex-col gap-0.5">
           <h2 className="font-semibold">Libri</h2>
           <p className="text-xs text-muted-foreground">
             Clicca un titolo per filtrare tutta la pagina su quel libro. Tendenza: ultimi{" "}
             {sparkBuckets.length} periodi.
           </p>
+          {onlyUnresolved && (
+            <p className="text-xs" data-testid="only-unresolved">
+              Solo i titoli senza libro.{" "}
+              <button
+                type="button"
+                onClick={() => setOnlyUnresolved(false)}
+                className="text-primary hover:underline"
+              >
+                Mostra tutti
+              </button>
+            </p>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[52rem] text-left text-sm" data-testid="sales-books">
@@ -734,7 +777,10 @@ export function SalesView({
               </tr>
             </thead>
             <tbody>
-              {byBook.map(([key, s]) => {
+              {(onlyUnresolved
+                ? byBook.filter(([key]) => bookTitles.get(key)?.unresolved)
+                : byBook
+              ).map(([key, s]) => {
                 const book = bookTitles.get(key);
                 return (
                   <tr key={key} className="border-b last:border-0">
@@ -748,6 +794,25 @@ export function SalesView({
                       </button>
                       <span className="block text-xs text-muted-foreground">
                         {book ? accountLabel(book.account) : ""}
+                        {book?.unresolved && book.asins.length > 0 && (
+                          <>
+                            {" · "}
+                            {book.asins.map((asin, i) => (
+                              <span key={asin}>
+                                {i > 0 && ", "}
+                                <a
+                                  href={`https://www.${topMarket.get(key) ?? "amazon.it"}/dp/${asin}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-mono hover:underline"
+                                  title="Apri su Amazon per riconoscere il libro"
+                                >
+                                  {asin}
+                                </a>
+                              </span>
+                            ))}
+                          </>
+                        )}
                         {book?.titleKey && (
                           <>
                             {" · "}
@@ -1077,7 +1142,17 @@ function ImportStatus({
 }
 
 /** Title families the Bookshelf import does not know: the books page fixes most of them. */
-function UnresolvedBanner({ books }: { books: SaleBook[] }) {
+function UnresolvedBanner({
+  books,
+  imports,
+  booksImportedAt,
+  onShow,
+}: {
+  books: SaleBook[];
+  imports: Partial<Record<KdpAccount, SalesImportInfo>>;
+  booksImportedAt: Partial<Record<KdpAccount, string>>;
+  onShow: () => void;
+}) {
   const counts = unresolvedCounts(books);
   const entries = KDP_ACCOUNTS.filter(({ value }) => counts[value] > 0);
   if (entries.length === 0) return null;
@@ -1087,16 +1162,36 @@ function UnresolvedBanner({ books }: { books: SaleBook[] }) {
       data-testid="unresolved-banner"
       className="flex flex-col gap-1 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
     >
-      {entries.map(({ value, label }) => (
-        <span key={value}>
-          <strong>{counts[value]}</strong> {counts[value] === 1 ? "titolo" : "titoli"} senza libro
-          in «{label}»: importa il Bookshelf di quell&apos;account da{" "}
-          <Link href="/kdp/libri" className="font-medium underline">
-            Libri e ASIN
-          </Link>
-          , oppure assegna un titolo dalla tabella dei libri qui sotto.
-        </span>
-      ))}
+      {entries.map(({ value, label }) => {
+        const booksAt = booksImportedAt[value];
+        const salesAt = imports[value]?.importedAt;
+        // A Bookshelf imported after the sales cannot be the cause: KDP no longer lists them.
+        const bookshelfFresh = !!booksAt && (!salesAt || booksAt >= salesAt);
+        const n = counts[value];
+        return (
+          <span key={value}>
+            <strong>{n}</strong> {n === 1 ? "titolo" : "titoli"} senza libro in «{label}»:{" "}
+            {bookshelfFresh ? (
+              <>
+                il Bookshelf è aggiornato, quindi questi titoli non sono più su KDP (rimossi o non
+                pubblicati) oppure sono di un altro account. Dai loro un nome con «Assegna titolo»
+                nella tabella dei libri: gli ASIN si aprono su Amazon per riconoscerli.{" "}
+              </>
+            ) : (
+              <>
+                importa il Bookshelf di quell&apos;account da{" "}
+                <Link href="/kdp/libri" className="font-medium underline">
+                  Libri e ASIN
+                </Link>
+                , oppure assegna un titolo dalla tabella dei libri qui sotto.{" "}
+              </>
+            )}
+            <button type="button" onClick={onShow} className="font-medium underline">
+              Mostra
+            </button>
+          </span>
+        );
+      })}
     </div>
   );
 }
