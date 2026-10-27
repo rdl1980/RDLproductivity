@@ -70,6 +70,11 @@ test("KDP sales: import the report history and explore the dashboard", async ({ 
     "120",
   );
 
+  // The month forecast follows the book filter: this book sold 14,75 € this month.
+  const forecastTile = page.getByTestId("forecast-tile");
+  await expect(forecastTile).toContainText("Previsione del mese");
+  await expect(forecastTile).toContainText("Finora 14,75");
+
   // Month to date: from the first of the month to today, kept in the URL.
   await page.getByRole("combobox", { name: "Periodo" }).click();
   await page.getByRole("option", { name: "Mese corrente" }).click();

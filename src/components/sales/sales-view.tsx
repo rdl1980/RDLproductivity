@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 
-import { accountLabel, KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
+import { accountLabel, KDP_ACCOUNT_VALUES, KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
 import { type AdRecord, acos, sumAds } from "@/lib/kdp-ads";
 import { daysSince, SALES_STALE_DAYS } from "@/lib/kdp-freshness";
 import { type PriceChange, priceImpacts } from "@/lib/kdp-prices";
@@ -72,6 +72,7 @@ import {
   unresolvedCounts,
   weekdayAverages,
 } from "@/lib/kdp-sales";
+import { forecastMonth } from "@/lib/kdp-forecast";
 import { cn } from "@/lib/utils";
 import type { KdpGoals } from "@/server/queries/kdp-goals";
 import type { CatalogBook, SalesImportInfo } from "@/server/queries/kdp-sales";
@@ -89,6 +90,11 @@ import {
 } from "./charts";
 import { GoalTile } from "./goal-tile";
 import { TitleAliasDialog } from "./title-alias-dialog";
+
+const dayMonthLabel = (day: string) =>
+  new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short", timeZone: "UTC" }).format(
+    new Date(`${day}T00:00:00Z`),
+  );
 
 const PERIODS = [
   { value: "mtd", label: "Mese corrente" },
@@ -224,6 +230,63 @@ export function SalesView({
   );
   const totals = sumRecords(current, sources);
   const prevTotals = sumRecords(previous, sources);
+
+  // Month forecast: the filters apply, the period does not (it always reads
+  // the current month and the three before it).
+  const forecastFrom = addDays(today, -140);
+  const forecast = useMemo(
+    () =>
+      forecastMonth(
+        filterRecords(records, { ...base, from: forecastFrom, to: today }),
+        sources,
+        today,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- as above
+    [records, forecastFrom, today, sources, state.account, state.markets, state.book],
+  );
+  const forecastByAccount = useMemo(
+    () =>
+      Object.fromEntries(
+        KDP_ACCOUNT_VALUES.map((account) => [
+          account,
+          forecastMonth(
+            filterRecords(records, {
+              account,
+              markets: new Set(),
+              book: null,
+              from: forecastFrom,
+              to: today,
+            }),
+            new Set(SALE_SOURCES),
+            today,
+          ).forecast,
+        ]),
+      ) as Record<KdpAccount, number>,
+    [records, forecastFrom, today],
+  );
+  const lastMonth = forecast.history.at(-1) ?? null;
+  const historyMean = forecast.history.length
+    ? forecast.history.reduce((sum, h) => sum + h.royalty, 0) / forecast.history.length
+    : null;
+  const forecastNote = [
+    `Finora ${formatEuro(forecast.monthToDate)}${
+      forecast.dataThrough && forecast.dataThrough < today
+        ? ` (dati al ${dayMonthLabel(forecast.dataThrough)})`
+        : ""
+    }`,
+    forecast.pace !== null ? `ritmo ${formatEuro(forecast.pace)}` : null,
+    historyMean !== null
+      ? `ultimi ${forecast.history.length} mesi ${formatEuro(historyMean)}${
+          forecast.trendPercent !== null
+            ? `, trend ${forecast.trendPercent >= 0 ? "+" : "−"}${Math.abs(
+                Math.round(forecast.trendPercent),
+              )}%/mese`
+            : ""
+        }`
+      : "nessun mese precedente",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const adFilter = (r: AdRecord, from: string, to: string) =>
     r.d >= from &&
     r.d <= to &&
@@ -418,10 +481,10 @@ export function SalesView({
 
       <section
         aria-label="Riepilogo"
-        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6"
+        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7"
         data-testid="sales-kpis"
       >
-        <div className="flex flex-col gap-1 rounded-xl border p-4 lg:col-span-2">
+        <div className="flex flex-col gap-1 rounded-xl border p-4 lg:col-span-3 xl:col-span-2">
           <span className="text-sm text-muted-foreground">Royalty nel periodo</span>
           <span className="text-5xl font-semibold tracking-tight" data-testid="sales-hero">
             {formatEuro(totals.royalty)}
@@ -449,7 +512,27 @@ export function SalesView({
           delta={totals.units && prevTotals.units ? change(avgPerUnit, prevAvgPerUnit) : null}
           previous={prevTotals.units ? formatEuro(prevAvgPerUnit) : "–"}
         />
-        <GoalTile goals={goals} account={state.account} monthToDate={monthToDate} today={today} />
+        <div className="flex flex-col gap-1 rounded-xl border p-4" data-testid="forecast-tile">
+          <span className="text-sm text-muted-foreground">Previsione del mese</span>
+          <span className="text-3xl font-semibold tabular-nums">
+            {formatEuro(forecast.forecast)}
+          </span>
+          {lastMonth ? (
+            <Delta
+              value={change(forecast.forecast, lastMonth.royalty)}
+              previous={formatEuro(lastMonth.royalty)}
+              label="vs mese scorso"
+            />
+          ) : null}
+          <span className="text-xs text-muted-foreground">{forecastNote}</span>
+        </div>
+        <GoalTile
+          goals={goals}
+          account={state.account}
+          monthToDate={monthToDate}
+          forecast={forecastByAccount}
+          today={today}
+        />
       </section>
 
       {hasAds && (
@@ -1050,10 +1133,12 @@ function Delta({
   value,
   previous,
   invert,
+  label = "vs periodo precedente",
 }: {
   value: number | null;
   previous: string;
   invert?: boolean;
+  label?: string;
 }) {
   if (value === null) {
     return (
@@ -1080,7 +1165,9 @@ function Delta({
           : `${up ? "+" : "−"}${Math.abs(Math.round(value))}`}
         %
       </span>
-      <span className="text-muted-foreground">vs periodo precedente ({previous})</span>
+      <span className="text-muted-foreground">
+        {label} ({previous})
+      </span>
     </span>
   );
 }

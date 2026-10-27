@@ -25,24 +25,35 @@ import type { KdpGoals } from "@/server/queries/kdp-goals";
 
 /**
  * Month-to-date royalty against the monthly target of the selected account
- * (or the sum of the set targets), with a projection at the current pace.
+ * (or the sum of the set targets), with the month forecast when given,
+ * else a projection at the current pace.
  */
 export function GoalTile({
   goals,
   account,
   monthToDate,
+  forecast,
   today,
 }: {
   goals: KdpGoals;
   account: KdpAccount | "all";
   monthToDate: Record<KdpAccount, number>;
+  /** Forecast of the month per account (see `forecastMonth`). */
+  forecast?: Record<KdpAccount, number>;
   today: string;
 }) {
   const [open, setOpen] = useState(false);
   const accounts = account === "all" ? KDP_ACCOUNT_VALUES : [account];
   const target = accounts.reduce((sum, a) => sum + (goals[a] ?? 0), 0);
   const royalty = accounts.reduce((sum, a) => sum + (goals[a] ? monthToDate[a] : 0), 0);
-  const progress = target > 0 ? goalProgress(target, royalty, today) : null;
+  const base = target > 0 ? goalProgress(target, royalty, today) : null;
+  const progress =
+    base && forecast
+      ? {
+          ...base,
+          projected: accounts.reduce((sum, a) => sum + (goals[a] ? forecast[a] : 0), 0),
+        }
+      : base;
 
   return (
     <div className="flex flex-col gap-1 rounded-xl border p-4" data-testid="goal-tile">
@@ -71,8 +82,8 @@ export function GoalTile({
             />
           </span>
           <span className="text-xs text-muted-foreground">
-            {formatEuro(progress.royalty)} su {formatEuro(progress.target)} · proiezione{" "}
-            {formatEuro(progress.projected)}
+            {formatEuro(progress.royalty)} su {formatEuro(progress.target)} ·{" "}
+            {forecast ? "previsione" : "proiezione"} {formatEuro(progress.projected)}
           </span>
         </>
       ) : (
