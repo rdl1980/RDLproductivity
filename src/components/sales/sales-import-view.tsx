@@ -3,14 +3,17 @@
 import { UploadIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { AccountHint } from "@/components/kdp/account-hint";
+import { SyncNextStep } from "@/components/kdp/sync-next-step";
 import { KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
 import type { AccountMatches } from "@/lib/kdp-accounts";
+import { detectSync, finishSync, markSyncStep } from "@/lib/kdp-sync";
+import { useIsClient } from "@/lib/use-is-client";
 import {
   decodeSalesHash,
   formatEuro,
@@ -53,6 +56,10 @@ export function SalesImportView() {
     matches: AccountMatches;
   } | null>(null);
   const [pending, startTransition] = useTransition();
+  // Full sync from the launcher: after the sales, the tab goes on to the books.
+  const isClient = useIsClient();
+  const sync = useMemo(() => (isClient ? detectSync("sales") : null), [isClient]);
+  const [chained, setChained] = useState(false);
 
   // The fragment exists only in the browser and is decompressed asynchronously.
   useEffect(() => {
@@ -73,13 +80,15 @@ export function SalesImportView() {
       .then((result) => {
         if (cancelled || !result.ok) return;
         setDetected(result.data);
-        if (result.data.account && !chosen.current) setAccount(result.data.account);
+        if (chosen.current) return;
+        const guess = result.data.account ?? sync?.account ?? null;
+        if (guess) setAccount(guess);
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [state]);
+  }, [state, sync]);
 
   function submit(hash: string) {
     if (!account) return;
@@ -91,8 +100,23 @@ export function SalesImportView() {
       );
       // Drop the data from the URL so a reload does not import it again.
       window.history.replaceState(null, "", window.location.pathname);
+      if (sync) {
+        const done = markSyncStep("sales", account).done;
+        if (!done.includes("books")) return void setChained(true);
+        finishSync();
+        toast.success("Sincronizzazione completa: libri e vendite aggiornati.");
+      }
       router.push(account === "main" ? "/kdp/vendite" : `/kdp/vendite?account=${account}`);
     });
+  }
+
+  if (chained) {
+    return (
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6">
+        <PageHeader icon={UploadIcon} title="Importa vendite KDP" />
+        <SyncNextStep done="sales" backHref="/kdp/vendite" />
+      </main>
+    );
   }
 
   const summary =
@@ -138,6 +162,11 @@ export function SalesImportView() {
             submit(state.hash);
           }}
         >
+          {sync && (
+            <p className="text-xs font-medium text-primary" data-testid="sync-step">
+              Sincronizzazione completa · passo {sync.step} di 2
+            </p>
+          )}
           <dl
             className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"
             data-testid="sales-import-summary"

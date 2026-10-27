@@ -17,9 +17,11 @@ import {
   mainTitle,
 } from "@/lib/kdp-books";
 import { useIsClient } from "@/lib/use-is-client";
+import { detectSync, finishSync, markSyncStep } from "@/lib/kdp-sync";
 import { detectBooksAccount, importKdpBooks } from "@/server/actions/kdp-books";
 
 import { AccountHint } from "./account-hint";
+import { SyncNextStep } from "./sync-next-step";
 
 type State =
   | { kind: "loading" }
@@ -54,6 +56,9 @@ export function KdpImportView() {
     matches: AccountMatches;
   } | null>(null);
   const [pending, startTransition] = useTransition();
+  // Full sync from the launcher: after the books, the tab goes on to the sales.
+  const sync = useMemo(() => (isClient ? detectSync("books") : null), [isClient]);
+  const [chained, setChained] = useState(false);
 
   // Preselect the account that already has these books, unless the user picked one.
   useEffect(() => {
@@ -63,13 +68,15 @@ export function KdpImportView() {
       .then((result) => {
         if (cancelled || !result.ok) return;
         setDetected(result.data);
-        if (result.data.account && !chosen.current) setAccount(result.data.account);
+        if (chosen.current) return;
+        const guess = result.data.account ?? sync?.account ?? null;
+        if (guess) setAccount(guess);
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [state]);
+  }, [state, sync]);
 
   function submit(payload: ImportPayload) {
     if (!account) return;
@@ -86,8 +93,23 @@ export function KdpImportView() {
       );
       // Drop the data from the URL so a reload does not import it again.
       window.history.replaceState(null, "", window.location.pathname);
+      if (sync) {
+        const done = markSyncStep("books", account).done;
+        if (!done.includes("sales")) return void setChained(true);
+        finishSync();
+        toast.success("Sincronizzazione completa: libri e vendite aggiornati.");
+      }
       router.push("/kdp/libri");
     });
+  }
+
+  if (chained) {
+    return (
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6">
+        <PageHeader icon={UploadIcon} title="Importa libri KDP" />
+        <SyncNextStep done="books" backHref="/kdp/libri" />
+      </main>
+    );
   }
 
   return (
@@ -118,6 +140,11 @@ export function KdpImportView() {
             submit(state.payload);
           }}
         >
+          {sync && (
+            <p className="text-xs font-medium text-primary" data-testid="sync-step">
+              Sincronizzazione completa · passo {sync.step} di 2
+            </p>
+          )}
           <p className="text-sm">
             Trovati <strong>{state.payload.books.length}</strong> libri con{" "}
             <strong>
