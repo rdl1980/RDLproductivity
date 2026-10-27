@@ -35,14 +35,14 @@ api.runtime.onMessage.addListener((message, sender) => {
 
 const send = (tabId, message) => api.tabs.sendMessage(tabId, message).catch(() => {});
 
-async function runSync(appTabId, { requestId, steps }) {
+async function runSync(appTabId, { requestId, steps, options = {} }) {
   for (const step of steps) {
     if (!STEPS[step]) continue;
     const progress = (status, message) =>
       send(appTabId, { type: "rdl-kdp:progress", requestId, step, status, message });
     progress("opening", `Apro ${STEPS[step].label} di KDP…`);
     try {
-      const hash = await runStep(step, (text) => progress("reading", text));
+      const hash = await runStep(step, options, (text) => progress("reading", text));
       await send(appTabId, { type: "rdl-kdp:result", requestId, step, hash });
     } catch (error) {
       await send(appTabId, {
@@ -64,7 +64,7 @@ async function stepUrl(step) {
   return (stepUrls && stepUrls[step]) || STEPS[step].url;
 }
 
-async function runStep(step, onProgress) {
+async function runStep(step, options, onProgress) {
   const { file, timeoutMs } = STEPS[step];
   // In the foreground: browsers slow timers and skip layout in background
   // tabs, which makes reading the Bookshelf crawl or fail.
@@ -80,6 +80,14 @@ async function runStep(step, onProgress) {
     }
     const result = waitForResult(tab.id, timeoutMs, onProgress);
     try {
+      // Sales: read from the date the app asks for (null = everything).
+      await api.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: (from) => {
+          globalThis.__rdlSalesFrom = from;
+        },
+        args: [step === "sales" ? options.salesFrom || null : null],
+      });
       await api.scripting.executeScript({ target: { tabId: tab.id }, files: [file] });
     } catch (error) {
       throw new Error(`Impossibile leggere la pagina di KDP (${error.message}).`);

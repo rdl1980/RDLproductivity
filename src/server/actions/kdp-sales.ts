@@ -3,9 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { accountLabel, KDP_ACCOUNT_VALUES, type KdpAccount } from "@/lib/kdp";
+import { accountLabel, KDP_ACCOUNT_VALUES, type KdpAccount, todayIn } from "@/lib/kdp";
 import { type AccountMatches, accountMismatch, likelyAccount } from "@/lib/kdp-accounts";
-import { decodeSalesHash, formatEuro, parseTitleKey, salesPayloadSchema } from "@/lib/kdp-sales";
+import {
+  decodeSalesHash,
+  formatEuro,
+  parseTitleKey,
+  salesPayloadSchema,
+  salesSyncFrom,
+} from "@/lib/kdp-sales";
 import { logActivity } from "@/server/activity";
 import { db } from "@/server/db";
 import { titleMatches } from "@/server/queries/kdp-accounts";
@@ -13,6 +19,9 @@ import { salesImportKey, type SalesImportInfo } from "@/server/queries/kdp-sales
 import { isAuthenticated } from "@/server/session";
 
 import { type ActionResult, fail, ok, parse, UNAUTHORIZED } from "./result";
+
+/** The app is single-user: "today" is the owner's. */
+const TIME_ZONE = process.env.DEFAULT_TIME_ZONE ?? "Europe/Rome";
 
 const importSchema = z.object({
   account: z.enum(KDP_ACCOUNT_VALUES),
@@ -115,6 +124,27 @@ export async function importKdpSales(
   });
   revalidatePath("/kdp/vendite");
   return ok({ rows: rows.length, royalty: Math.round(royalty * 100) / 100, units });
+}
+
+const accountOnlySchema = z.object({ account: z.enum(KDP_ACCOUNT_VALUES) });
+
+/** From when the extension should read the Reports for an account (see `salesSyncFrom`). */
+export async function getSalesSyncWindow(
+  input: z.input<typeof accountOnlySchema>,
+): Promise<ActionResult<{ from: string | null; lastImportTo: string | null }>> {
+  if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
+  const { data, error } = parse(accountOnlySchema, input);
+  if (!data) return fail(error);
+  const setting = await db.appSetting.findUnique({ where: { key: salesImportKey(data.account) } });
+  let lastImportTo: string | null = null;
+  if (setting) {
+    try {
+      lastImportTo = (JSON.parse(setting.value) as { to?: string }).to ?? null;
+    } catch {
+      lastImportTo = null;
+    }
+  }
+  return ok({ from: salesSyncFrom(lastImportTo, todayIn(TIME_ZONE)), lastImportTo });
 }
 
 const detectSalesSchema = z.array(z.string().min(1).max(200)).max(20_000);

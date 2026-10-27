@@ -10,7 +10,12 @@
     const data = event.data;
     if (event.source !== window || !data || data.type !== "rdl-kdp:sync") return;
     api.runtime
-      .sendMessage({ type: "sync", requestId: data.requestId, steps: data.steps })
+      .sendMessage({
+        type: "sync",
+        requestId: data.requestId,
+        steps: data.steps,
+        options: data.options ?? {},
+      })
       .catch((error) => {
         window.postMessage(
           {

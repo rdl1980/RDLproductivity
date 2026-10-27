@@ -11,6 +11,7 @@ import {
   parseTitleKey,
   previousMonthToDate,
   previousPeriod,
+  salesSyncFrom,
   SALE_SOURCES,
   type SaleRecord,
   salesPayloadSchema,
@@ -98,6 +99,13 @@ describe("periods and buckets", () => {
       from: "2026-08-31",
       to: "2026-09-30",
     });
+  });
+
+  it("reads the last three months incrementally, or everything the first time", () => {
+    expect(salesSyncFrom(null, "2026-10-27")).toBeNull();
+    expect(salesSyncFrom("2026-10-26", "2026-10-27")).toBe("2026-08-01");
+    expect(salesSyncFrom("2026-01-15", "2026-10-27")).toBe("2026-01-01");
+    expect(salesSyncFrom("2026-01-15", "2026-02-03")).toBe("2025-12-01");
   });
 
   it("compares month to date with the same days of the previous month", () => {
