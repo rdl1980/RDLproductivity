@@ -70,6 +70,11 @@ test("KDP sales: import the report history and explore the dashboard", async ({ 
     "120",
   );
 
+  // Month to date: from the first of the month to today, kept in the URL.
+  await page.getByRole("combobox", { name: "Periodo" }).click();
+  await page.getByRole("option", { name: "Mese corrente" }).click();
+  await expect(page).toHaveURL(/period=mtd/);
+
   const books = page.getByTestId("sales-books");
   await expect(books).toContainText(title);
   await expect(page.getByRole("region", { name: "Per mercato" })).toContainText("it");

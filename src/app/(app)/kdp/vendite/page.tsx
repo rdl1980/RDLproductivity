@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Vendite KDP · RDL Productivity" };
 /** The app is single-user: "today" is the owner's. */
 const TIME_ZONE = process.env.DEFAULT_TIME_ZONE ?? "Europe/Rome";
 
-const PERIODS = ["30d", "90d", "12m", "ytd", "all", "custom"] as const;
+const PERIODS = ["mtd", "30d", "90d", "12m", "ytd", "all", "custom"] as const;
 const METRICS = ["royalty", "units", "kenp"] as const;
 const isDay = (value: unknown): value is string =>
   typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
