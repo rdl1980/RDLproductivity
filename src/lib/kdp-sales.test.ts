@@ -9,6 +9,7 @@ import {
   filterRecords,
   launchCurve,
   parseTitleKey,
+  previousMonthToDate,
   previousPeriod,
   SALE_SOURCES,
   type SaleRecord,
@@ -97,6 +98,12 @@ describe("periods and buckets", () => {
       from: "2026-08-31",
       to: "2026-09-30",
     });
+  });
+
+  it("compares month to date with the same days of the previous month", () => {
+    expect(previousMonthToDate("2026-10-27")).toEqual({ from: "2026-09-01", to: "2026-09-27" });
+    expect(previousMonthToDate("2026-03-31")).toEqual({ from: "2026-02-01", to: "2026-02-28" });
+    expect(previousMonthToDate("2026-01-05")).toEqual({ from: "2025-12-01", to: "2025-12-05" });
   });
 
   it("chooses the granularity from the length", () => {

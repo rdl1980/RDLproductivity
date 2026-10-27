@@ -59,6 +59,7 @@ import {
   launchCurve,
   marketplaceLabel,
   nextBucket,
+  previousMonthToDate,
   previousPeriod,
   SALE_SOURCES,
   type SaleBook,
@@ -90,6 +91,7 @@ import { GoalTile } from "./goal-tile";
 import { TitleAliasDialog } from "./title-alias-dialog";
 
 const PERIODS = [
+  { value: "mtd", label: "Mese corrente" },
   { value: "30d", label: "Ultimi 30 giorni" },
   { value: "90d", label: "Ultimi 90 giorni" },
   { value: "12m", label: "Ultimi 12 mesi" },
@@ -138,6 +140,8 @@ function periodRange(
   first: string,
 ): { from: string; to: string } {
   switch (state.period) {
+    case "mtd":
+      return { from: `${today.slice(0, 7)}-01`, to: today };
     case "30d":
       return { from: addDays(today, -29), to: today };
     case "90d":
@@ -210,7 +214,9 @@ export function SalesView({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `base` is rebuilt from these fields
     [records, range.from, range.to, state.account, state.markets, state.book],
   );
-  const prevRange = previousPeriod(range.from, range.to);
+  // Month to date compares with the same days of the previous month.
+  const prevRange =
+    state.period === "mtd" ? previousMonthToDate(today) : previousPeriod(range.from, range.to);
   const previous = useMemo(
     () => filterRecords(records, { ...base, ...prevRange }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- as above

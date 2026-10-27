@@ -237,6 +237,19 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((toDate(to).getTime() - toDate(from).getTime()) / DAY);
 }
 
+/**
+ * The same days of the previous month: "2026-10-27" → 1–27 September. Days the
+ * previous month lacks are dropped ("2026-03-31" → 1–28 or 29 February).
+ */
+export function previousMonthToDate(today: string): { from: string; to: string } {
+  const lastOfPrevious = addDays(`${today.slice(0, 7)}-01`, -1);
+  const day = Math.min(Number(today.slice(8, 10)), Number(lastOfPrevious.slice(8, 10)));
+  return {
+    from: `${lastOfPrevious.slice(0, 7)}-01`,
+    to: `${lastOfPrevious.slice(0, 7)}-${String(day).padStart(2, "0")}`,
+  };
+}
+
 /** The equally long period just before [from, to]. */
 export function previousPeriod(from: string, to: string): { from: string; to: string } {
   const length = daysBetween(from, to) + 1;
