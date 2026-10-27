@@ -9,7 +9,7 @@ import {
   type KdpAccount,
   type KdpTrack,
   laneLabel,
-  mondayOf,
+  weekStartOf,
 } from "@/lib/kdp";
 import { positionAfter, positionBetween } from "@/lib/position";
 import { logActivity, q, snapshot } from "@/server/activity";
@@ -20,14 +20,14 @@ import { type ActionResult, fail, idSchema, ok, parse, titleSchema, UNAUTHORIZED
 
 const accountSchema = z.enum(KDP_ACCOUNT_VALUES);
 const trackSchema = z.enum(KDP_TRACK_VALUES);
-/** Any day of the week; stored as its Monday. */
+/** Any day of the week; stored as its Sunday. */
 const weekSchema = z.string().transform((value, ctx) => {
-  const monday = mondayOf(value);
-  if (!monday) {
+  const start = weekStartOf(value);
+  if (!start) {
     ctx.addIssue({ code: "custom", message: "Settimana non valida (usa AAAA-MM-GG)." });
     return z.NEVER;
   }
-  return monday;
+  return start;
 });
 const notesSchema = z.string().max(5000, "Le note sono troppo lunghe.").nullable();
 

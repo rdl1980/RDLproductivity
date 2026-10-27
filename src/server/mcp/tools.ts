@@ -41,14 +41,14 @@ import {
   saveBoardAsTemplate,
   saveCardAsTemplate,
 } from "@/server/actions/templates";
-import { mondayOf, monthWeeks, parseMonth } from "@/lib/kdp";
+import { weekStartOf, monthWeeks, parseMonth } from "@/lib/kdp";
 import { createKdpTask, deleteKdpTask, moveKdpTask, updateKdpTask } from "@/server/actions/kdp";
 import { getSuperBoard } from "@/server/queries/aggregate";
 import { getKdpTasks } from "@/server/queries/kdp";
 import { getKdpBooks } from "@/server/queries/kdp-books";
 import { setKdpGoal } from "@/server/actions/kdp-goals";
 import { setKdpTitleAlias } from "@/server/actions/kdp-sales";
-import { mondayOf as kdpMondayOf, todayIn } from "@/lib/kdp";
+import { weekStartOf as kdpWeekStartOf, todayIn } from "@/lib/kdp";
 import { duePayouts } from "@/lib/kdp-finance";
 import { getPayouts } from "@/server/queries/kdp-finance";
 import { getKdpGoals } from "@/server/queries/kdp-goals";
@@ -871,7 +871,7 @@ export function registerTools(server: McpServer) {
   const kdpWeek = z
     .string()
     .describe(
-      "Any day of the week as YYYY-MM-DD; weeks run Monday to Sunday and are stored by their Monday",
+      "Any day of the week as YYYY-MM-DD; weeks run Sunday to Saturday and are stored by their Sunday",
     );
 
   defineTool(
@@ -897,8 +897,8 @@ export function registerTools(server: McpServer) {
         const weeks = monthWeeks(valid);
         return ok(await getKdpTasks(weeks[0], weeks[weeks.length - 1]));
       }
-      const from = fromWeek ? mondayOf(fromWeek) : null;
-      const to = toWeek ? mondayOf(toWeek) : from;
+      const from = fromWeek ? weekStartOf(fromWeek) : null;
+      const to = toWeek ? weekStartOf(toWeek) : from;
       if (!from || !to) return fail("Indica month oppure fromWeek (e opzionalmente toWeek).");
       return ok(await getKdpTasks(from, to));
     },
@@ -1126,7 +1126,7 @@ export function registerTools(server: McpServer) {
     {
       title: "Weekly review",
       description:
-        "What happened in a week (Monday to Sunday): cards completed and created, overdue cards, " +
+        "What happened in a week (Sunday to Saturday): cards completed and created, overdue cards, " +
         "cards due next week, KDP calendar tasks with their done state, sales of the week against " +
         "the previous one per account, top books, and month-to-date progress against royalty goals. " +
         "Defaults to the current week.",
@@ -1137,9 +1137,9 @@ export function registerTools(server: McpServer) {
     },
     async ({ week }) => {
       const today = todayIn(DEFAULT_TIME_ZONE);
-      const monday = week ? kdpMondayOf(week) : kdpMondayOf(today);
-      if (!monday) return fail("Settimana non valida (usa AAAA-MM-GG).");
-      return ok(await getWeeklyReview(monday, today));
+      const start = week ? kdpWeekStartOf(week) : kdpWeekStartOf(today);
+      if (!start) return fail("Settimana non valida (usa AAAA-MM-GG).");
+      return ok(await getWeeklyReview(start, today));
     },
   );
 

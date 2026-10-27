@@ -6,23 +6,30 @@ import {
   laneLabel,
   isoWeekNumber,
   type KdpTaskItem,
-  mondayOf,
+  weekStartOf,
   monthLabel,
   monthWeeks,
   parseDateKey,
   parseMonth,
   shiftMonth,
+  spanLabel,
   todayIn,
   weekRangeLabel,
+  weeksFrom,
 } from "./kdp";
 
 describe("weeks", () => {
-  it("finds the Monday of any day", () => {
-    expect(mondayOf("2026-10-08")).toBe("2026-10-05");
-    expect(mondayOf("2026-10-05")).toBe("2026-10-05");
-    expect(mondayOf("2026-10-11")).toBe("2026-10-05");
-    expect(mondayOf("2026-01-01")).toBe("2025-12-29");
-    expect(mondayOf("2026-02-30")).toBeNull();
+  it("finds the Sunday of any day", () => {
+    expect(weekStartOf("2026-10-08")).toBe("2026-10-04");
+    expect(weekStartOf("2026-10-04")).toBe("2026-10-04");
+    expect(weekStartOf("2026-10-10")).toBe("2026-10-04");
+    expect(weekStartOf("2026-01-01")).toBe("2025-12-28");
+    expect(weekStartOf("2026-02-30")).toBeNull();
+  });
+
+  it("lists consecutive weeks and labels their span", () => {
+    expect(weeksFrom("2026-09-27", 3)).toEqual(["2026-09-27", "2026-10-04", "2026-10-11"]);
+    expect(spanLabel("2026-09-27", "2026-11-15")).toBe("27 set – 21 nov 2026");
   });
 
   it("adds weeks across months and years", () => {
@@ -32,25 +39,25 @@ describe("weeks", () => {
 
   it("lists the weeks that touch a month", () => {
     expect(monthWeeks("2026-10")).toEqual([
-      "2026-09-28",
-      "2026-10-05",
-      "2026-10-12",
-      "2026-10-19",
-      "2026-10-26",
+      "2026-09-27",
+      "2026-10-04",
+      "2026-10-11",
+      "2026-10-18",
+      "2026-10-25",
     ]);
-    // February 2027 starts on a Monday and ends on a Sunday: exactly 4 weeks.
-    expect(monthWeeks("2027-02")).toHaveLength(4);
+    // March 2026 starts on a Sunday and has 5 Sundays: exactly 5 weeks.
+    expect(monthWeeks("2026-03")).toHaveLength(5);
   });
 
   it("numbers weeks by ISO 8601", () => {
-    expect(isoWeekNumber("2026-10-05")).toBe(41);
-    expect(isoWeekNumber("2025-12-29")).toBe(1);
-    expect(isoWeekNumber("2026-12-28")).toBe(53);
+    expect(isoWeekNumber("2026-10-04")).toBe(41);
+    expect(isoWeekNumber("2025-12-28")).toBe(1);
+    expect(isoWeekNumber("2026-12-27")).toBe(53);
   });
 
   it("labels week ranges", () => {
-    expect(weekRangeLabel("2026-10-05")).toBe("5 – 11 ott");
-    expect(weekRangeLabel("2026-09-28")).toBe("28 set – 4 ott");
+    expect(weekRangeLabel("2026-10-04")).toBe("4 – 10 ott");
+    expect(weekRangeLabel("2026-09-27")).toBe("27 set – 3 ott");
   });
 });
 

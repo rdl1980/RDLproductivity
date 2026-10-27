@@ -263,7 +263,7 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 
 - Pagina `/kdp`, separata dalle board: attività settimanali (modello `KdpTask`: titolo, note, fatto) in due lane, **Account principale** (`main`) e **Account secondario** (`secondary`, vincolo CHECK nel database).
 - Ogni account è diviso in due corsie (`KdpTask.track`, vincolo CHECK): **Pianificato** (`planned`, predefinito; le attività create prima della divisione sono qui) e **Reale** (`actual`, ciò che è successo davvero, con sfondo verde). Una cella è (settimana, account, corsia); il drag sposta fra settimane, account e corsie. Su telefono le quattro corsie hanno una larghezza minima e la griglia scorre in orizzontale con la colonna delle settimane fissa.
-- Ogni attività appartiene a una settimana, salvata come data del lunedì (`week`, tipo `date`, senza fuso). Le righe sono le settimane (lunedì-domenica) che toccano il mese scelto (`?month=AAAA-MM`); la settimana corrente è evidenziata secondo `DEFAULT_TIME_ZONE`.
+- Ogni attività appartiene a una settimana, salvata come data della domenica (`week`, tipo `date`, senza fuso): le settimane KDP vanno da domenica a sabato come i report di KDP (migrazione `kdp_week_sunday`: le righe salvate col lunedì sono state spostate alla domenica precedente). La pagina mostra 8 settimane a partire da quella corrente, o da quella del giorno in `?week=AAAA-MM-GG` (`?month=AAAA-MM`, nei link vecchi, apre sulla prima settimana del mese); le frecce spostano di 4 settimane. La settimana corrente è evidenziata secondo `DEFAULT_TIME_ZONE`.
 - Ordine dentro la cella con fractional indexing (`position` con collation `"C"`); il drag sposta l'attività in fondo alla cella di arrivo, con aggiornamento ottimistico e rollback.
 - Le modifiche passano dallo storico attività e si possono annullare (anche l'eliminazione). Tool MCP: `list_kdp_tasks`, `create_kdp_task`, `update_kdp_task` (anche spostamento), `delete_kdp_task`.
 
@@ -304,7 +304,7 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 
 ## Riepilogo settimanale, incassi, export fiscale, obiettivi
 
-- **Riepilogo** `/riepilogo?week=`: card completate (`completedAt` nella settimana) e create, scadute e in scadenza nella prossima, attività KDP della settimana con stato, vendite della settimana contro la precedente per account con i 5 libri migliori, avanzamento degli obiettivi del mese. Query in `src/server/queries/review.ts`; tool MCP `get_weekly_review`. Link nel menu utente.
+- **Riepilogo** `/riepilogo?week=` (settimana domenica–sabato, come il calendario KDP): card completate (`completedAt` nella settimana) e create, scadute e in scadenza nella prossima, attività KDP della settimana con stato, vendite della settimana contro la precedente per account con i 5 libri migliori, avanzamento degli obiettivi del mese. Query in `src/server/queries/review.ts`; tool MCP `get_weekly_review`. Link nel menu utente.
 - **Incassi** `/kdp/incassi` (scheda KDP): KDP paga le royalty di un mese circa 60 giorni dopo la sua fine (`PAYOUT_DELAY_MONTHS`, `src/lib/kdp-finance.ts`): per ogni mese e account la data attesa (fine del secondo mese successivo) e lo stato pagato o in arrivo, con le somme in arrivo per data. Tool MCP `get_kdp_payouts`.
 - **Export fiscale**: `GET /api/kdp/export?year=` genera con `exceljs` un file Excel con il dettaglio per mese, account e mercato (copie per formato, KENP, royalty per formato) e i totali mensili con la data di pagamento attesa. Richiede la sessione.
 - **Obiettivi**: target mensile di royalty per account in `AppSetting` `kdp.goal.<account>` (`setKdpGoal`, tool MCP `set_kdp_goal`). In Vendite la tile «Obiettivo del mese» mostra royalty del mese in corso, percentuale e proiezione a fine mese al ritmo attuale (`goalProgress`); con «Tutti gli account» somma i target impostati.
@@ -312,7 +312,7 @@ Claude (claude.ai, app desktop e mobile) si collega come connettore personalizza
 ## KDP in Oggi, nel calendario e nella ricerca
 
 - **Oggi**: sezione «Settimana KDP» con le attività della settimana corrente (fuso `DEFAULT_TIME_ZONE`), spuntabili con aggiornamento ottimistico; le fatte restano barrate.
-- **Calendario**: nella cella del lunedì di ogni settimana un chip «KDP: N da fare» che porta a `/kdp?month=`; non compare con un filtro per board o etichetta attivo.
+- **Calendario**: nella cella del lunedì di ogni settimana un chip «KDP: N da fare» con le attività della settimana KDP (domenica–sabato) che contiene quel lunedì, che porta a `/kdp?week=`; non compare con un filtro per board o etichetta attivo.
 - **Ricerca** (`/search`): oltre a card e board, libri KDP (titolo, collana, ASIN tramite `formats::text ILIKE`) con link a `/kdp/libri?q=`, e attività KDP (titolo, note) con link al mese del calendario.
 
 ## Spesa Amazon Ads e margine netto

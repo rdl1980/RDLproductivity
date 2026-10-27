@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { KdpCalendarView } from "@/components/kdp/kdp-calendar-view";
-import { monthWeeks, parseMonth, todayIn } from "@/lib/kdp";
+import { parseMonth, todayIn, WEEKS_SHOWN, weeksFrom, weekStartOf } from "@/lib/kdp";
 import { getKdpTasks } from "@/server/queries/kdp";
 import { requireSession } from "@/server/session";
 
@@ -14,10 +14,14 @@ export default async function KdpPage({ searchParams }: PageProps<"/kdp">) {
   await requireSession();
   const params = await searchParams;
   const today = todayIn(TIME_ZONE);
-  const month =
-    parseMonth(typeof params.month === "string" ? params.month : null) ?? today.slice(0, 7);
-  const weeks = monthWeeks(month);
+  // `?week=` is any day of the first week shown; `?month=` (older links) its first week.
+  const month = parseMonth(typeof params.month === "string" ? params.month : null);
+  const start =
+    (typeof params.week === "string" && weekStartOf(params.week)) ||
+    (month && weekStartOf(`${month}-01`)) ||
+    weekStartOf(today)!;
+  const weeks = weeksFrom(start, WEEKS_SHOWN);
   const tasks = await getKdpTasks(weeks[0], weeks[weeks.length - 1]);
 
-  return <KdpCalendarView key={month} month={month} weeks={weeks} tasks={tasks} today={today} />;
+  return <KdpCalendarView key={start} weeks={weeks} tasks={tasks} today={today} />;
 }

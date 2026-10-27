@@ -3,7 +3,7 @@ import "server-only";
 import type { KdpAccount, KdpTaskItem, KdpTrack } from "@/lib/kdp";
 import { db } from "@/server/db";
 
-/** Tasks of the weeks from `firstWeek` to `lastWeek` (Mondays, inclusive). */
+/** Tasks of the weeks from `firstWeek` to `lastWeek` (Sundays, inclusive). */
 export async function getKdpTasks(firstWeek: string, lastWeek: string): Promise<KdpTaskItem[]> {
   const tasks = await db.kdpTask.findMany({
     where: {
