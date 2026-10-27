@@ -52,6 +52,8 @@ async function runSync(appTabId, { requestId, steps }) {
         error: error && error.message ? error.message : String(error),
       });
     }
+    // Back to the app between steps and at the end.
+    await api.tabs.update(appTabId, { active: true }).catch(() => {});
   }
   await send(appTabId, { type: "rdl-kdp:done", requestId });
 }
@@ -64,7 +66,9 @@ async function stepUrl(step) {
 
 async function runStep(step, onProgress) {
   const { file, timeoutMs } = STEPS[step];
-  const tab = await api.tabs.create({ url: await stepUrl(step), active: false });
+  // In the foreground: browsers slow timers and skip layout in background
+  // tabs, which makes reading the Bookshelf crawl or fail.
+  const tab = await api.tabs.create({ url: await stepUrl(step), active: true });
   let keepOpen = false;
   try {
     await waitForLoad(tab.id);

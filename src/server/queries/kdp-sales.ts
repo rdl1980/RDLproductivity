@@ -23,6 +23,8 @@ export type SalesData = {
   /** Every imported book, for naming unresolved titles. */
   catalog: CatalogBook[];
   imports: Partial<Record<KdpAccount, SalesImportInfo>>;
+  /** When each account's Bookshelf was last imported (ISO), if ever. */
+  booksImportedAt: Partial<Record<KdpAccount, string>>;
   /** Amazon Ads rows in EUR, on the same book keys as `records`. */
   ads: AdRecord[];
   /** EUR per unit of the ad report currencies. */
@@ -36,7 +38,7 @@ export type SalesData = {
  * that owns one of its ASINs (or kept as "key:<titleKey>" when unknown).
  */
 export async function getSalesData(): Promise<SalesData> {
-  const [rows, books, settings, aliases] = await Promise.all([
+  const [rows, books, settings, aliases, bookImports] = await Promise.all([
     db.kdpSale.findMany({ orderBy: { date: "asc" } }),
     db.kdpBook.findMany({
       select: {
@@ -56,8 +58,15 @@ export async function getSalesData(): Promise<SalesData> {
     db.kdpTitleAlias.findMany({
       select: { account: true, titleKey: true, bookId: true, title: true },
     }),
+    db.kdpBook.groupBy({ by: ["account"], _max: { importedAt: true } }),
   ]);
   const aliasOf = new Map(aliases.map((a) => [`${a.account}:${a.titleKey}`, a]));
+  const booksImportedAt: SalesData["booksImportedAt"] = {};
+  for (const group of bookImports) {
+    if (group._max.importedAt) {
+      booksImportedAt[group.account as KdpAccount] = group._max.importedAt.toISOString();
+    }
+  }
 
   const byAsin = new Map<string, string>();
   const saleBooks = new Map<string, SaleBook>();
@@ -171,6 +180,7 @@ export async function getSalesData(): Promise<SalesData> {
       account: book.account as KdpAccount,
     })),
     imports,
+    booksImportedAt,
     ads,
     fx,
     prices,

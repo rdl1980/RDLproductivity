@@ -18,10 +18,22 @@ test("sales of an unimported title can be named by hand", async ({ page }) => {
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/vendite$/);
 
-  // The banner counts it, the table shows the ASIN.
+  // The banner counts it; "Mostra" narrows the table to such titles, whose ASIN links to Amazon.
   await expect(page.getByTestId("unresolved-banner")).toContainText("senza libro");
+  await page
+    .getByTestId("unresolved-banner")
+    .getByRole("button", { name: "Mostra" })
+    .first()
+    .click();
+  await expect(page.getByTestId("only-unresolved")).toBeVisible();
   const row = page.getByTestId("sales-books").getByRole("row").filter({ hasText: asin });
   await expect(row).toContainText("Titolo non importato");
+  await expect(row.getByRole("link", { name: asin })).toHaveAttribute(
+    "href",
+    `https://www.amazon.it/dp/${asin}`,
+  );
+  await page.getByRole("button", { name: "Mostra tutti" }).click();
+  await expect(page.getByTestId("only-unresolved")).toBeHidden();
 
   await row.getByRole("button", { name: "Assegna titolo" }).click();
   const dialog = page.getByRole("dialog", { name: "Assegna un titolo" });
