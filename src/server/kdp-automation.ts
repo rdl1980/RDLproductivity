@@ -1,6 +1,6 @@
 import "server-only";
 
-import { accountLabel, type KdpAccount, laneLabel, mondayOf, todayIn } from "@/lib/kdp";
+import { accountLabel, type KdpAccount, laneLabel, weekStartOf, todayIn } from "@/lib/kdp";
 import {
   FORMAT_LABELS,
   type KdpBookFormat,
@@ -42,7 +42,7 @@ export async function applyBookChanges(
 ): Promise<{ tasks: number; cards: number }> {
   let tasks = 0;
   let cards = 0;
-  const week = mondayOf(todayIn(TIME_ZONE))!;
+  const week = weekStartOf(todayIn(TIME_ZONE))!;
 
   for (const change of changes) {
     const title = mainTitle(change.title);

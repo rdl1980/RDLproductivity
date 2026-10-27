@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import { addCards, addLists, cardIn, createBoard, expectPersisted, list, settle } from "./helpers";
-import { mondayOf, todayIn, weekRangeLabel } from "../src/lib/kdp";
+import { weekStartOf, todayIn, weekRangeLabel } from "../src/lib/kdp";
 import { encodeImportHash } from "../src/lib/kdp-books";
 import { addDays, encodeSalesHash } from "../src/lib/kdp-sales";
 
@@ -125,7 +125,7 @@ test("KDP import: a book going online is logged as actual and completes its card
 
   await page.goto("/kdp");
   const actual = page.getByRole("cell", {
-    name: `Account secondario · Reale, settimana ${weekRangeLabel(mondayOf(today)!)}`,
+    name: `Account secondario · Reale, settimana ${weekRangeLabel(weekStartOf(today)!)}`,
   });
   await actual.evaluate((cell) => cell.scrollIntoView({ block: "center" }));
   await expect(actual.getByTestId("kdp-task").filter({ hasText: `Online: ${name}` })).toBeVisible();

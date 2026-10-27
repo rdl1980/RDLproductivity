@@ -52,7 +52,7 @@ export function KdpWeekTasks({
           ({open} da fare · {weekRangeLabel(week)})
         </span>
         <Link
-          href={`/kdp?month=${week.slice(0, 7)}`}
+          href={`/kdp?week=${week}`}
           className="ml-auto text-sm font-normal text-primary hover:underline"
         >
           Apri il calendario

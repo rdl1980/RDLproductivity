@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { CalendarView } from "@/components/calendar/calendar-view";
 import { type CalendarView as View, parseDayKey, serverRange } from "@/lib/calendar";
-import { mondayOf } from "@/lib/kdp";
+import { weekStartOf } from "@/lib/kdp";
 import { getCalendarCards, getCalendarFilterOptions } from "@/server/queries/calendar";
 import { getKdpTasks } from "@/server/queries/kdp";
 import { requireSession } from "@/server/session";
@@ -30,7 +30,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
     // Weekly KDP tasks of the visible weeks; shown only without board or label filters.
     boardId || labelId
       ? Promise.resolve([])
-      : getKdpTasks(mondayOf(toKey(range.from))!, mondayOf(toKey(range.to))!),
+      : getKdpTasks(weekStartOf(toKey(range.from))!, weekStartOf(toKey(range.to))!),
   ]);
 
   return (

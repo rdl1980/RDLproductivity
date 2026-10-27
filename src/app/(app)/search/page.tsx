@@ -118,7 +118,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
               return (
                 <li key={task.id}>
                   <Link
-                    href={`/kdp?month=${week.slice(0, 7)}`}
+                    href={`/kdp?week=${week}`}
                     className="flex flex-col gap-0.5 rounded-lg border p-3 hover:bg-muted/60"
                   >
                     <span className="text-xs text-muted-foreground">

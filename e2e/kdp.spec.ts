@@ -1,10 +1,10 @@
 import { expect, test } from "./fixtures";
 import { dragTo, expectPersisted } from "./helpers";
-import { mondayOf, shiftMonth, todayIn, weekRangeLabel } from "../src/lib/kdp";
+import { todayIn, weekRangeLabel, weekStartOf } from "../src/lib/kdp";
 
 // The server reads "today" in the owner's zone.
 const today = todayIn(process.env.DEFAULT_TIME_ZONE ?? "Europe/Rome");
-const week = weekRangeLabel(mondayOf(today)!);
+const week = weekRangeLabel(weekStartOf(today)!);
 
 test("KDP calendar: add, complete, move between accounts and tracks, edit and delete tasks", async ({
   page,
@@ -74,16 +74,23 @@ test("KDP calendar: add, complete, move between accounts and tracks, edit and de
   });
 });
 
-test("KDP calendar navigates by month, one row per week", async ({ page }) => {
-  await page.goto("/kdp?month=2026-10");
-  await expect(page.getByTestId("kdp-month")).toHaveText("Ottobre 2026");
-  // 28 Sep to 1 Nov: five weeks.
-  await expect(page.getByTestId("kdp-week")).toHaveCount(5);
-  await expect(page.getByRole("rowheader").first()).toContainText("28 set – 4 ott");
+test("KDP calendar shows eight Sunday-to-Saturday weeks from the chosen one", async ({ page }) => {
+  // Opens on the current week.
+  await page.goto("/kdp");
+  await expect(page.getByTestId("kdp-week")).toHaveCount(8);
+  await expect(page.getByRole("rowheader").first()).toContainText(week);
+  await expect(page.getByRole("rowheader").first()).toHaveAttribute("aria-current", "date");
 
-  await page.getByRole("link", { name: "Mese successivo" }).click();
-  await expect(page).toHaveURL(new RegExp(`month=${shiftMonth("2026-10", 1)}`));
-  await expect(page.getByTestId("kdp-month")).toHaveText("Novembre 2026");
-  // 1 November is a Sunday: its week starts in October.
-  await expect(page.getByRole("rowheader").first()).toContainText("26 ott – 1 nov");
+  // 1 October 2026 is a Thursday: its week starts on Sunday 27 September.
+  await page.goto("/kdp?week=2026-10-01");
+  await expect(page.getByRole("rowheader").first()).toContainText("27 set – 3 ott");
+  await expect(page.getByTestId("kdp-range")).toHaveText("27 set – 21 nov 2026");
+
+  await page.getByRole("link", { name: "Settimane successive" }).click();
+  await expect(page).toHaveURL(/week=2026-10-25/);
+  await expect(page.getByRole("rowheader").first()).toContainText("25 – 31 ott");
+
+  // Older links by month open on the month's first week.
+  await page.goto("/kdp?month=2026-11");
+  await expect(page.getByRole("rowheader").first()).toContainText("1 – 7 nov");
 });

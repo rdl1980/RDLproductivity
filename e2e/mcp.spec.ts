@@ -187,7 +187,7 @@ test("an MCP client authorizes via OAuth and edits boards through tools", async 
     week: "2030-03-14",
     account: "main",
   });
-  expect(kdp).toMatchObject({ week: "2030-03-11", account: "main", done: false });
+  expect(kdp).toMatchObject({ week: "2030-03-10", account: "main", done: false });
   await callTool(request, tokens.access_token, "update_kdp_task", {
     taskId: kdp.id,
     done: true,

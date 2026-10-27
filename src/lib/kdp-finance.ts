@@ -67,8 +67,8 @@ export function goalProgress(target: number, royalty: number, today: string): Go
   };
 }
 
-/** Last day of the ISO week starting on `monday`. */
-export function weekEnd(monday: string): string {
-  const date = new Date(`${monday}T00:00:00Z`);
+/** Last day of the week starting on `start`. */
+export function weekEnd(start: string): string {
+  const date = new Date(`${start}T00:00:00Z`);
   return new Date(date.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }

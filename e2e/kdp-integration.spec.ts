@@ -1,8 +1,9 @@
 import { expect, test } from "./fixtures";
-import { mondayOf, todayIn, weekRangeLabel } from "../src/lib/kdp";
+import { todayIn, weekRangeLabel, weekStartOf } from "../src/lib/kdp";
+import { addDays } from "../src/lib/kdp-sales";
 
 const today = todayIn(process.env.DEFAULT_TIME_ZONE ?? "Europe/Rome");
-const week = mondayOf(today)!;
+const week = weekStartOf(today)!;
 
 test("this week's KDP tasks show in Today and in the calendar, and search finds them", async ({
   page,
@@ -29,13 +30,14 @@ test("this week's KDP tasks show in Today and in the calendar, and search finds 
     page.getByTestId("kdp-week-task").filter({ hasText: title }).getByRole("checkbox"),
   ).toBeChecked();
 
-  // Calendar: the Monday of the week links to the KDP calendar.
+  // Calendar: the Monday cell of the week links to the KDP calendar.
   await page.goto(`/calendar?date=${today}`);
-  const monday = page.locator(`[data-day="${week}"]`);
+  const mondayKey = addDays(week, 1);
+  const monday = page.locator(`[data-day="${mondayKey}"]`);
   await expect(monday.getByTestId("calendar-kdp")).toContainText("KDP:");
   await expect(monday.getByTestId("calendar-kdp")).toHaveAttribute(
     "href",
-    `/kdp?month=${week.slice(0, 7)}`,
+    `/kdp?week=${mondayKey}`,
   );
 
   // Search: KDP tasks are results too.
