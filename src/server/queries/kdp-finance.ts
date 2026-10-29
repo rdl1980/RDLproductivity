@@ -6,13 +6,30 @@ import { db } from "@/server/db";
 
 /** Royalty per month and account, oldest first. */
 export async function getMonthlyRoyalties(): Promise<MonthlyRoyalty[]> {
-  const rows = await db.$queryRaw<{ month: string; account: string; royalty: number }[]>`
-    SELECT to_char("date", 'YYYY-MM') AS month, "account", SUM("royalty")::float AS royalty
-    FROM "KdpSale" GROUP BY 1, 2 ORDER BY 1, 2`;
-  return rows.map((row) => ({
-    month: row.month,
-    account: row.account as KdpAccount,
-    royalty: Math.round(row.royalty * 100) / 100,
+  const rows = await db.$queryRaw<
+    { month: string; account: string; marketplace: string; royalty: number }[]
+  >`
+    SELECT to_char("date", 'YYYY-MM') AS month, "account", "marketplace",
+      SUM("royalty")::float AS royalty
+    FROM "KdpSale" GROUP BY 1, 2, 3 ORDER BY 1, 2, 3`;
+  const round = (n: number) => Math.round(n * 100) / 100;
+  const byKey = new Map<string, MonthlyRoyalty>();
+  for (const row of rows) {
+    const key = `${row.month}|${row.account}`;
+    const entry = byKey.get(key) ?? {
+      month: row.month,
+      account: row.account as KdpAccount,
+      royalty: 0,
+      markets: [],
+    };
+    entry.royalty += row.royalty;
+    entry.markets!.push({ marketplace: row.marketplace, royalty: round(row.royalty) });
+    byKey.set(key, entry);
+  }
+  return [...byKey.values()].map((m) => ({
+    ...m,
+    royalty: round(m.royalty),
+    markets: m.markets!.sort((a, b) => b.royalty - a.royalty),
   }));
 }
 

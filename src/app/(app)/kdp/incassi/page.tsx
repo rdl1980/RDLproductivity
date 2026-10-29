@@ -5,8 +5,8 @@ import { KdpTabs } from "@/components/kdp/kdp-tabs";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { accountLabel, todayIn } from "@/lib/kdp";
-import { duePayouts, PAYOUT_DELAY_MONTHS } from "@/lib/kdp-finance";
-import { formatEuro } from "@/lib/kdp-sales";
+import { duePayouts, PAYOUT_DELAY_MONTHS, payoutTransfers } from "@/lib/kdp-finance";
+import { formatEuro, marketplaceLabel } from "@/lib/kdp-sales";
 import { cn } from "@/lib/utils";
 import { getPayouts, getSalesYears } from "@/server/queries/kdp-finance";
 import { requireSession } from "@/server/session";
@@ -44,7 +44,7 @@ export default async function PayoutsPage() {
       <PageHeader
         icon={WalletIcon}
         title="Incassi KDP"
-        description={`KDP paga le royalty di un mese circa ${PAYOUT_DELAY_MONTHS * 30} giorni dopo la fine del mese. Date e importi sono stime dai report importati, in EUR.`}
+        description={`KDP paga le royalty di un mese circa ${PAYOUT_DELAY_MONTHS * 30} giorni dopo la fine del mese, con un bonifico separato per ogni mercato, nella valuta di quel mercato. Date e importi sono stime in EUR dai report importati: il bonifico reale dipende dal cambio del giorno e da eventuali soglie minime di pagamento.`}
       />
       <KdpTabs current="payouts" />
 
@@ -64,6 +64,11 @@ export default async function PayoutsPage() {
                 <span className="text-3xl font-semibold tracking-tight tabular-nums">
                   {formatEuro(entry.royalty)}
                 </span>
+                {entry.transfers > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {entry.transfers} {entry.transfers === 1 ? "bonifico" : "bonifici"}
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -79,33 +84,61 @@ export default async function PayoutsPage() {
                 <th className="px-3 py-2 font-medium">Mese di vendita</th>
                 <th className="px-3 py-2 font-medium">Account</th>
                 <th className="px-3 py-2 text-right font-medium">Royalty</th>
+                <th className="px-3 py-2 font-medium">Bonifici per mercato</th>
                 <th className="px-3 py-2 font-medium">Pagamento</th>
                 <th className="px-3 py-2 font-medium">Stato</th>
               </tr>
             </thead>
             <tbody>
-              {recent.map((p) => (
-                <tr key={`${p.month}-${p.account}`} className="border-b last:border-0">
-                  <td className="px-3 py-2">{month(p.month)}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{accountLabel(p.account)}</td>
-                  <td className="px-3 py-2 text-right font-medium tabular-nums">
-                    {formatEuro(p.royalty)}
-                  </td>
-                  <td className="px-3 py-2 tabular-nums">{date(p.payDate)}</td>
-                  <td className="px-3 py-2">
-                    <span
-                      className={cn(
-                        "rounded-md px-1.5 py-0.5 text-xs font-medium",
-                        p.status === "paid"
-                          ? "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300"
-                          : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
+              {recent.map((p) => {
+                const transfers = payoutTransfers(p.markets);
+                return (
+                  <tr key={`${p.month}-${p.account}`} className="border-b align-top last:border-0">
+                    <td className="px-3 py-2">{month(p.month)}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{accountLabel(p.account)}</td>
+                    <td className="px-3 py-2 text-right font-medium tabular-nums">
+                      {formatEuro(p.royalty)}
+                    </td>
+                    <td className="px-3 py-2">
+                      {transfers.length > 0 && (
+                        <details data-testid="payout-transfers">
+                          <summary className="cursor-pointer text-primary">
+                            {transfers.length} {transfers.length === 1 ? "bonifico" : "bonifici"}
+                          </summary>
+                          <table className="mt-1.5 w-full text-xs">
+                            <tbody>
+                              {transfers.map((t) => (
+                                <tr key={t.marketplace}>
+                                  <td className="py-0.5 pr-3">{marketplaceLabel(t.marketplace)}</td>
+                                  <td className="py-0.5 pr-3 text-muted-foreground">
+                                    {t.currency}
+                                  </td>
+                                  <td className="py-0.5 text-right tabular-nums">
+                                    {formatEuro(t.royalty)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </details>
                       )}
-                    >
-                      {p.status === "paid" ? "pagato" : "in arrivo"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-3 py-2 tabular-nums">{date(p.payDate)}</td>
+                    <td className="px-3 py-2">
+                      <span
+                        className={cn(
+                          "rounded-md px-1.5 py-0.5 text-xs font-medium",
+                          p.status === "paid"
+                            ? "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300"
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
+                        )}
+                      >
+                        {p.status === "paid" ? "pagato" : "in arrivo"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
