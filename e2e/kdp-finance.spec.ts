@@ -57,6 +57,10 @@ test("goals, payouts, fiscal export and the weekly review", async ({ page }) => 
   await expect(page.getByTestId("payouts-due")).toBeVisible();
   await expect(page.getByTestId("payouts-table")).toContainText("Account principale");
   await expect(page.getByTestId("payouts-table")).toContainText("in arrivo");
+  // Each row breaks down into one transfer per marketplace, with its currency.
+  const transfers = page.getByTestId("payout-transfers").first();
+  await transfers.locator("summary").click();
+  await expect(transfers).toContainText(/EUR|USD|GBP/);
 
   // Fiscal export: a real workbook.
   const year = Number(today.slice(0, 4));

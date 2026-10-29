@@ -8,7 +8,54 @@ import type { KdpAccount } from "./kdp";
 /** KDP pays a month's royalties about 60 days after the month ends. */
 export const PAYOUT_DELAY_MONTHS = 2;
 
-export type MonthlyRoyalty = { month: string; account: KdpAccount; royalty: number };
+/** One marketplace's royalty within a month: KDP pays each marketplace with its own transfer. */
+export type MarketRoyalty = { marketplace: string; royalty: number };
+
+export type MonthlyRoyalty = {
+  month: string;
+  account: KdpAccount;
+  royalty: number;
+  /** Per marketplace, largest first (absent when not loaded). */
+  markets?: MarketRoyalty[];
+};
+
+/**
+ * Currency each Amazon marketplace pays in. The amounts here are KDP's EUR
+ * estimates; the transfer arrives in this currency (or converted by the bank).
+ */
+export const PAYOUT_CURRENCY: Record<string, string> = {
+  "Amazon.com": "USD",
+  "Amazon.co.uk": "GBP",
+  "Amazon.de": "EUR",
+  "Amazon.fr": "EUR",
+  "Amazon.it": "EUR",
+  "Amazon.es": "EUR",
+  "Amazon.nl": "EUR",
+  "Amazon.ie": "EUR",
+  "Amazon.com.be": "EUR",
+  "Amazon.co.jp": "JPY",
+  "Amazon.ca": "CAD",
+  "Amazon.com.au": "AUD",
+  "Amazon.com.br": "BRL",
+  "Amazon.com.mx": "MXN",
+  "Amazon.in": "INR",
+  "Amazon.pl": "PLN",
+  "Amazon.se": "SEK",
+};
+
+export function payoutCurrency(marketplace: string): string {
+  return PAYOUT_CURRENCY[marketplace] ?? "—";
+}
+
+export type Transfer = MarketRoyalty & { currency: string };
+
+/** The transfers behind a payout: one per marketplace with royalties, largest first. */
+export function payoutTransfers(markets: MarketRoyalty[] | undefined): Transfer[] {
+  return (markets ?? [])
+    .filter((m) => Math.round(m.royalty * 100) !== 0)
+    .map((m) => ({ ...m, currency: payoutCurrency(m.marketplace) }))
+    .sort((a, b) => b.royalty - a.royalty || a.marketplace.localeCompare(b.marketplace));
+}
 
 export type Payout = MonthlyRoyalty & {
   /** Last day of the payment month. */
@@ -33,13 +80,21 @@ export function payoutSchedule(monthly: MonthlyRoyalty[], today: string): Payout
     .sort((a, b) => b.month.localeCompare(a.month) || a.account.localeCompare(b.account));
 }
 
-/** Sum of the payments still to come, per pay month. */
-export function duePayouts(payouts: Payout[]): { payDate: string; royalty: number }[] {
-  const byDate = new Map<string, number>();
+/** Sum of the payments still to come, per pay month, with how many transfers make it up. */
+export function duePayouts(
+  payouts: Payout[],
+): { payDate: string; royalty: number; transfers: number }[] {
+  const byDate = new Map<string, { royalty: number; transfers: number }>();
   for (const p of payouts) {
-    if (p.status === "due") byDate.set(p.payDate, (byDate.get(p.payDate) ?? 0) + p.royalty);
+    if (p.status !== "due") continue;
+    const entry = byDate.get(p.payDate) ?? { royalty: 0, transfers: 0 };
+    entry.royalty += p.royalty;
+    entry.transfers += payoutTransfers(p.markets).length;
+    byDate.set(p.payDate, entry);
   }
-  return [...byDate].sort().map(([payDate, royalty]) => ({ payDate, royalty }));
+  return [...byDate]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([payDate, e]) => ({ payDate, royalty: e.royalty, transfers: e.transfers }));
 }
 
 export type GoalProgress = {

@@ -1,6 +1,56 @@
 import { describe, expect, it } from "vitest";
 
-import { duePayouts, goalProgress, payoutSchedule, weekEnd } from "./kdp-finance";
+import {
+  duePayouts,
+  goalProgress,
+  payoutCurrency,
+  payoutSchedule,
+  payoutTransfers,
+  weekEnd,
+} from "./kdp-finance";
+
+describe("payoutTransfers", () => {
+  it("lists one transfer per marketplace with its currency, largest first", () => {
+    expect(
+      payoutTransfers([
+        { marketplace: "Amazon.it", royalty: 12.5 },
+        { marketplace: "Amazon.com", royalty: 30 },
+        { marketplace: "Amazon.in", royalty: 0.001 },
+        { marketplace: "Amazon.co.uk", royalty: 8 },
+      ]),
+    ).toEqual([
+      { marketplace: "Amazon.com", royalty: 30, currency: "USD" },
+      { marketplace: "Amazon.it", royalty: 12.5, currency: "EUR" },
+      { marketplace: "Amazon.co.uk", royalty: 8, currency: "GBP" },
+    ]);
+    expect(payoutTransfers(undefined)).toEqual([]);
+    expect(payoutCurrency("Amazon.xx")).toBe("—");
+  });
+
+  it("counts the transfers of the payments to come", () => {
+    const payouts = payoutSchedule(
+      [
+        {
+          month: "2026-09",
+          account: "main",
+          royalty: 40,
+          markets: [
+            { marketplace: "Amazon.it", royalty: 25 },
+            { marketplace: "Amazon.com", royalty: 15 },
+          ],
+        },
+        {
+          month: "2026-09",
+          account: "secondary",
+          royalty: 5,
+          markets: [{ marketplace: "Amazon.de", royalty: 5 }],
+        },
+      ],
+      "2026-10-29",
+    );
+    expect(duePayouts(payouts)).toEqual([{ payDate: "2026-11-30", royalty: 45, transfers: 3 }]);
+  });
+});
 
 describe("payoutSchedule", () => {
   it("pays a month at the end of the second month after it", () => {
@@ -36,7 +86,7 @@ describe("payoutSchedule", () => {
       ],
       "2026-10-24",
     );
-    expect(duePayouts(payouts)).toEqual([{ payDate: "2026-10-31", royalty: 130 }]);
+    expect(duePayouts(payouts)).toEqual([{ payDate: "2026-10-31", royalty: 130, transfers: 0 }]);
   });
 });
 
