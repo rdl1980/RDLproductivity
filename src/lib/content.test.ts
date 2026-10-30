@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  codePrefix,
   cycleWeekOf,
   DEFAULT_PLAN,
   defaultLayers,
@@ -9,6 +10,7 @@ import {
   isoInZone,
   isoWeekday,
   mondayOf,
+  nextCode,
   plannedSlots,
   publishTexts,
   textOn,
@@ -209,5 +211,20 @@ describe("to do", () => {
     );
     expect(items.map((i) => i.kind)).toEqual(["pin", "metrics", "vote", "schedule", "slot"]);
     expect(items.at(-1)?.text).toBe("Slot vuoto: Il Trono (19:00)");
+  });
+});
+
+describe("generated codes", () => {
+  it("uses the rubric's established prefix", () => {
+    expect(codePrefix("il-trono")).toBe("ep");
+    expect(codePrefix("il-confessionale")).toBe("conf");
+    expect(codePrefix("nuova-rubrica")).toBe("nuovarubrica");
+  });
+
+  it("takes one more than the highest number of the prefix", () => {
+    expect(nextCode("ep", [])).toBe("ep001");
+    expect(nextCode("ep", ["ep001", "ep007", "ep003", "speciale-halloween"])).toBe("ep008");
+    // "epx002" and "ep" alone do not count.
+    expect(nextCode("ep", ["epx002", "ep", "ep1000"])).toBe("ep1001");
   });
 });
