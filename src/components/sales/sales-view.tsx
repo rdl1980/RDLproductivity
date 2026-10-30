@@ -66,6 +66,7 @@ import {
   type SaleBook,
   type SaleRecord,
   type SaleSource,
+  type Sums,
   SOURCE_COLORS,
   SOURCE_LABELS,
   sumRecords,
@@ -96,6 +97,53 @@ const dayMonthLabel = (day: string) =>
   new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short", timeZone: "UTC" }).format(
     new Date(`${day}T00:00:00Z`),
   );
+
+type BookColumn =
+  "title" | "ebook" | "paperback" | "hardcover" | "kenp" | "royalty" | "ads" | "net" | "first";
+type BookSort = { column: BookColumn; desc: boolean };
+
+/** Column header of the books table: a click sorts by it, a second click reverses. */
+function SortHeader({
+  sort,
+  onSort,
+  column,
+  label,
+  right,
+}: {
+  sort: BookSort;
+  onSort: (sort: BookSort) => void;
+  column: BookColumn;
+  label: string;
+  right?: boolean;
+}) {
+  const active = sort.column === column;
+  return (
+    <th
+      className={cn("py-2 pr-3 font-medium", right && "text-right")}
+      aria-sort={active ? (sort.desc ? "descending" : "ascending") : "none"}
+    >
+      <button
+        type="button"
+        onClick={() =>
+          // Text and dates start ascending, numbers descending.
+          onSort({
+            column,
+            desc: active ? !sort.desc : column !== "title" && column !== "first",
+          })
+        }
+        className={cn(
+          "inline-flex items-center gap-0.5 hover:text-foreground",
+          active && "text-foreground",
+        )}
+      >
+        {label}
+        <span aria-hidden className="w-2.5">
+          {active ? (sort.desc ? "↓" : "↑") : ""}
+        </span>
+      </button>
+    </th>
+  );
+}
 
 const PERIODS = [
   { value: "mtd", label: "Mese corrente" },
@@ -204,6 +252,7 @@ export function SalesView({
   const [aliasing, setAliasing] = useState<SaleBook | null>(null);
   // Books table narrowed to the title families without a book (from the banner).
   const [onlyUnresolved, setOnlyUnresolved] = useState(false);
+  const [bookSort, setBookSort] = useState<BookSort>({ column: "royalty", desc: true });
   const update = (patch: Partial<SalesState>) =>
     setState((s) => {
       const next = { ...s, ...patch };
@@ -392,6 +441,40 @@ export function SalesView({
   // Books advertised but unsold in the period still belong in the table.
   for (const key of adSpendByBook.keys()) if (!bookSums.has(key)) bookSums.set(key, emptySums());
   const byBook = [...bookSums].sort((a, b) => b[1].royalty - a[1].royalty);
+  const bookValue = (key: string, sums: Sums, column: BookColumn): number | string => {
+    switch (column) {
+      case "title":
+        return bookTitles.get(key)?.title ?? key;
+      case "ebook":
+      case "paperback":
+      case "hardcover":
+        return sums.bySource[column].units;
+      case "kenp":
+        return sums.kenp;
+      case "royalty":
+        return sums.royalty;
+      case "ads":
+        return adSpendByBook.get(key) ?? 0;
+      case "net":
+        return sums.royalty - (adSpendByBook.get(key) ?? 0);
+      case "first":
+        // Books without a first sale go last either way.
+        return firstSale.get(key) ?? (bookSort.desc ? "" : "9999");
+    }
+  };
+  const sortBooks = (rows: [string, Sums][]) =>
+    [...rows].sort((a, b) => {
+      const [x, y] = [
+        bookValue(a[0], a[1], bookSort.column),
+        bookValue(b[0], b[1], bookSort.column),
+      ];
+      const order =
+        typeof x === "number" && typeof y === "number"
+          ? x - y
+          : String(x).localeCompare(String(y), "it", { sensitivity: "base" });
+      // Ties keep the royalty order.
+      return (bookSort.desc ? -order : order) || b[1].royalty - a[1].royalty;
+    });
   const bySeries = [
     ...groupSums(current, (r) => bookTitles.get(r.book)?.series ?? "Senza collana", sources),
   ].sort((a, b) => b[1].royalty - a[1].royalty);
@@ -763,23 +846,67 @@ export function SalesView({
           <table className="w-full min-w-[52rem] text-left text-sm" data-testid="sales-books">
             <thead>
               <tr className="border-b text-xs text-muted-foreground">
-                <th className="py-2 pr-3 font-medium">Libro</th>
-                <th className="py-2 pr-3 text-right font-medium">eBook</th>
-                <th className="py-2 pr-3 text-right font-medium">Cartaceo</th>
-                <th className="py-2 pr-3 text-right font-medium">Rigida</th>
-                <th className="py-2 pr-3 text-right font-medium">KENP</th>
-                <th className="py-2 pr-3 text-right font-medium">Royalty</th>
-                <th className="py-2 pr-3 text-right font-medium">Quota</th>
-                {hasAds && <th className="py-2 pr-3 text-right font-medium">Ads</th>}
-                {hasAds && <th className="py-2 pr-3 text-right font-medium">Netto</th>}
+                <SortHeader sort={bookSort} onSort={setBookSort} column="title" label="Libro" />
+                <SortHeader
+                  sort={bookSort}
+                  onSort={setBookSort}
+                  column="ebook"
+                  label="eBook"
+                  right
+                />
+                <SortHeader
+                  sort={bookSort}
+                  onSort={setBookSort}
+                  column="paperback"
+                  label="Cartaceo"
+                  right
+                />
+                <SortHeader
+                  sort={bookSort}
+                  onSort={setBookSort}
+                  column="hardcover"
+                  label="Rigida"
+                  right
+                />
+                <SortHeader sort={bookSort} onSort={setBookSort} column="kenp" label="KENP" right />
+                <SortHeader
+                  sort={bookSort}
+                  onSort={setBookSort}
+                  column="royalty"
+                  label="Royalty"
+                  right
+                />
+                <SortHeader
+                  sort={bookSort}
+                  onSort={setBookSort}
+                  column="royalty"
+                  label="Quota"
+                  right
+                />
+                {hasAds && (
+                  <SortHeader sort={bookSort} onSort={setBookSort} column="ads" label="Ads" right />
+                )}
+                {hasAds && (
+                  <SortHeader
+                    sort={bookSort}
+                    onSort={setBookSort}
+                    column="net"
+                    label="Netto"
+                    right
+                  />
+                )}
                 <th className="py-2 pr-3 font-medium">Tendenza</th>
-                <th className="py-2 font-medium">Prima vendita</th>
+                <SortHeader
+                  sort={bookSort}
+                  onSort={setBookSort}
+                  column="first"
+                  label="Prima vendita"
+                />
               </tr>
             </thead>
             <tbody>
-              {(onlyUnresolved
-                ? byBook.filter(([key]) => bookTitles.get(key)?.unresolved)
-                : byBook
+              {sortBooks(
+                onlyUnresolved ? byBook.filter(([key]) => bookTitles.get(key)?.unresolved) : byBook,
               ).map(([key, s]) => {
                 const book = bookTitles.get(key);
                 return (
