@@ -473,6 +473,42 @@ export const codeSchema = z
     /^[a-z0-9][a-z0-9-]{0,59}$/,
     "Codice non valido: minuscole, cifre e trattini (es. ep002).",
   );
+/** Code prefixes of the rubrics with an established naming (ep001, conf001, …). */
+const CODE_PREFIXES: Record<string, string> = {
+  "il-trono": "ep",
+  "il-confessionale": "conf",
+  "cafoni-umani": "caf",
+  "recensioni-a-una-stella": "rec",
+  "tg-delle-macchine": "tg",
+  "galateo-per-umani": "gal",
+  "origliana-ha-sentito": "ori",
+  "consigli-di-gemma": "gem",
+  "trono-obsoleto": "obs",
+  "lo-studio-esplode": "studio",
+  pov: "pov",
+  "indovina-l-elettrodomestico": "ind",
+  "prima-e-dopo": "agg",
+  "speed-date": "spd",
+  compilation: "comp",
+  carosello: "car",
+  speciale: "spec",
+};
+
+/** Prefix of the generated codes of a rubric; unknown rubrics use their value without dashes. */
+export function codePrefix(rubric: string): string {
+  return CODE_PREFIXES[rubric] ?? (rubric.replace(/-/g, "").slice(0, 12) || "c");
+}
+
+/** Next free code of the prefix: one more than the highest number taken ("ep003" → "ep004"). */
+export function nextCode(prefix: string, taken: readonly string[]): string {
+  const pattern = new RegExp(`^${prefix}(\\d+)$`);
+  const highest = taken.reduce((max, code) => {
+    const match = pattern.exec(code);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+  return `${prefix}${String(highest + 1).padStart(3, "0")}`;
+}
+
 export const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data non valida (AAAA-MM-GG).");
 export const colorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Colore non valido (#RRGGBB).");
 

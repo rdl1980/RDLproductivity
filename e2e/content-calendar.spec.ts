@@ -117,3 +117,26 @@ test("month view shows the pieces as dots and links to their week", async ({ pag
   await expect(page).toHaveURL(/view=settimana/);
   await expect(page.locator(`[data-code="${code}"]`)).toBeVisible();
 });
+
+test("a cell adds a piece inline with the next code of the rubric", async ({ page }) => {
+  const stamp = Date.now();
+  const monday = ownWeek(stamp + 14);
+  const title = `In cella ${stamp}`;
+  await page.goto(`/robotti?view=settimana&date=${monday}`);
+
+  const cell = page.getByRole("cell", { name: /13:00 extra/ }).nth(2);
+  await cell.getByRole("button", { name: /Aggiungi contenuto/ }).click();
+  await cell.getByRole("textbox", { name: /Nuovo contenuto/ }).fill(title);
+  await cell.getByRole("combobox", { name: /Rubrica del nuovo contenuto/ }).selectOption("pov");
+  await cell.getByRole("button", { name: "Aggiungi", exact: true }).click();
+
+  const card = cell.getByTestId("content-piece").filter({ hasText: title });
+  await expect(card).toBeVisible();
+  await expect(card).toHaveAttribute("data-code", /^pov\d{3,}$/);
+  await expect(card).toContainText("idea");
+  // The form stays open for the next one.
+  await expect(cell.getByRole("textbox", { name: /Nuovo contenuto/ })).toHaveValue("");
+  await expectPersisted(page, async () => {
+    await expect(page.getByText(title)).toBeVisible();
+  });
+});

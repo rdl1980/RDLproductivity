@@ -49,7 +49,7 @@ import {
 } from "@/lib/content";
 import { addDays } from "@/lib/kdp-sales";
 import { cn } from "@/lib/utils";
-import { moveContentPiece } from "@/server/actions/content";
+import { addContentPiece, moveContentPiece } from "@/server/actions/content";
 import type { ActionResult } from "@/server/actions/result";
 import type { ContentPieceDTO, ContentRubricDTO } from "@/server/queries/content";
 
@@ -157,6 +157,21 @@ export function ContentCalendarView(props: Props) {
       return;
     }
     router.refresh();
+  }
+
+  async function add(input: { title: string; rubric: string; date: string; slot: Slot }) {
+    const result = await addContentPiece(input).catch((): ActionResult<ContentPieceDTO> => ({
+      ok: false,
+      error: "Errore di rete, riprova.",
+    }));
+    if (!result.ok) {
+      toast.error(result.error);
+      return false;
+    }
+    setPieces((current) => [...current.filter((p) => p.code !== result.data.code), result.data]);
+    toast.success(`Scheda ${result.data.code} creata`);
+    router.refresh();
+    return true;
   }
 
   const step = view === "mese" ? shiftMonth : (d: string, n: number) => addDays(d, 7 * n);
@@ -287,10 +302,12 @@ export function ContentCalendarView(props: Props) {
           pieces={pieces.filter((p) => !p.archivedAt && pieceVisible(p, platforms))}
           empty={empty}
           platforms={platforms}
+          rubrics={rubrics}
           rubricOf={rubricOf}
           onOpen={setOpenCode}
           onDraft={setDraft}
           onMove={move}
+          onAdd={add}
         />
       )}
       {view === "mese" && (
@@ -374,20 +391,24 @@ function WeekGrid({
   pieces,
   empty,
   platforms,
+  rubrics,
   rubricOf,
   onOpen,
   onDraft,
   onMove,
+  onAdd,
 }: {
   from: string;
   today: string;
   pieces: ContentPieceDTO[];
   empty: PlannedSlot[];
   platforms: ReadonlySet<Platform>;
+  rubrics: ContentRubricDTO[];
   rubricOf: (value: string) => ContentRubricDTO | undefined;
   onOpen: (code: string) => void;
   onDraft: (draft: PieceDraft) => void;
   onMove: (code: string, date: string, slot: Slot) => void;
+  onAdd: AddPiece;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(from, i));
   const [dragging, setDragging] = useState<ContentPieceDTO | null>(null);
@@ -449,6 +470,13 @@ function WeekGrid({
                   key={day}
                   id={`cell|${day}|${slot}`}
                   label={`${dayLabel(day)}, ${SLOT_LABELS[slot]}`}
+                  rubrics={rubrics}
+                  defaultRubric={
+                    empty.find((s) => s.date === day && s.slot === slot)?.rubric ??
+                    rubrics[0]?.value ??
+                    ""
+                  }
+                  onAdd={(title, rubric) => onAdd({ title, rubric, date: day, slot })}
                 >
                   {pieces
                     .filter((p) => p.date === day && p.slot === slot)
@@ -492,8 +520,50 @@ function WeekGrid({
   );
 }
 
-function Cell({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
+type AddPiece = (input: {
+  title: string;
+  rubric: string;
+  date: string;
+  slot: Slot;
+}) => Promise<boolean>;
+
+function Cell({
+  id,
+  label,
+  rubrics,
+  defaultRubric,
+  onAdd,
+  children,
+}: {
+  id: string;
+  label: string;
+  rubrics: ContentRubricDTO[];
+  /** The rubric planned in the cell, if any. */
+  defaultRubric: string;
+  onAdd: (title: string, rubric: string) => Promise<boolean>;
+  children: React.ReactNode;
+}) {
   const { setNodeRef, isOver } = useDroppable({ id });
+  const [adding, setAdding] = useState(false);
+  const [title, setTitle] = useState("");
+  const [rubric, setRubric] = useState(defaultRubric);
+  const [pending, setPending] = useState(false);
+
+  function open() {
+    setRubric(defaultRubric);
+    setAdding(true);
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const value = title.trim();
+    if (!value || pending) return;
+    setPending(true);
+    const created = await onAdd(value, rubric);
+    setPending(false);
+    if (created) setTitle("");
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -506,6 +576,55 @@ function Cell({ id, label, children }: { id: string; label: string; children: Re
       )}
     >
       {children}
+      {adding ? (
+        <form
+          onSubmit={submit}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setAdding(false);
+          }}
+          className="flex flex-col gap-1.5"
+        >
+          <Input
+            autoFocus
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Titolo del contenuto"
+            aria-label={`Nuovo contenuto, ${label}`}
+            maxLength={200}
+            className="h-8 bg-background"
+          />
+          <select
+            aria-label={`Rubrica del nuovo contenuto, ${label}`}
+            value={rubric}
+            onChange={(event) => setRubric(event.target.value)}
+            className="h-8 rounded-md border border-input bg-background px-2 text-xs shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            {rubrics.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+          <div className="flex gap-1.5">
+            <Button type="submit" size="sm" disabled={pending}>
+              Aggiungi
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setAdding(false)}>
+              Annulla
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={open}
+          aria-label={`Aggiungi contenuto, ${label}`}
+          className="mt-auto flex items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
+        >
+          <PlusIcon className="size-3.5" />
+          Aggiungi
+        </button>
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import {
   type Actor,
+  codePrefix,
   codeSchema,
   colorSchema,
   CYCLES,
@@ -14,6 +15,7 @@ import {
   LAYER_STATUSES,
   type LayerDetails,
   MANUAL_STATUSES,
+  nextCode,
   PLATFORM_LABELS,
   type Platform,
   PLATFORMS,
@@ -475,6 +477,43 @@ export async function recordContentVotes(
     layers: Object.fromEntries(
       Object.entries(data.counts).map(([platform, votes]) => [platform, { votes }]),
     ),
+  });
+}
+
+const quickSchema = z.object({
+  title: z.string().trim().min(1, "Il titolo è obbligatorio.").max(200),
+  rubric: z.string().min(1),
+  date: daySchema,
+  slot: z.enum(SLOTS),
+});
+
+/**
+ * Creates a piece straight from a calendar cell: the code is the next free
+ * one of the rubric's prefix (ep001, ep002, …).
+ */
+export async function addContentPiece(
+  input: z.input<typeof quickSchema>,
+): Promise<ActionResult<ContentPieceDTO>> {
+  if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
+  const { data, error } = parse(quickSchema, input);
+  if (!data) return fail(error);
+  const prefix = codePrefix(data.rubric);
+  const taken = await db.contentPiece.findMany({
+    where: { code: { startsWith: prefix } },
+    select: { code: true },
+  });
+  return saveContentPiece({
+    code: nextCode(
+      prefix,
+      taken.map((p) => p.code),
+    ),
+    fields: {
+      title: data.title,
+      rubric: data.rubric,
+      releaseDate: data.date,
+      slot: data.slot,
+      status: "idea",
+    },
   });
 }
 
