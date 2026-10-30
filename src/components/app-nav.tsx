@@ -1,6 +1,13 @@
 "use client";
 
-import { BookOpenIcon, CalendarDaysIcon, FlameIcon, LayoutGridIcon, SunIcon } from "lucide-react";
+import {
+  BookOpenIcon,
+  BotIcon,
+  CalendarDaysIcon,
+  FlameIcon,
+  LayoutGridIcon,
+  SunIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -12,6 +19,7 @@ const LINKS = [
   { href: "/priority", label: "Priorità", icon: FlameIcon },
   { href: "/calendar", label: "Calendario", icon: CalendarDaysIcon },
   { href: "/kdp", label: "KDP", icon: BookOpenIcon },
+  { href: "/robotti", label: "Robotti&Robotte", icon: BotIcon },
 ] as const;
 
 /** Main navigation; the current section is highlighted and announced. */

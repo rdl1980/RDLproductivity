@@ -262,3 +262,132 @@ test("unregistered redirect URIs are refused without redirecting", async ({ page
     page.getByText("redirect_uri non registrato per questa applicazione."),
   ).toBeVisible();
 });
+
+test("Claude keeps the Robotti e Robotte calendar through MCP", async ({ page, request }) => {
+  const clientName = `Client contenuti ${Date.now()}`;
+  const clientId = await registerClient(request, clientName);
+  const { verifier, challenge } = pkce();
+  const redirect = await authorize(page, clientId, challenge, "Consenti", clientName);
+  const issued = await token(request, {
+    grant_type: "authorization_code",
+    client_id: clientId,
+    code: redirect.searchParams.get("code")!,
+    redirect_uri: REDIRECT_URI,
+    code_verifier: verifier,
+  });
+  const { access_token: accessToken } = (await issued.json()) as { access_token: string };
+  const call = (name: string, args: Record<string, unknown>) =>
+    callTool(request, accessToken, name, args);
+
+  // A far week of its own, so parallel runs do not meet.
+  const stamp = Date.now();
+  const monday = new Date(Date.UTC(2032, 0, 5 + 7 * (stamp % 400))).toISOString().slice(0, 10);
+  const codice = `mcp${stamp}`;
+
+  const slots = (await call("calendario_slot_vuoti", { dal: monday, al: monday })) as unknown as {
+    rubrica: string;
+    fascia: string;
+  }[];
+  expect(slots).toEqual(
+    expect.arrayContaining([expect.objectContaining({ rubrica: "il-trono", fascia: "19:00" })]),
+  );
+
+  const created = await call("contributo_salva", {
+    codice,
+    titolo: "Il Trono ep. MCP",
+    rubrica: "il-trono",
+    data_uscita: monday,
+    fascia: "19:00",
+    stato: "pronto",
+    domanda: "PAIRING o RESET?",
+    opzioni_voto: ["PAIRING", "RESET"],
+    layers: { tiktok: { didascalia: "Prova #robottierobotte", stato_pubblicazione: "pronto" } },
+  });
+  expect(created).toMatchObject({ codice, stato: "pronto", creato_da: "claude" });
+  const layers = created.layers as Record<string, Record<string, unknown>>;
+  expect(Object.keys(layers)).toEqual(["tiktok", "youtube", "instagram"]);
+  expect(layers.tiktok.didascalia).toBe("Prova #robottierobotte");
+  expect(layers.youtube.tipo).toBe("Short");
+  expect(String(layers.tiktok.data_ora_prevista)).toMatch(/T19:00:00\+0[12]:00$/);
+
+  // Same code again: an update, not a duplicate; untouched fields stay.
+  await call("contributo_salva", { codice, riassunto: "Riassunto" });
+  const listed = (await call("calendario_elenco", { dal: monday, al: monday })) as unknown as {
+    codice: string;
+    titolo: string;
+    riassunto: string;
+  }[];
+  expect(listed.filter((p) => p.codice === codice)).toEqual([
+    expect.objectContaining({ titolo: "Il Trono ep. MCP", riassunto: "Riassunto" }),
+  ]);
+
+  // Every active layer scheduled, then one published: "programmato", partly ahead.
+  for (const piattaforma of ["tiktok", "youtube", "instagram"]) {
+    await call("layer_aggiorna", {
+      codice,
+      piattaforma,
+      campi: { stato_pubblicazione: "programmato" },
+    });
+  }
+  const partly = await call("layer_aggiorna", {
+    codice,
+    piattaforma: "tiktok",
+    campi: { stato_pubblicazione: "pubblicato", url: "https://www.tiktok.com/@x/video/1" },
+  });
+  expect(partly).toMatchObject({ stato: "programmato", in_parte: true });
+
+  await call("metriche_aggiungi", {
+    codice,
+    piattaforma: "tiktok",
+    rilevazione: { visualizzazioni: 1200, mi_piace: 80 },
+  });
+  const read = await call("metriche_aggiungi", {
+    codice,
+    piattaforma: "tiktok",
+    rilevazione: { visualizzazioni: 3400 },
+  });
+  const metriche = (read.layers as Record<string, { metriche: { visualizzazioni: number }[] }>)
+    .tiktok.metriche;
+  expect(metriche.map((m) => m.visualizzazioni)).toEqual([1200, 3400]);
+
+  const voted = await call("voto_registra", {
+    codice,
+    conteggi_per_piattaforma: { tiktok: { PAIRING: 30, RESET: 12 }, youtube: { PAIRING: 5 } },
+    esito: "PAIRING",
+  });
+  expect(voted).toMatchObject({
+    esito_voto: "PAIRING",
+    totale_voti: [
+      { opzione: "PAIRING", voti: 35 },
+      { opzione: "RESET", voti: 12 },
+    ],
+  });
+  const history = voted.cronologia as { chi: string }[];
+  expect(history.every((h) => h.chi === "claude")).toBe(true);
+
+  // Errors name the problem.
+  const bad = (await mcp(request, accessToken, "tools/call", {
+    name: "contributo_salva",
+    arguments: {
+      codice: `x${stamp}`,
+      titolo: "X",
+      rubrica: "inesistente",
+      data_uscita: monday,
+      fascia: "19:00",
+    },
+  })) as { isError?: boolean; content: { text: string }[] };
+  expect(bad.isError).toBe(true);
+  expect(bad.content[0].text).toContain("Rubrica sconosciuta");
+
+  await call("contributo_archivia", { codice });
+  const archived = (await call("calendario_elenco", { dal: monday, al: monday })) as unknown as {
+    codice: string;
+  }[];
+  expect(archived.some((p) => p.codice === codice)).toBe(false);
+  expect(await call("contributo_ripristina", { codice })).toMatchObject({ archiviata: false });
+
+  const plan = (await call("piano_leggi", {})) as unknown as { rubrica: string }[];
+  expect(plan.length).toBeGreaterThan(10);
+  const rubrics = (await call("rubriche_elenco", {})) as unknown as { valore: string }[];
+  expect(rubrics.map((r) => r.valore)).toContain("il-trono");
+});

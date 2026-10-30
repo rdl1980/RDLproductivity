@@ -36,32 +36,32 @@ model List {
 }
 
 model Card {
-  id            String       @id @default(cuid())
+  id            String        @id @default(cuid())
   listId        String
-  list          List         @relation(fields: [listId], references: [id], onDelete: Cascade)
+  list          List          @relation(fields: [listId], references: [id], onDelete: Cascade)
   title         String
   description   String? // markdown
   position      String // fractional index
   startDate     DateTime?
   dueDate       DateTime?
-  completed     Boolean      @default(false)
+  completed     Boolean       @default(false)
   /// When the card was last completed (statistics); null while open.
   completedAt   DateTime?
   /// When the card entered its current list (time-in-list statistics).
-  listEnteredAt DateTime     @default(now())
+  listEnteredAt DateTime      @default(now())
   /// 0 (highest) to 4 (lowest); null = no priority. Checked in the database.
   priority      Int?
   /// { rule, interval, timeZone }: completing the card creates the next occurrence.
   recurrence    Json?
-  coverId       String?      @unique
-  cover         Attachment?  @relation("CardCover", fields: [coverId], references: [id], onDelete: SetNull)
-  attachments   Attachment[] @relation("CardAttachments")
+  coverId       String?       @unique
+  cover         Attachment?   @relation("CardCover", fields: [coverId], references: [id], onDelete: SetNull)
+  attachments   Attachment[]  @relation("CardAttachments")
   kdpBookLinks  KdpBookLink[]
-  archived      Boolean      @default(false)
+  archived      Boolean       @default(false)
   labels        CardLabel[]
   checklists    Checklist[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@index([listId, position])
   @@index([dueDate])
@@ -230,7 +230,7 @@ model KdpTask {
 // Books of a KDP account, imported from the Bookshelf (titles, formats, ASINs),
 // linked to the board cards about them.
 model KdpBook {
-  id           String        @id @default(cuid())
+  id           String            @id @default(cuid())
   /// "main" | "secondary". Checked in the database.
   account      String
   /// Bookshelf title id (the row id on kdp.amazon.com).
@@ -247,8 +247,8 @@ model KdpBook {
   links        KdpBookLink[]
   aliases      KdpTitleAlias[]
   prices       KdpPriceHistory[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   @@unique([account, kdpId])
 }
@@ -273,6 +273,7 @@ model KdpBookLink {
   @@index([cardId])
   @@index([status])
 }
+
 // Daily sales of one title family (DIGITAL/PRINT/HARDCOVER ASINs) in one
 // marketplace, from the KDP Reports pages. Royalties are KDP's estimates in EUR.
 model KdpSale {
@@ -353,4 +354,113 @@ model KdpPriceHistory {
   seenAt DateTime
 
   @@index([bookId, format, seenAt])
+}
+
+// Robotti e Robotte: editorial calendar of the satirical channel. A piece
+// (scheda) goes out on a date and time slot, with one layer per platform.
+model ContentRubric {
+  /// Stable key, e.g. "il-trono".
+  value    String         @id
+  name     String
+  /// "#RRGGBB"
+  color    String
+  position Int            @default(0)
+  pieces   ContentPiece[]
+}
+
+model ContentPiece {
+  id              String           @id @default(cuid())
+  /// Stable code chosen by Claude, e.g. "ep002": the key of every MCP operation.
+  code            String           @unique
+  title           String
+  rubric          String
+  rubricRef       ContentRubric    @relation(fields: [rubric], references: [value], onUpdate: Cascade)
+  releaseDate     DateTime         @db.Date
+  /// "13:00" | "19:00". Checked in the database.
+  slot            String
+  /// Manual status: idea … pronto, or scartato ("programmato"/"pubblicato" come from the layers).
+  status          String           @default("idea")
+  /// "A" | "B" | "C" | "D" when overridden; null = computed from the date.
+  cycleWeek       String?
+  durationSeconds Int?
+  /// "9:16" | "16:9" | "immagini"
+  videoFormat     String?
+  summary         String?
+  videoFile       String?
+  coverFile       String?
+  script          String?
+  question        String?
+  voteOptions     String[]         @default([])
+  voteResult      String?
+  voteCloses      DateTime?        @db.Date
+  notes           String?
+  /// "rosario" | "claude"
+  createdBy       String
+  updatedBy       String
+  archivedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  layers          ContentLayer[]
+  history         ContentHistory[]
+
+  @@index([releaseDate, slot])
+}
+
+model ContentLayer {
+  id                String          @id @default(cuid())
+  pieceId           String
+  piece             ContentPiece    @relation(fields: [pieceId], references: [id], onDelete: Cascade)
+  /// "tiktok" | "youtube" | "instagram". Checked in the database.
+  platform          String
+  active            Boolean         @default(true)
+  /// "da preparare" | "pronto" | "programmato" | "pubblicato" | "problema"
+  publishStatus     String          @default("da preparare")
+  plannedAt         DateTime?
+  /// Set when plannedAt was moved by hand: moving the piece leaves it alone.
+  plannedAtManual   Boolean         @default(false)
+  publishedAt       DateTime?
+  url               String?
+  aiLabel           Boolean         @default(false)
+  coverChosen       Boolean         @default(false)
+  pinnedComment     String?
+  pinnedCommentDone Boolean         @default(false)
+  /// { [option]: count }
+  votes             Json            @default("{}")
+  /// Platform fields (see src/lib/content.ts): caption, YouTube title, …
+  details           Json            @default("{}")
+  notes             String?
+  metrics           ContentMetric[]
+
+  @@unique([pieceId, platform])
+}
+
+/// One reading of a layer's numbers; readings accumulate.
+model ContentMetric {
+  id           String       @id @default(cuid())
+  layerId      String
+  layer        ContentLayer @relation(fields: [layerId], references: [id], onDelete: Cascade)
+  measuredAt   DateTime
+  views        Int?
+  likes        Int?
+  comments     Int?
+  shares       Int?
+  saves        Int?
+  completion   Float?
+  newFollowers Int?
+  watchHours   Float?
+  createdAt    DateTime     @default(now())
+
+  @@index([layerId, measuredAt])
+}
+
+model ContentHistory {
+  id      String       @id @default(cuid())
+  pieceId String
+  piece   ContentPiece @relation(fields: [pieceId], references: [id], onDelete: Cascade)
+  /// "rosario" | "claude"
+  actor   String
+  summary String
+  at      DateTime     @default(now())
+
+  @@index([pieceId, at])
 }

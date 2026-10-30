@@ -43,6 +43,7 @@ import {
 } from "@/server/actions/templates";
 import { weekStartOf, monthWeeks, parseMonth } from "@/lib/kdp";
 import { createKdpTask, deleteKdpTask, moveKdpTask, updateKdpTask } from "@/server/actions/kdp";
+import { registerContentTools } from "@/server/mcp/content-tools";
 import { getSuperBoard } from "@/server/queries/aggregate";
 import { getKdpTasks } from "@/server/queries/kdp";
 import { getKdpBooks } from "@/server/queries/kdp-books";
@@ -1197,4 +1198,7 @@ export function registerTools(server: McpServer) {
     },
     (input) => setKdpBookVolume(input),
   );
+
+  // ---- Robotti e Robotte content calendar ----
+  registerContentTools((name, config, run) => defineTool(server, name, config, run));
 }
