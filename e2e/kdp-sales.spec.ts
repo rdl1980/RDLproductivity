@@ -143,3 +143,36 @@ test("KDP import: a book going online is logged as actual and completes its card
     await expect(cardIn(list(page, "Da pubblicare"), blockedName)).toContainText("P0");
   });
 });
+
+test("the books table sorts by any column", async ({ page }) => {
+  await page.goto("/kdp/vendite?period=all");
+  const table = page.getByTestId("sales-books");
+  await expect(table).toBeVisible();
+  const header = (name: string) => table.getByRole("columnheader", { name, exact: true });
+  const titles = () =>
+    table
+      .locator("tbody tr")
+      .evaluateAll((rows) =>
+        rows.map((r) => r.querySelector("td button")?.textContent?.trim() ?? ""),
+      );
+  const sorted = (values: string[], desc: boolean) => {
+    const copy = [...values].sort((a, b) => a.localeCompare(b, "it", { sensitivity: "base" }));
+    return desc ? copy.reverse() : copy;
+  };
+
+  // Royalty, largest first, until a header is clicked.
+  await expect(header("Royalty")).toHaveAttribute("aria-sort", "descending");
+  // The click works once the page is hydrated.
+  await expect(async () => {
+    await header("Libro").getByRole("button").click();
+    await expect(header("Libro")).toHaveAttribute("aria-sort", "ascending", { timeout: 1000 });
+  }).toPass();
+  const ascending = await titles();
+  expect(ascending).toEqual(sorted(ascending, false));
+
+  await header("Libro").getByRole("button").click();
+  await expect(header("Libro")).toHaveAttribute("aria-sort", "descending");
+  const descending = await titles();
+  expect(descending).toEqual(sorted(descending, true));
+  await expect(header("Royalty")).toHaveAttribute("aria-sort", "none");
+});
