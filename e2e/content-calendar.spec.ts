@@ -192,6 +192,9 @@ test("the week starts from yesterday and the to-do tab checks items off", async 
   const done = page.getByTestId("todo-done");
   await done.locator("summary").click();
   await expect(done).toContainText(text);
-  await done.getByRole("button", { name: `Rimetti da fare: ${text}` }).first().click();
+  await done
+    .getByRole("button", { name: `Rimetti da fare: ${text}` })
+    .first()
+    .click();
   await expect(page.getByTestId("todo-item").filter({ hasText: text }).first()).toBeVisible();
 });
