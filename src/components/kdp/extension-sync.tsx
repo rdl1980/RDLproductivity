@@ -11,7 +11,9 @@ import { KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
 import { decodeImportHash, importPayloadSchema } from "@/lib/kdp-books";
 import {
   EXTENSION_ACCOUNT_KEY,
+  EXTENSION_VERSION,
   type ExtensionEvent,
+  olderVersion,
   runExtensionSync,
   useKdpExtension,
 } from "@/lib/kdp-extension";
@@ -173,7 +175,29 @@ export function ExtensionSync({
       <p className="flex items-center gap-2 font-medium">
         <PuzzleIcon className="size-4 text-primary" />
         Estensione «RDL KDP Sync» attiva (v{version})
+        <Link
+          href="/kdp/estensione"
+          className="ml-auto text-xs font-normal text-primary hover:underline"
+        >
+          Scarica o aggiorna
+        </Link>
       </p>
+      {olderVersion(version, EXTENSION_VERSION) && (
+        <p
+          role="status"
+          className="flex items-start gap-2 rounded-md bg-amber-100 p-2 text-xs text-amber-900 dark:bg-amber-500/15 dark:text-amber-200"
+          data-testid="extension-outdated"
+        >
+          <CircleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
+          <span>
+            È disponibile la versione {EXTENSION_VERSION}.{" "}
+            <Link href="/kdp/estensione" className="font-medium underline">
+              Scaricala
+            </Link>
+            , sostituisci la cartella e premi «Ricarica» nella pagina delle estensioni del browser.
+          </span>
+        </p>
+      )}
       <fieldset className="flex flex-wrap gap-x-4 gap-y-1">
         <legend className="mb-1 text-xs text-muted-foreground">
           In questo browser sei collegato a KDP con:

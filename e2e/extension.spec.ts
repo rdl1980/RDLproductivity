@@ -127,6 +127,12 @@ test("the extension reads the KDP pages in hidden tabs and the app imports both"
     await page.getByRole("button", { name: "Aggiorna dati" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toContainText("Estensione «RDL KDP Sync» attiva");
+    // The loaded extension is the published one: no update notice, a link to the page.
+    await expect(dialog.getByTestId("extension-outdated")).toHaveCount(0);
+    await expect(dialog.getByRole("link", { name: "Scarica o aggiorna" })).toHaveAttribute(
+      "href",
+      "/kdp/estensione",
+    );
     await dialog.getByRole("radio", { name: "Account secondario" }).check();
     await dialog.getByTestId("extension-sync").click();
 
