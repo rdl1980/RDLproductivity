@@ -15,6 +15,7 @@ import {
   publishTexts,
   textOn,
   todoItems,
+  todoKey,
   type TodoPiece,
   voteTotals,
   zonedInstant,
@@ -226,5 +227,22 @@ describe("generated codes", () => {
     expect(nextCode("ep", ["ep001", "ep007", "ep003", "speciale-halloween"])).toBe("ep008");
     // "epx002" and "ep" alone do not count.
     expect(nextCode("ep", ["epx002", "ep", "ep1000"])).toBe("ep1001");
+  });
+});
+
+describe("to-do keys", () => {
+  it("tell items apart by kind, piece, platform, day and slot", () => {
+    const base = {
+      kind: "schedule",
+      code: "ep001",
+      platform: "tiktok",
+      date: "2026-11-02",
+    } as const;
+    expect(todoKey(base)).toBe("schedule|ep001|tiktok|2026-11-02||");
+    expect(todoKey({ ...base, platform: "youtube" })).not.toBe(todoKey(base));
+    const slot = { date: "2026-11-02", slot: "19:00", rubric: "il-trono" } as const;
+    expect(todoKey({ kind: "slot", code: null, platform: null, date: slot.date, slot })).toBe(
+      "slot|||2026-11-02|19:00|il-trono",
+    );
   });
 });

@@ -32,17 +32,18 @@ export default async function ContentPage({ searchParams }: PageProps<"/robotti"
   const view: ContentView = VIEWS.includes(params.view as ContentView)
     ? (params.view as ContentView)
     : "settimana";
-  const date = isDay(params.date) ? params.date : today;
+  const date = isDay(params.date) ? params.date : null;
 
   let anchor: string;
   let from: string;
   let to: string;
   if (view === "mese") {
-    anchor = `${date.slice(0, 7)}-01`;
+    anchor = `${(date ?? today).slice(0, 7)}-01`;
     from = mondayOf(anchor);
     to = addDays(mondayOf(lastOfMonth(anchor)), 6);
   } else {
-    anchor = mondayOf(date);
+    // Seven days from `date`; by default from yesterday, so the week moves every day.
+    anchor = date ?? addDays(today, -1);
     from = anchor;
     to = addDays(anchor, 6);
   }
@@ -67,7 +68,7 @@ export default async function ContentPage({ searchParams }: PageProps<"/robotti"
       pieces={pieces}
       plan={plan}
       rubrics={rubrics}
-      todo={todo}
+      todoCount={todo.open.length}
     />
   );
 }

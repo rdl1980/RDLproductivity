@@ -394,6 +394,21 @@ export type TodoPiece = {
   }[];
 };
 
+/** Stable identity of a to-do item, to remember it as done. */
+export function todoKey(item: Pick<TodoItem, "kind" | "code" | "platform" | "date" | "slot">) {
+  return [
+    item.kind,
+    item.code ?? "",
+    item.platform ?? "",
+    item.date,
+    item.slot?.slot ?? "",
+    item.slot?.rubric ?? "",
+  ].join("|");
+}
+
+/** Kinds marked done by changing the piece itself; the others are only remembered. */
+export const TODO_KINDS_WITH_ACTION: readonly TodoKind[] = ["schedule", "pin"];
+
 /** What needs an action (section 5.5 of the spec), soonest first. */
 export function todoItems(
   pieces: TodoPiece[],

@@ -16,7 +16,6 @@ import {
   BotIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  ListChecksIcon,
   PaletteIcon,
   PlusIcon,
   RepeatIcon,
@@ -33,6 +32,7 @@ import {
   cycleWeekOf,
   defaultLayers,
   emptySlots,
+  isoWeekday,
   PIECE_STATUSES,
   type PlannedSlot,
   plannedSlots,
@@ -44,7 +44,6 @@ import {
   SLOTS,
   type Slot,
   textOn,
-  type TodoItem,
   WEEKDAYS,
 } from "@/lib/content";
 import { addDays } from "@/lib/kdp-sales";
@@ -53,6 +52,7 @@ import { addContentPiece, moveContentPiece } from "@/server/actions/content";
 import type { ActionResult } from "@/server/actions/result";
 import type { ContentPieceDTO, ContentRubricDTO } from "@/server/queries/content";
 
+import { ContentTabs } from "./content-tabs";
 import { dayLabel, LayerBadge, pieceVisible, StatusText, visibleLayers } from "./content-ui";
 import { type PieceDraft, PieceDialog } from "./piece-dialog";
 import { PlanDialog, RubricsDialog } from "./settings-dialogs";
@@ -61,7 +61,7 @@ export type ContentView = "settimana" | "mese" | "elenco";
 
 type Props = {
   view: ContentView;
-  /** Monday of the week shown, or first day of the month shown. */
+  /** First day of the week shown (yesterday by default), or first day of the month shown. */
   anchor: string;
   today: string;
   /** Visible range of the week and month views (inclusive). */
@@ -70,7 +70,8 @@ type Props = {
   pieces: ContentPieceDTO[];
   plan: PlanRow[];
   rubrics: ContentRubricDTO[];
-  todo: TodoItem[];
+  /** Open items of the "Da fare" tab, for its badge. */
+  todoCount: number;
 };
 
 const NETWORK = "Errore di rete, modifica annullata.";
@@ -90,7 +91,7 @@ const shiftMonth = (anchor: string, step: number) => {
 const href = (view: ContentView, date: string) => `/robotti?view=${view}&date=${date}`;
 
 export function ContentCalendarView(props: Props) {
-  const { view, anchor, today, from, to, plan, rubrics, todo } = props;
+  const { view, anchor, today, from, to, plan, rubrics, todoCount } = props;
   const router = useRouter();
   // Local copy for optimistic moves; reset when the server sends new data.
   const [source, setSource] = useState(props.pieces);
@@ -175,6 +176,9 @@ export function ContentCalendarView(props: Props) {
   }
 
   const step = view === "mese" ? shiftMonth : (d: string, n: number) => addDays(d, 7 * n);
+  // The week view starts from yesterday: the day just gone and the six to come.
+  const start = (key: ContentView) => (key === "settimana" ? addDays(today, -1) : today);
+  const cycles = [...new Set([cycleWeekOf(from), cycleWeekOf(to)])];
   const title =
     view === "mese"
       ? monthTitle(anchor)
@@ -211,6 +215,8 @@ export function ContentCalendarView(props: Props) {
         }
       />
 
+      <ContentTabs current="calendar" todoCount={todoCount} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav aria-label="Vista" className="inline-flex rounded-lg bg-muted p-[3px] text-sm">
           {(
@@ -222,7 +228,7 @@ export function ContentCalendarView(props: Props) {
           ).map(([key, label]) => (
             <Link
               key={key}
-              href={href(key, view === "elenco" ? today : anchor)}
+              href={href(key, view === "elenco" ? start(key) : anchor)}
               aria-current={view === key ? "page" : undefined}
               className={cn(
                 "rounded-md px-3 py-1 font-medium",
@@ -264,7 +270,7 @@ export function ContentCalendarView(props: Props) {
             </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href={href(view, today)}>Oggi</Link>
+            <Link href={href(view, start(view))}>Oggi</Link>
           </Button>
           <Button asChild variant="outline" size="icon" aria-label="Successiva">
             <Link href={href(view, step(anchor, 1))}>
@@ -279,21 +285,11 @@ export function ContentCalendarView(props: Props) {
               className="rounded-md bg-accent px-2 py-0.5 text-sm font-semibold text-accent-foreground"
               data-testid="cycle-week"
             >
-              Settimana {cycleWeekOf(from)}
+              {cycles.length === 1 ? `Settimana ${cycles[0]}` : `Settimane ${cycles.join(" e ")}`}
             </span>
           )}
         </div>
       )}
-
-      <TodoPanel
-        items={todo}
-        onOpen={(item) =>
-          item.code
-            ? setOpenCode(item.code)
-            : item.slot &&
-              setDraft({ date: item.slot.date, slot: item.slot.slot, rubric: item.slot.rubric })
-        }
-      />
 
       {view === "settimana" && (
         <WeekGrid
@@ -347,41 +343,6 @@ export function ContentCalendarView(props: Props) {
       <RubricsDialog open={rubricsOpen} onOpenChange={setRubricsOpen} rubrics={rubrics} />
       <PlanDialog open={planOpen} onOpenChange={setPlanOpen} plan={plan} rubrics={rubrics} />
     </main>
-  );
-}
-
-function TodoPanel({ items, onOpen }: { items: TodoItem[]; onOpen: (item: TodoItem) => void }) {
-  return (
-    <details
-      className="rounded-xl border bg-card p-3 [&[open]>summary]:mb-2"
-      open={items.length > 0}
-      data-testid="todo-panel"
-    >
-      <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
-        <ListChecksIcon className="size-4 text-muted-foreground" />
-        Da fare ({items.length})
-      </summary>
-      {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Niente in sospeso.</p>
-      ) : (
-        <ul className="grid gap-1 text-sm sm:grid-cols-2">
-          {items.map((item, i) => (
-            <li key={`${item.kind}-${item.code}-${item.platform}-${item.date}-${i}`}>
-              <button
-                type="button"
-                onClick={() => onOpen(item)}
-                className="flex w-full items-baseline gap-2 rounded px-1.5 py-1 text-left hover:bg-muted"
-              >
-                <span className="w-24 shrink-0 text-xs text-muted-foreground">
-                  {dayLabel(item.date)}
-                </span>
-                <span className="min-w-0">{item.text}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </details>
   );
 }
 
@@ -443,7 +404,7 @@ function WeekGrid({
             <div role="columnheader">
               <span className="sr-only">Fascia</span>
             </div>
-            {days.map((day, i) => (
+            {days.map((day) => (
               <div
                 key={day}
                 role="columnheader"
@@ -453,7 +414,7 @@ function WeekGrid({
                   day === today ? "bg-accent text-accent-foreground" : "bg-muted",
                 )}
               >
-                {WEEKDAYS[i]}
+                {WEEKDAYS[isoWeekday(day) - 1]}
                 <span className="block text-xs font-normal text-muted-foreground">
                   {dayLabel(day)}
                 </span>

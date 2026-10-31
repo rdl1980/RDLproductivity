@@ -18,6 +18,7 @@ import {
   type Slot,
   type TodoItem,
   todoItems,
+  todoKey,
   type VideoFormat,
 } from "@/lib/content";
 import { addDays } from "@/lib/kdp-sales";
@@ -25,6 +26,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/server/db";
 
 export const PLAN_KEY = "content.plan";
+/** To-do items marked done that leave the piece unchanged: `[{ key, at }]`. */
+export const TODO_DONE_KEY = "content.todo.done";
 
 export type ContentMetricDTO = {
   id: string;
@@ -254,15 +257,32 @@ export async function getEmptySlots(from: string, to: string) {
   );
 }
 
-/** The "Da fare" panel: pieces of the last 60 days and the next 7, and empty slots. */
-export async function getContentTodo(now: Date, today: string): Promise<TodoItem[]> {
-  const [pieces, empty, rubrics] = await Promise.all([
+export type TodoDone = { key: string; at: string };
+
+export async function getTodoDone(): Promise<TodoDone[]> {
+  const setting = await db.appSetting.findUnique({ where: { key: TODO_DONE_KEY } });
+  try {
+    const parsed = JSON.parse(setting?.value ?? "[]") as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((d): d is TodoDone => typeof d?.key === "string" && typeof d?.at === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export type ContentTodo = { open: TodoItem[]; done: (TodoItem & { doneAt: string })[] };
+
+/** The "Da fare" tab: pieces of the last 60 days and the next 7, and empty slots. */
+export async function getContentTodo(now: Date, today: string): Promise<ContentTodo> {
+  const [pieces, empty, rubrics, doneList] = await Promise.all([
     getContentPieces({ from: addDays(today, -60), to: addDays(today, 7) }),
     getEmptySlots(today, addDays(today, 7)),
     getContentRubrics(),
+    getTodoDone(),
   ]);
   const names = new Map(rubrics.map((r) => [r.value, r.name]));
-  return todoItems(
+  const items = todoItems(
     pieces.map((p) => ({
       code: p.code,
       title: p.title,
@@ -287,4 +307,12 @@ export async function getContentTodo(now: Date, today: string): Promise<TodoItem
     now,
     (rubric) => names.get(rubric) ?? rubric,
   );
+  const doneAt = new Map(doneList.map((d) => [d.key, d.at]));
+  return {
+    open: items.filter((item) => !doneAt.has(todoKey(item))),
+    done: items.flatMap((item) => {
+      const at = doneAt.get(todoKey(item));
+      return at ? [{ ...item, doneAt: at }] : [];
+    }),
+  };
 }
