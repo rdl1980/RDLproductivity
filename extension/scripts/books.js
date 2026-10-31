@@ -5,6 +5,7 @@
   const heartbeat = setInterval(() => send({ type: "progress" }), 5000);
   const finish = (message) => { clearInterval(heartbeat); send(message); };
   (async () => {
+  try {
   const TABLE = "table.refreshedbookshelftable";
   const ROWS = TABLE + " > tbody > tr";
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -74,5 +75,9 @@
   for (const b of bytes) bin += String.fromCharCode(b);
   const hash = btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   ((hash) => finish({ type: "result", hash }))(hash);
+  } catch (error) {
+    // Never leave the caller waiting: report what broke.
+    ((message) => finish({ type: "result", error: message }))("Lettura del Bookshelf non riuscita: " + (error && error.message ? error.message : error));
+  }
 })();
 })();

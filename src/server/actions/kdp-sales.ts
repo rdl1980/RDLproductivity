@@ -91,6 +91,8 @@ export async function importKdpSales(
   };
   await db.$transaction(
     async (tx) => {
+      // One import per account at a time: two would deadlock on the delete and insert.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`kdp.sales.${account}`}))`;
       // Only the titles the report knows: a partial report (one title, one
       // marketplace) must not wipe the others.
       await tx.kdpSale.deleteMany({

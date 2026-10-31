@@ -62,6 +62,7 @@ test("accessibility: no serious axe violations on the main pages", async ({ page
     "/stats",
     "/kdp",
     "/kdp/incassi",
+    "/kdp/pen-name",
     "/kdp/estensione",
     "/robotti",
     "/robotti?view=mese",

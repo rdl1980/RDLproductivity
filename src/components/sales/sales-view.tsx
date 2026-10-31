@@ -59,10 +59,7 @@ import {
   groupSums,
   launchCurve,
   marketplaceLabel,
-  NO_PEN_NAME,
   nextBucket,
-  OTHER_PEN_NAMES,
-  penNameSeries,
   previousMonthToDate,
   previousPeriod,
   SALE_SOURCES,
@@ -148,7 +145,7 @@ function SortHeader({
   );
 }
 
-const PERIODS = [
+export const PERIODS = [
   { value: "mtd", label: "Mese corrente" },
   { value: "30d", label: "Ultimi 30 giorni" },
   { value: "90d", label: "Ultimi 90 giorni" },
@@ -157,14 +154,14 @@ const PERIODS = [
   { value: "all", label: "Tutto lo storico" },
   { value: "custom", label: "Personalizzato" },
 ] as const;
-type Period = (typeof PERIODS)[number]["value"];
+export type Period = (typeof PERIODS)[number]["value"];
 
-const METRICS = [
+export const METRICS = [
   { value: "royalty", label: "Royalty" },
   { value: "units", label: "Copie" },
   { value: "kenp", label: "Pagine KENP" },
 ] as const;
-type Metric = (typeof METRICS)[number]["value"];
+export type Metric = (typeof METRICS)[number]["value"];
 
 export type SalesState = {
   period: Period;
@@ -193,8 +190,8 @@ type Props = {
   origin: string;
 };
 
-function periodRange(
-  state: SalesState,
+export function periodRange(
+  state: Pick<SalesState, "period" | "from" | "to">,
   today: string,
   first: string,
 ): { from: string; to: string } {
@@ -478,27 +475,6 @@ export function SalesView({
       // Ties keep the royalty order.
       return (bookSort.desc ? -order : order) || b[1].royalty - a[1].royalty;
     });
-  const pens = penNameSeries(
-    current,
-    (book) => bookTitles.get(book)?.author,
-    range.from,
-    range.to,
-    granularity,
-    sources,
-  );
-  const PEN_COLORS = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)"];
-  const penSeries: Series[] = pens.groups.map((g, i) => ({
-    key: g.name,
-    label: g.name,
-    color:
-      g.name === NO_PEN_NAME
-        ? "var(--muted-foreground)"
-        : g.name === OTHER_PEN_NAMES
-          ? "var(--chart-3)"
-          : PEN_COLORS[i % PEN_COLORS.length],
-  }));
-  const metricOf = (sums: Sums) =>
-    state.metric === "royalty" ? sums.royalty : state.metric === "units" ? sums.units : sums.kenp;
   const bySeries = [
     ...groupSums(current, (r) => bookTitles.get(r.book)?.series ?? "Senza collana", sources),
   ].sort((a, b) => b[1].royalty - a[1].royalty);
@@ -754,47 +730,6 @@ export function SalesView({
           label="Andamento nel periodo"
         />
       </Panel>
-
-      {pens.groups.length > 0 && (
-        <Panel
-          title="Per pen name"
-          description={`${METRICS.find((m) => m.value === state.metric)!.label} per ${GRANULARITIES.find((g) => g.value === granularity)!.label.toLowerCase()}, divise per autore del libro`}
-          table={{
-            headers: ["Periodo", ...penSeries.map((s) => s.label), "Totale"],
-            rows: [
-              ...pens.buckets.map((b) => [
-                detail(b.start),
-                ...b.sums.map((sums) => metricFormat(metricOf(sums))),
-                metricFormat(b.sums.reduce((sum, x) => sum + metricOf(x), 0)),
-              ]),
-              [
-                "Totale",
-                ...pens.groups.map((g) => metricFormat(metricOf(g.sums))),
-                metricFormat(pens.groups.reduce((sum, g) => sum + metricOf(g.sums), 0)),
-              ],
-            ],
-          }}
-        >
-          <Legend series={penSeries} />
-          <StackedColumns
-            data={pens.buckets.map((b) => ({
-              label: bucketLabel(b.start, granularity),
-              detail: detail(b.start),
-              values: b.sums.map(metricOf),
-            }))}
-            series={penSeries}
-            format={metricFormat}
-            formatAxis={metricAxis}
-            label="Andamento per pen name"
-          />
-          {pens.groups.some((g) => g.name === NO_PEN_NAME) && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              «{NO_PEN_NAME}»: libri importati prima che l&apos;import leggesse l&apos;autore.
-              Aggiorna i libri dalla Bookshelf (estensione 1.0.3 o preferito) per assegnarli.
-            </p>
-          )}
-        </Panel>
-      )}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Panel
@@ -1417,7 +1352,7 @@ function Header({ onSync }: { onSync: () => void }) {
   );
 }
 
-function Delta({
+export function Delta({
   value,
   previous,
   invert,
@@ -1460,7 +1395,7 @@ function Delta({
   );
 }
 
-function Tile({
+export function Tile({
   label,
   value,
   delta,
@@ -1492,7 +1427,7 @@ function Tile({
   );
 }
 
-function Panel({
+export function Panel({
   title,
   description,
   actions,
@@ -1703,7 +1638,7 @@ function Filters({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
@@ -1712,7 +1647,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function ChipGroup({ label, children }: { label: string; children: React.ReactNode }) {
+export function ChipGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div role="group" aria-label={label} className="flex flex-wrap items-center gap-1.5">
       <span className="mr-1 text-xs font-medium text-muted-foreground">{label}</span>
@@ -1721,7 +1656,7 @@ function ChipGroup({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
-function Chip({
+export function Chip({
   pressed,
   color,
   onClick,

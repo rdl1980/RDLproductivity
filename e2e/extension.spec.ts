@@ -136,15 +136,21 @@ test("the extension reads the KDP pages in hidden tabs and the app imports both"
     await dialog.getByRole("radio", { name: "Account secondario" }).check();
     await dialog.getByTestId("extension-sync").click();
 
+    // Each step ends done or in error: wait for the end, then the failure shows its message.
     const steps = dialog.getByTestId("extension-steps");
-    await expect(steps.locator('[data-step="sales"][data-status="done"]')).toContainText(
-      "2 copie, 4,50 € di royalty",
-      { timeout: 60_000 },
-    );
-    await expect(steps.locator('[data-step="books"][data-status="done"]')).toContainText(
-      "1 nuovi",
-      { timeout: 60_000 },
-    );
+    for (const [step, text] of [
+      ["sales", "2 copie, 4,50 € di royalty"],
+      ["books", "1 nuovi"],
+    ]) {
+      const row = steps.locator(`[data-step="${step}"]`);
+      await expect(row)
+        .toHaveAttribute("data-status", /done|error/, { timeout: 90_000 })
+        .catch(async (error: Error) => {
+          throw new Error(`${step} still running: ${await row.innerText()}\n${error.message}`);
+        });
+      await expect(row).toContainText(text);
+      await expect(row).toHaveAttribute("data-status", "done");
+    }
     // A clean run closes the dialog; the page shows the imported book with its sales.
     await expect(dialog).toBeHidden();
     await page.getByRole("combobox", { name: "Account" }).click();

@@ -12,8 +12,12 @@ test("the statistics page counts completions and shows time in list", async ({ p
   // Move one card to a uniquely named list and complete the other.
   await dragTo(page, cardIn(list(page, "Inizio"), title), list(page, stage));
   await expect(cardIn(list(page, stage), title)).toHaveCount(1);
-  await cardIn(list(page, "Inizio"), `Altra ${stamp}`).click();
+  // Right after a drop the board re-renders: retry the click until the card opens.
   const dialog = page.getByRole("dialog", { name: `Altra ${stamp}` });
+  await expect(async () => {
+    await cardIn(list(page, "Inizio"), `Altra ${stamp}`).click();
+    await expect(dialog).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
   await dialog.getByRole("checkbox", { name: "Completata" }).click();
   await expect(dialog.getByRole("checkbox", { name: "Completata" })).toBeChecked();
   await page.keyboard.press("Escape");

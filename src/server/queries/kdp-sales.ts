@@ -2,7 +2,15 @@ import "server-only";
 
 import { accountLabel, type KdpAccount } from "@/lib/kdp";
 import { mainTitle } from "@/lib/kdp-books";
-import { parseTitleKey, type SaleBook, type SaleRecord } from "@/lib/kdp-sales";
+import {
+  filterRecords,
+  NO_PEN_NAME,
+  parseTitleKey,
+  previousPeriod,
+  SALE_SOURCES,
+  type SaleBook,
+  type SaleRecord,
+} from "@/lib/kdp-sales";
 import type { AdRecord } from "@/lib/kdp-ads";
 import type { KdpFormat } from "@/lib/kdp-books";
 import type { PriceChange } from "@/lib/kdp-prices";
@@ -10,12 +18,19 @@ import { volumeNumber } from "@/lib/kdp-series";
 import { db } from "@/server/db";
 import { getAdRecords } from "@/server/queries/kdp-ads";
 import { parseFormats } from "@/server/queries/kdp-books";
+import { type PenBook, penBookRows, penNameTable } from "@/lib/kdp-pen-names";
 
 export const salesImportKey = (account: KdpAccount) => `kdp.sales.${account}`;
 
 export type SalesImportInfo = { importedAt: string; from: string; to: string; rows: number };
 
-export type CatalogBook = { id: string; title: string; account: KdpAccount };
+export type CatalogBook = {
+  id: string;
+  title: string;
+  account: KdpAccount;
+  series: string | null;
+  author: string | null;
+};
 
 export type SalesData = {
   records: SaleRecord[];
@@ -180,6 +195,8 @@ export async function getSalesData(): Promise<SalesData> {
       id: book.id,
       title: mainTitle(book.title),
       account: book.account as KdpAccount,
+      series: book.series,
+      author: book.author,
     })),
     imports,
     booksImportedAt,
@@ -261,5 +278,81 @@ export async function getSalesSummary(from: string, to: string, account?: KdpAcc
           ? { adSpend: round(spendByBook.get(key)!), net: round(v.royalty - spendByBook.get(key)!) }
           : {}),
       })),
+  };
+}
+
+/** Every book for the pen name pages: the imported ones, then sales titles no book owns. */
+export function penBooks(data: Pick<SalesData, "catalog" | "books">): PenBook[] {
+  const imported = data.catalog.map((b) => ({
+    key: b.id,
+    title: b.title,
+    account: b.account,
+    series: b.series,
+    author: b.author,
+  }));
+  const known = new Set(imported.map((b) => b.key));
+  const others = data.books
+    .filter((b) => !known.has(b.key))
+    .map((b) => ({
+      key: b.key,
+      title: b.title,
+      account: b.account,
+      series: b.series,
+      author: null,
+    }));
+  return [...imported, ...others];
+}
+
+/** Plain-text pen name summary for Claude: totals per pen name and, for one, per book. */
+export async function getPenNameSummary(
+  from: string,
+  to: string,
+  account?: KdpAccount,
+  penName?: string,
+) {
+  const data = await getSalesData();
+  const books = penBooks(data).filter((b) => !account || b.account === account);
+  const sources = new Set(SALE_SOURCES);
+  const filter = { account: account ?? ("all" as const), markets: new Set<string>(), book: null };
+  const prev = previousPeriod(from, to);
+  const current = filterRecords(data.records, { ...filter, from, to });
+  const previous = filterRecords(data.records, { ...filter, ...prev });
+  const ads = data.ads.filter((r) => r.d >= from && r.d <= to && (!account || r.a === account));
+  const round = (n: number) => Math.round(n * 100) / 100;
+  const pens = penNameTable(current, previous, ads, books, sources).map((r) => ({
+    penName: r.name,
+    books: r.books,
+    booksSold: r.sold,
+    units: r.sums.units,
+    kenp: r.sums.kenp,
+    royalty: round(r.sums.royalty),
+    previousRoyalty: round(r.previous.royalty),
+    ...(ads.length ? { adSpend: round(r.adSpend) } : {}),
+  }));
+  return {
+    period: { from, to, previous: prev, account: account ? accountLabel(account) : "tutti" },
+    currency: "EUR (stime KDP)",
+    note: `«${NO_PEN_NAME}» raccoglie i libri importati prima che l'import leggesse l'autore.`,
+    penNames: pens,
+    ...(penName
+      ? {
+          books: penBookRows(penName, data.records, current, previous, ads, books, sources).map(
+            (r) => ({
+              title: r.book.title,
+              account: accountLabel(r.book.account),
+              series: r.book.series,
+              ebook: r.sums.bySource.ebook.units,
+              paperback: r.sums.bySource.paperback.units,
+              hardcover: r.sums.bySource.hardcover.units,
+              kenp: r.sums.kenp,
+              royalty: round(r.sums.royalty),
+              previousRoyalty: round(r.previous.royalty),
+              ...(ads.length ? { adSpend: round(r.adSpend) } : {}),
+              firstSale: r.first,
+              lastSale: r.last,
+            }),
+          ),
+        }
+      : {}),
   };
 }
