@@ -7,6 +7,7 @@
  */
 const SCRAPER = String.raw`
 (async () => {
+  try {
   const TABLE = "table.refreshedbookshelftable";
   const ROWS = TABLE + " > tbody > tr";
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -76,6 +77,10 @@ const SCRAPER = String.raw`
   for (const b of bytes) bin += String.fromCharCode(b);
   const hash = btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   __DELIVER__(hash);
+  } catch (error) {
+    // Never leave the caller waiting: report what broke.
+    __FAIL__("Lettura del Bookshelf non riuscita: " + (error && error.message ? error.message : error));
+  }
 })();
 `;
 
@@ -91,7 +96,7 @@ export type ScraperHooks = {
 
 export function scraperSourceWith(hooks: ScraperHooks): string {
   return SCRAPER.replace("__DELIVER__", `(${hooks.deliver})`)
-    .replace("__FAIL__", `(${hooks.fail})`)
+    .replaceAll("__FAIL__", `(${hooks.fail})`)
     .replace("__ON_PAGE__", hooks.onPage ?? 'location.hostname.endsWith("kdp.amazon.com")')
     .trim();
 }

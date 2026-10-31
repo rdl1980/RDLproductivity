@@ -143,7 +143,11 @@ test("the extension reads the KDP pages in hidden tabs and the app imports both"
       ["books", "1 nuovi"],
     ]) {
       const row = steps.locator(`[data-step="${step}"]`);
-      await expect(row).toHaveAttribute("data-status", /done|error/, { timeout: 90_000 });
+      await expect(row)
+        .toHaveAttribute("data-status", /done|error/, { timeout: 90_000 })
+        .catch(async (error: Error) => {
+          throw new Error(`${step} still running: ${await row.innerText()}\n${error.message}`);
+        });
       await expect(row).toContainText(text);
       await expect(row).toHaveAttribute("data-status", "done");
     }

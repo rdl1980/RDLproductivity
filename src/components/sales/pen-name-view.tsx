@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { accountLabel, KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
 import type { AdRecord } from "@/lib/kdp-ads";
+import { EXTENSION_VERSION } from "@/lib/kdp-extension";
 import { type PenBook, penBookRows, penNameOf, penNameTable } from "@/lib/kdp-pen-names";
 import {
   autoGranularity,
@@ -405,7 +406,7 @@ export function PenNameView({ records, books, ads, today, initial }: Props) {
           data-testid="pen-missing"
         >
           Nessun libro ha ancora il pen name: si legge dalla riga «di …» della Bookshelf. Aggiorna i
-          libri di ogni account con l&apos;estensione 1.0.3 o il preferito (
+          libri di ogni account con l&apos;estensione {EXTENSION_VERSION} o il preferito (
           <Link href="/kdp/estensione" className="font-medium underline">
             scarica l&apos;estensione
           </Link>
