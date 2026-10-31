@@ -1,4 +1,10 @@
-import { CalendarRangeIcon, LibraryIcon, TrendingUpIcon, WalletIcon } from "lucide-react";
+import {
+  CalendarRangeIcon,
+  LibraryIcon,
+  PenLineIcon,
+  TrendingUpIcon,
+  WalletIcon,
+} from "lucide-react";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
@@ -7,6 +13,7 @@ const TABS = [
   { key: "calendar", href: "/kdp", label: "Calendario", icon: CalendarRangeIcon },
   { key: "books", href: "/kdp/libri", label: "Libri e ASIN", icon: LibraryIcon },
   { key: "sales", href: "/kdp/vendite", label: "Vendite", icon: TrendingUpIcon },
+  { key: "pens", href: "/kdp/pen-name", label: "Pen name", icon: PenLineIcon },
   { key: "payouts", href: "/kdp/incassi", label: "Incassi", icon: WalletIcon },
 ] as const;
 

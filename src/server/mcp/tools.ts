@@ -54,7 +54,7 @@ import { duePayouts } from "@/lib/kdp-finance";
 import { getPayouts } from "@/server/queries/kdp-finance";
 import { getKdpGoals } from "@/server/queries/kdp-goals";
 import { getWeeklyReview } from "@/server/queries/review";
-import { getSalesSummary } from "@/server/queries/kdp-sales";
+import { getPenNameSummary, getSalesSummary } from "@/server/queries/kdp-sales";
 import { getStats } from "@/server/queries/stats";
 import { getArchive } from "@/server/queries/archive";
 import { getBoard, getBoards } from "@/server/queries/boards";
@@ -1076,6 +1076,36 @@ export function registerTools(server: McpServer) {
     },
     async ({ from, to, account }) =>
       from > to ? fail("Intervallo non valido.") : ok(await getSalesSummary(from, to, account)),
+  );
+
+  defineTool(
+    server,
+    "get_kdp_pen_names",
+    {
+      title: "Get KDP sales by pen name",
+      description:
+        "Sales grouped by pen name (the author line of each KDP book) between two dates: books, " +
+        "books sold, units, KENP, royalties (EUR, KDP estimates) and the previous period of the " +
+        "same length, plus ad spend. With `penName`, also every book of that pen name, sold or " +
+        "not, with its own figures and first/last sale.",
+      inputSchema: z.object({
+        from: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .describe("First day, YYYY-MM-DD"),
+        to: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .describe("Last day, YYYY-MM-DD"),
+        account: kdpAccount.optional(),
+        penName: z.string().max(200).optional().describe("Pen name to detail, as listed"),
+      }),
+      annotations: READ,
+    },
+    async ({ from, to, account, penName }) =>
+      from > to
+        ? fail("Intervallo non valido.")
+        : ok(await getPenNameSummary(from, to, account, penName)),
   );
 
   defineTool(

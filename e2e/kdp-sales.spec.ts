@@ -63,10 +63,6 @@ test("KDP sales: import the report history and explore the dashboard", async ({ 
   await page.getByRole("option", { name: title }).click();
   await expect(page).toHaveURL(/book=/);
   await expect(page.getByTestId("sales-hero")).toHaveText("14,75 €");
-  // Split by pen name, read from the Bookshelf's "by" line.
-  await expect(page.getByRole("region", { name: "Per pen name" })).toContainText(
-    `Autrice ${stamp}`,
-  );
   const kpis = page.getByTestId("sales-kpis");
   await expect(kpis.getByTestId("stat-tile").filter({ hasText: "Copie vendute" })).toContainText(
     "4",

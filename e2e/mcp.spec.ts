@@ -391,3 +391,26 @@ test("Claude keeps the Robotti e Robotte calendar through MCP", async ({ page, r
   const rubrics = (await call("rubriche_elenco", {})) as unknown as { valore: string }[];
   expect(rubrics.map((r) => r.valore)).toContain("il-trono");
 });
+
+test("Claude reads the sales by pen name through MCP", async ({ page, request }) => {
+  const clientName = `Client pen name ${Date.now()}`;
+  const clientId = await registerClient(request, clientName);
+  const { verifier, challenge } = pkce();
+  const redirect = await authorize(page, clientId, challenge, "Consenti", clientName);
+  const issued = await token(request, {
+    grant_type: "authorization_code",
+    client_id: clientId,
+    code: redirect.searchParams.get("code")!,
+    redirect_uri: REDIRECT_URI,
+    code_verifier: verifier,
+  });
+  const { access_token: accessToken } = (await issued.json()) as { access_token: string };
+
+  const summary = (await callTool(request, accessToken, "get_kdp_pen_names", {
+    from: "2020-01-01",
+    to: "2030-12-31",
+    penName: "Pen name non letto",
+  })) as unknown as { penNames: { penName: string }[]; books?: unknown[] };
+  expect(Array.isArray(summary.penNames)).toBe(true);
+  expect(Array.isArray(summary.books)).toBe(true);
+});
