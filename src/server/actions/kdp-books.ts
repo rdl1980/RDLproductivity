@@ -117,6 +117,8 @@ export async function importKdpBooks(
   const changes: BookChange[] = [];
   const missing = await db.$transaction(
     async (tx) => {
+      // One import per account at a time: two would deadlock on the "missing" update.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`kdp.books.${account}`}))`;
       for (const book of payload.books) {
         const formats = toStoredFormats(book.formats, book.title);
         asins += formats.filter((f) => f.asin).length;
