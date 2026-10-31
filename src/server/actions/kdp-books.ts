@@ -6,6 +6,7 @@ import { z } from "zod";
 import { accountLabel, KDP_ACCOUNT_VALUES, type KdpAccount } from "@/lib/kdp";
 import { type AccountMatches, accountMismatch, likelyAccount } from "@/lib/kdp-accounts";
 import {
+  cleanAuthor,
   cleanSeries,
   importPayloadSchema,
   type MatchBook,
@@ -122,6 +123,7 @@ export async function importKdpBooks(
         const fields = {
           title: book.title,
           series: cleanSeries(book.series),
+          ...(book.author !== undefined && { author: cleanAuthor(book.author) }),
           formats: formats as Prisma.InputJsonValue,
           missingSince: null,
           importedAt,

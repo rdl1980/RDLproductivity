@@ -144,6 +144,8 @@ export type SaleBook = {
   title: string;
   account: KdpAccount;
   series: string | null;
+  /** Pen name read from the Bookshelf; null when unknown. */
+  author?: string | null;
   asins: string[];
   /** Set for title families no imported book owns ("key:" entries). */
   titleKey?: string;
@@ -414,4 +416,57 @@ const monthLabel = new Intl.DateTimeFormat("it-IT", {
 export function bucketLabel(start: string, granularity: Granularity): string {
   const date = toDate(start);
   return granularity === "month" ? monthLabel.format(date) : dayLabel.format(date);
+}
+
+/** Label of the books whose pen name is not known yet. */
+export const NO_PEN_NAME = "Pen name non letto";
+/** Label grouping the smaller pen names when there are too many to tell apart. */
+export const OTHER_PEN_NAMES = "Altri pen name";
+
+/**
+ * Sales split by pen name: the groups, largest royalty first (at most
+ * `limit` named ones, the rest summed in "Altri pen name", unknown last),
+ * and per bucket the sums of each group in that order.
+ */
+export function penNameSeries(
+  records: SaleRecord[],
+  penName: (book: string) => string | null | undefined,
+  from: string,
+  to: string,
+  granularity: Granularity,
+  sources: ReadonlySet<SaleSource>,
+  limit = 4,
+): { groups: { name: string; sums: Sums }[]; buckets: { start: string; sums: Sums[] }[] } {
+  const totals = groupSums(records, (r) => penName(r.book) || NO_PEN_NAME, sources);
+  const named = [...totals].filter(([name]) => name !== NO_PEN_NAME);
+  named.sort((a, b) => b[1].royalty - a[1].royalty);
+  const kept = named.length > limit ? named.slice(0, limit - 1) : named;
+  const groupOf = new Map<string, string>(kept.map(([name]) => [name, name]));
+  const names = kept.map(([name]) => name);
+  if (named.length > kept.length) names.push(OTHER_PEN_NAMES);
+  if (totals.has(NO_PEN_NAME)) names.push(NO_PEN_NAME);
+  const key = (r: SaleRecord) => {
+    const name = penName(r.book) || NO_PEN_NAME;
+    return name === NO_PEN_NAME ? name : (groupOf.get(name) ?? OTHER_PEN_NAMES);
+  };
+  const grouped = groupSums(records, key, sources);
+  const buckets = new Map<string, Map<string, SaleRecord[]>>();
+  for (let start = bucketStart(from, granularity); start <= to;) {
+    buckets.set(start, new Map());
+    start = nextBucket(start, granularity);
+  }
+  for (const r of records) {
+    const bucket = buckets.get(bucketStart(r.d, granularity));
+    if (!bucket) continue;
+    const list = bucket.get(key(r)) ?? [];
+    list.push(r);
+    bucket.set(key(r), list);
+  }
+  return {
+    groups: names.map((name) => ({ name, sums: grouped.get(name) ?? emptySums() })),
+    buckets: [...buckets].map(([start, byName]) => ({
+      start,
+      sums: names.map((name) => sumRecords(byName.get(name) ?? [], sources)),
+    })),
+  };
 }

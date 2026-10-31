@@ -30,6 +30,7 @@ test("KDP sales: import the report history and explore the dashboard", async ({ 
       kdpId: `S${stamp}`,
       title: `${title}: Un libro di prova`,
       series: null,
+      author: `Autrice ${stamp} (Autore)`,
       formats: [
         { format: "ebook", status: "Online", asin: ebook, price: "€4,99 EUR" },
         { format: "paperback", status: "Online", asin: paper, price: "€12,99 EUR" },
@@ -62,6 +63,10 @@ test("KDP sales: import the report history and explore the dashboard", async ({ 
   await page.getByRole("option", { name: title }).click();
   await expect(page).toHaveURL(/book=/);
   await expect(page.getByTestId("sales-hero")).toHaveText("14,75 €");
+  // Split by pen name, read from the Bookshelf's "by" line.
+  await expect(page.getByRole("region", { name: "Per pen name" })).toContainText(
+    `Autrice ${stamp}`,
+  );
   const kpis = page.getByTestId("sales-kpis");
   await expect(kpis.getByTestId("stat-tile").filter({ hasText: "Copie vendute" })).toContainText(
     "4",
