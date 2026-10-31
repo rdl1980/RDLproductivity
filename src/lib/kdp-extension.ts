@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 import type { SyncStep } from "./kdp-sync";
+import manifest from "../../extension/manifest.json";
 
 /**
  * Talks to the "RDL KDP Sync" browser extension (see `extension/`): its
@@ -13,6 +14,20 @@ import type { SyncStep } from "./kdp-sync";
 const ATTRIBUTE = "rdlKdpExtension";
 
 /** Version of the installed extension, or null. */
+/** Version of the extension published in public/extension/. */
+export const EXTENSION_VERSION: string = manifest.version;
+
+/** True when the installed version `a` is older than `b` ("1.0.2" < "1.0.10"). */
+export function olderVersion(a: string, b: string): boolean {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d) return d < 0;
+  }
+  return false;
+}
+
 export function useKdpExtension(): string | null {
   return useSyncExternalStore(
     (notify) => {
