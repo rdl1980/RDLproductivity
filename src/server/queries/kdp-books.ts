@@ -74,6 +74,7 @@ export async function getKdpBooks(): Promise<KdpBookItem[]> {
     kdpId: book.kdpId,
     title: book.title,
     series: book.series,
+    author: book.author,
     formats: parseFormats(book.formats),
     missingSince: book.missingSince?.toISOString() ?? null,
     importedAt: book.importedAt.toISOString(),

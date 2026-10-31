@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   amazonUrl,
+  cleanAuthor,
   cleanSeries,
   decodeImportHash,
   encodeImportHash,
@@ -252,5 +253,14 @@ describe("statusTransitions", () => {
   it("treats new books as news only after the first import", () => {
     expect(statusTransitions(null, [f("ebook", "live")], false).live).toEqual([]);
     expect(statusTransitions(null, [f("ebook", "live")], true).live).toEqual(["ebook"]);
+  });
+});
+
+describe("cleanAuthor", () => {
+  it("drops the role KDP appends and empty values", () => {
+    expect(cleanAuthor("Rossella De Falco (Autore)")).toBe("Rossella De Falco");
+    expect(cleanAuthor("Dario Olivares")).toBe("Dario Olivares");
+    expect(cleanAuthor("  ")).toBeNull();
+    expect(cleanAuthor(null)).toBeNull();
   });
 });

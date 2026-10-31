@@ -35,6 +35,7 @@
       const by = lines.findIndex((l) => /^(by|da) /.test(l));
       const title = by > 0 ? lines[by - 1] : lines[0];
       const series = by > 1 && /^(Libro in|Book in|Part of) /i.test(lines[by - 2]) ? lines[by - 2] : null;
+      const author = by >= 0 ? lines[by].replace(/^(by|da) /, "").trim() || null : null;
       const formats = [];
       let cur = null;
       for (const l of lines) {
@@ -45,7 +46,7 @@
         if (asin) cur.asin = asin[1];
         if (/^\D?\s?[\d.,]+\s+[A-Z]{3}$/.test(l)) cur.price = l;
       }
-      return { kdpId: row.id, title, series, formats: formats.filter((f) => f.status || f.asin) };
+      return { kdpId: row.id, title, series, author, formats: formats.filter((f) => f.status || f.asin) };
     }).filter((b) => b.kdpId && b.title);
   }
   const perPage = document.querySelector("#refreshedbookshelftable-records-per-page-dropdown-option");

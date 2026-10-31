@@ -46,6 +46,7 @@ export async function getSalesData(): Promise<SalesData> {
         account: true,
         title: true,
         series: true,
+        author: true,
         formats: true,
         volume: true,
         prices: {
@@ -78,6 +79,7 @@ export async function getSalesData(): Promise<SalesData> {
       title: mainTitle(book.title),
       account: book.account as KdpAccount,
       series: book.series,
+      author: book.author,
       asins,
       volume: book.volume ?? volumeNumber(book.title),
     });

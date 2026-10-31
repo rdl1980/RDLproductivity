@@ -988,10 +988,11 @@ export function registerTools(server: McpServer) {
     {
       title: "List KDP books",
       description:
-        "Lists the books imported from the KDP Bookshelf (both accounts): title, series, formats " +
+        "Lists the books imported from the KDP Bookshelf (both accounts): title, series, author " +
+        "(pen name), formats " +
         "with status, ASIN, price and Amazon link, and the board cards linked to each book " +
         '(status "confirmed", or "suggested" = waiting for the user\'s confirmation). ' +
-        "Filter by text (title, series or ASIN), account or link state.",
+        "Filter by text (title, series, author or ASIN), account or link state.",
       inputSchema: z.object({
         query: z.string().max(200).optional(),
         account: kdpAccount.optional(),
@@ -1010,7 +1011,9 @@ export function registerTools(server: McpServer) {
           (links !== "unlinked" || !book.links.some((l) => l.status === "confirmed")) &&
           (links !== "suggested" || book.links.some((l) => l.status === "suggested")) &&
           (!needle ||
-            `${book.title} ${book.series ?? ""}`.toLowerCase().includes(needle) ||
+            `${book.title} ${book.series ?? ""} ${book.author ?? ""}`
+              .toLowerCase()
+              .includes(needle) ||
             book.formats.some((f) => f.asin?.toLowerCase().includes(needle))),
       );
       return ok(books);

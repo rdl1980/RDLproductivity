@@ -148,6 +148,8 @@ export const importBookSchema = z.object({
   kdpId: text(64).min(1),
   title: text(500).min(1),
   series: text(300).nullish(),
+  /** Pen name; absent from older bookmarklets, which must not clear it. */
+  author: text(200).nullish(),
   formats: z.array(importFormatSchema).max(3),
 });
 
@@ -198,6 +200,12 @@ export function toStoredFormats(formats: ImportPayload["books"][number]["formats
 }
 
 /** "Libro in the evolution of football tactics" → "the evolution of football tactics". */
+/** "Mario Rossi" from "Mario Rossi (Autore)"; null when empty. */
+export function cleanAuthor(author: string | null | undefined): string | null {
+  const value = (author ?? "").replace(/\s*\((autore|author)\)\s*$/i, "").trim();
+  return value || null;
+}
+
 export function cleanSeries(series: string | null | undefined): string | null {
   const value = (series ?? "").replace(/^(libro in|book in|part of)\s+/i, "").trim();
   return value || null;
@@ -382,6 +390,8 @@ export type KdpBookItem = {
   kdpId: string;
   title: string;
   series: string | null;
+  /** Pen name; null until an import reads it. */
+  author: string | null;
   formats: KdpBookFormat[];
   /** Set when the last import of the account no longer listed the book. */
   missingSince: string | null;

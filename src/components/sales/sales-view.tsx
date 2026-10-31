@@ -59,7 +59,10 @@ import {
   groupSums,
   launchCurve,
   marketplaceLabel,
+  NO_PEN_NAME,
   nextBucket,
+  OTHER_PEN_NAMES,
+  penNameSeries,
   previousMonthToDate,
   previousPeriod,
   SALE_SOURCES,
@@ -475,6 +478,27 @@ export function SalesView({
       // Ties keep the royalty order.
       return (bookSort.desc ? -order : order) || b[1].royalty - a[1].royalty;
     });
+  const pens = penNameSeries(
+    current,
+    (book) => bookTitles.get(book)?.author,
+    range.from,
+    range.to,
+    granularity,
+    sources,
+  );
+  const PEN_COLORS = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)"];
+  const penSeries: Series[] = pens.groups.map((g, i) => ({
+    key: g.name,
+    label: g.name,
+    color:
+      g.name === NO_PEN_NAME
+        ? "var(--muted-foreground)"
+        : g.name === OTHER_PEN_NAMES
+          ? "var(--chart-3)"
+          : PEN_COLORS[i % PEN_COLORS.length],
+  }));
+  const metricOf = (sums: Sums) =>
+    state.metric === "royalty" ? sums.royalty : state.metric === "units" ? sums.units : sums.kenp;
   const bySeries = [
     ...groupSums(current, (r) => bookTitles.get(r.book)?.series ?? "Senza collana", sources),
   ].sort((a, b) => b[1].royalty - a[1].royalty);
@@ -730,6 +754,47 @@ export function SalesView({
           label="Andamento nel periodo"
         />
       </Panel>
+
+      {pens.groups.length > 0 && (
+        <Panel
+          title="Per pen name"
+          description={`${METRICS.find((m) => m.value === state.metric)!.label} per ${GRANULARITIES.find((g) => g.value === granularity)!.label.toLowerCase()}, divise per autore del libro`}
+          table={{
+            headers: ["Periodo", ...penSeries.map((s) => s.label), "Totale"],
+            rows: [
+              ...pens.buckets.map((b) => [
+                detail(b.start),
+                ...b.sums.map((sums) => metricFormat(metricOf(sums))),
+                metricFormat(b.sums.reduce((sum, x) => sum + metricOf(x), 0)),
+              ]),
+              [
+                "Totale",
+                ...pens.groups.map((g) => metricFormat(metricOf(g.sums))),
+                metricFormat(pens.groups.reduce((sum, g) => sum + metricOf(g.sums), 0)),
+              ],
+            ],
+          }}
+        >
+          <Legend series={penSeries} />
+          <StackedColumns
+            data={pens.buckets.map((b) => ({
+              label: bucketLabel(b.start, granularity),
+              detail: detail(b.start),
+              values: b.sums.map(metricOf),
+            }))}
+            series={penSeries}
+            format={metricFormat}
+            formatAxis={metricAxis}
+            label="Andamento per pen name"
+          />
+          {pens.groups.some((g) => g.name === NO_PEN_NAME) && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              «{NO_PEN_NAME}»: libri importati prima che l&apos;import leggesse l&apos;autore.
+              Aggiorna i libri dalla Bookshelf (estensione 1.0.3 o preferito) per assegnarli.
+            </p>
+          )}
+        </Panel>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Panel

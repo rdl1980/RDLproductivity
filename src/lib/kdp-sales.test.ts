@@ -8,7 +8,10 @@ import {
   encodeSalesHash,
   filterRecords,
   launchCurve,
+  NO_PEN_NAME,
+  OTHER_PEN_NAMES,
   parseTitleKey,
+  penNameSeries,
   previousMonthToDate,
   previousPeriod,
   salesSyncFrom,
@@ -227,5 +230,60 @@ describe("payload", () => {
       rows: [],
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("penNameSeries", () => {
+  const authors: Record<string, string | null> = {
+    a: "Rossella De Falco",
+    b: "Dario Olivares",
+    c: "Ilaria De Falco",
+    d: null,
+  };
+  const records = [
+    rec("2026-10-01", { book: "a", re: 10 }),
+    rec("2026-10-02", { book: "b", re: 4 }),
+    rec("2026-10-09", { book: "a", rp: 2 }),
+    rec("2026-10-09", { book: "c", re: 1 }),
+    rec("2026-10-10", { book: "d", re: 3 }),
+  ];
+
+  it("splits by pen name, largest first, unknown last", () => {
+    const { groups, buckets } = penNameSeries(
+      records,
+      (b) => authors[b],
+      "2026-10-01",
+      "2026-10-11",
+      "week",
+      ALL,
+    );
+    expect(groups.map((g) => [g.name, g.sums.royalty])).toEqual([
+      ["Rossella De Falco", 12],
+      ["Dario Olivares", 4],
+      ["Ilaria De Falco", 1],
+      [NO_PEN_NAME, 3],
+    ]);
+    // Weeks of 28/9 and 5/10.
+    expect(buckets.map((b) => b.sums.map((s) => s.royalty))).toEqual([
+      [10, 4, 0, 0],
+      [2, 0, 1, 3],
+    ]);
+  });
+
+  it("sums the smaller pen names beyond the limit", () => {
+    const { groups } = penNameSeries(
+      records,
+      (b) => authors[b],
+      "2026-10-01",
+      "2026-10-11",
+      "month",
+      ALL,
+      2,
+    );
+    expect(groups.map((g) => [g.name, g.sums.royalty])).toEqual([
+      ["Rossella De Falco", 12],
+      [OTHER_PEN_NAMES, 5],
+      [NO_PEN_NAME, 3],
+    ]);
   });
 });

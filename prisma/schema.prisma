@@ -237,6 +237,8 @@ model KdpBook {
   kdpId        String
   title        String
   series       String?
+  /// Pen name from the Bookshelf's "by …" line; null until an import reads it.
+  author       String?
   /// KdpBookFormat[] (see src/lib/kdp-books.ts): status, ASIN, price, link.
   formats      Json
   /// Set when the last import of the account no longer listed the book.
