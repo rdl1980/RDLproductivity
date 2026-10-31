@@ -22,6 +22,7 @@ import {
   planSchema,
   SLOTS,
   type Slot,
+  TODO_KINDS_WITH_ACTION,
   VIDEO_FORMATS,
   zonedInstant,
 } from "@/lib/content";
@@ -35,8 +36,10 @@ import {
   getContentPiece,
   getContentPlan,
   getContentRubrics,
+  getTodoDone,
   PLAN_KEY,
   pieceInclude,
+  TODO_DONE_KEY,
   toPieceDTO,
 } from "@/server/queries/content";
 import { isAuthenticated } from "@/server/session";
@@ -156,7 +159,7 @@ type Tx = Prisma.TransactionClient;
 type LayerRow = Prisma.ContentLayerGetPayload<object>;
 
 function done() {
-  revalidatePath("/robotti");
+  revalidatePath("/robotti", "layout");
 }
 
 async function result(code: string): Promise<ActionResult<ContentPieceDTO>> {
@@ -656,4 +659,60 @@ export async function saveContentPlan(
   });
   done();
   return ok(data);
+}
+
+const todoSchema = z.object({
+  kind: z.enum(["schedule", "pin", "vote", "metrics", "slot"]),
+  key: z.string().min(1).max(300),
+  code: codeSchema.nullable(),
+  platform: platformSchema.nullable(),
+});
+
+/** Keeps the done marks of the last 90 days. */
+async function saveTodoDone(update: (list: { key: string; at: string }[]) => typeof list) {
+  const since = Date.now() - 90 * 86_400_000;
+  const list = update((await getTodoDone()).filter((d) => Date.parse(d.at) >= since));
+  const value = JSON.stringify(list);
+  await db.appSetting.upsert({
+    where: { key: TODO_DONE_KEY },
+    create: { key: TODO_DONE_KEY, value },
+    update: { value },
+  });
+}
+
+/**
+ * Marks a to-do item done. "Da programmare" and "Commento da fissare" change the
+ * layer (programmato, commento fissato); the others are remembered as done.
+ */
+export async function completeContentTodo(
+  input: z.input<typeof todoSchema>,
+): Promise<ActionResult<null>> {
+  if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
+  const { data, error } = parse(todoSchema, input);
+  if (!data) return fail(error);
+  if (TODO_KINDS_WITH_ACTION.includes(data.kind)) {
+    if (!data.code || !data.platform) return fail("Scheda o piattaforma mancante.");
+    const r = await updateContentLayer({
+      code: data.code,
+      platform: data.platform,
+      fields:
+        data.kind === "schedule" ? { publishStatus: "programmato" } : { pinnedCommentDone: true },
+    });
+    if (!r.ok) return r;
+  } else {
+    await saveTodoDone((list) => [
+      ...list.filter((d) => d.key !== data.key),
+      { key: data.key, at: new Date().toISOString() },
+    ]);
+  }
+  done();
+  return ok(null);
+}
+
+/** Puts back a to-do item that was only remembered as done. */
+export async function reopenContentTodo(key: string): Promise<ActionResult<null>> {
+  if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
+  await saveTodoDone((list) => list.filter((d) => d.key !== key));
+  done();
+  return ok(null);
 }

@@ -140,3 +140,61 @@ test("a cell adds a piece inline with the next code of the rubric", async ({ pag
     await expect(page.getByText(title)).toBeVisible();
   });
 });
+
+test("the week starts from yesterday and the to-do tab checks items off", async ({ page }) => {
+  test.setTimeout(90_000);
+  const stamp = Date.now();
+  const title = `Da fare ${stamp}`;
+  await page.goto("/robotti");
+  // Yesterday, then today.
+  const headers = page.getByTestId("content-week").getByRole("columnheader");
+  await expect(headers.nth(2)).toHaveAttribute("aria-current", "date");
+
+  // A carousel today, with its Instagram layer ready: «Da programmare».
+  const cell = page.getByRole("cell", { name: /19:00 principale/ }).nth(1);
+  await cell.getByRole("button", { name: /Aggiungi contenuto/ }).click();
+  await cell.getByRole("textbox", { name: /Nuovo contenuto/ }).fill(title);
+  await cell
+    .getByRole("combobox", { name: /Rubrica del nuovo contenuto/ })
+    .selectOption("carosello");
+  await cell.getByRole("button", { name: "Aggiungi", exact: true }).click();
+  const card = cell.getByTestId("content-piece").filter({ hasText: title });
+  await card.getByRole("button").first().click();
+  const dialog = page.getByTestId("piece-dialog");
+  const instagram = dialog.getByTestId("layer-instagram");
+  await instagram.getByLabel("Stato di pubblicazione").selectOption("pronto");
+  await instagram.getByRole("button", { name: "Salva Instagram" }).click();
+  await expect(dialog.getByRole("checkbox", { name: "Programmato (Instagram)" })).toBeVisible();
+  await expect(async () => {
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden({ timeout: 1_000 });
+  }).toPass();
+
+  await page.getByRole("link", { name: /^Da fare/ }).click();
+  await expect(page).toHaveURL(/\/robotti\/da-fare/);
+  const item = page.getByTestId("todo-item").filter({ hasText: `Da programmare: ${title}` });
+  await expect(item).toHaveCount(1);
+  await item.getByRole("checkbox").click();
+  await expectPersisted(page, async () => {
+    await expect(page.getByTestId("todo-item").filter({ hasText: title })).toHaveCount(0);
+  });
+  // Done means scheduled: the layer is now «programmato».
+  await page.goto("/robotti");
+  await expect(
+    page.locator(`[data-testid="content-piece"]`, { hasText: title }).getByTestId("layer-badge"),
+  ).toHaveAttribute("data-status", "programmato");
+
+  // An empty slot is only remembered as done, and can be put back.
+  await page.goto("/robotti/da-fare");
+  const slot = page.locator('[data-testid="todo-item"][data-kind="slot"]').first();
+  const text = (await slot.getByRole("button").textContent())!;
+  await slot.getByRole("checkbox").click();
+  const done = page.getByTestId("todo-done");
+  await done.locator("summary").click();
+  await expect(done).toContainText(text);
+  await done
+    .getByRole("button", { name: `Rimetti da fare: ${text}` })
+    .first()
+    .click();
+  await expect(page.getByTestId("todo-item").filter({ hasText: text }).first()).toBeVisible();
+});
