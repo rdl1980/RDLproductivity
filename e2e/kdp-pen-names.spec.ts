@@ -68,4 +68,14 @@ test("the pen name tab compares pen names and lists every book of one", async ({
   // The URL keeps the pen name.
   await page.reload();
   await expect(page.getByTestId("pen-title")).toHaveText(author);
+
+  // An unsold book opens Vendite on that book, named in the picker (not a blank filter).
+  await books.nth(1).getByRole("link").click();
+  await expect(page).toHaveURL(/\/kdp\/vendite\?book=/);
+  await expect(page.getByRole("combobox", { name: "Libro" })).toHaveText(`Fermo ${stamp}`);
+  await expect(page.getByTestId("sales-hero")).toHaveText("0,00 €");
+
+  // A book nobody knows is ignored instead of emptying every number.
+  await page.goto("/kdp/vendite?book=sconosciuto&period=all");
+  await expect(page.getByRole("combobox", { name: "Libro" })).toHaveText("Tutti i libri");
 });

@@ -247,18 +247,25 @@ export function SalesView({
   initial,
   origin,
 }: Props) {
-  const [state, setState] = useState(initial);
+  // A link to a book nobody knows (deleted, or from another database) would filter everything out.
+  const [state, setState] = useState(() =>
+    initial.book === null ||
+    books.some((b) => b.key === initial.book) ||
+    catalog.some((c) => c.id === initial.book)
+      ? initial
+      : { ...initial, book: null },
+  );
   const [syncOpen, setSyncOpen] = useState(false);
   const [aliasing, setAliasing] = useState<SaleBook | null>(null);
   // Books table narrowed to the title families without a book (from the banner).
   const [onlyUnresolved, setOnlyUnresolved] = useState(false);
   const [bookSort, setBookSort] = useState<BookSort>({ column: "royalty", desc: true });
-  const update = (patch: Partial<SalesState>) =>
-    setState((s) => {
-      const next = { ...s, ...patch };
-      writeUrl(next);
-      return next;
-    });
+  // The URL is written outside the state updater: the router must not update during render.
+  const update = (patch: Partial<SalesState>) => {
+    const next = { ...state, ...patch };
+    setState(next);
+    writeUrl(next);
+  };
 
   const bookTitles = useMemo(() => new Map(books.map((b) => [b.key, b])), [books]);
   const first = records.length ? records[0].d : today;
@@ -543,6 +550,20 @@ export function SalesView({
   }));
 
   const selectedBook = state.book ? bookTitles.get(state.book) : null;
+  // A book without sales (e.g. opened from the pen name page) still shows in the picker.
+  const unsold = state.book && !selectedBook ? catalog.find((c) => c.id === state.book) : undefined;
+  const filterBooks: SaleBook[] = unsold
+    ? [
+        ...books,
+        {
+          key: unsold.id,
+          title: unsold.title,
+          account: unsold.account,
+          series: unsold.series,
+          asins: [],
+        },
+      ]
+    : books;
   const avgPerUnit = totals.units
     ? (totals.royalty - totals.bySource.kenp.royalty) / totals.units
     : 0;
@@ -568,7 +589,7 @@ export function SalesView({
         state={state}
         update={update}
         markets={marketsAll}
-        books={books}
+        books={filterBooks}
         range={range}
         granularity={granularity}
       />
