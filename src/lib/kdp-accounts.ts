@@ -1,4 +1,4 @@
-import { accountLabel, type KdpAccount } from "./kdp";
+import { accountLabel, KDP_ACCOUNT_VALUES, type KdpAccount } from "./kdp";
 
 /**
  * How many items of an import (Bookshelf books, or report titles) each
@@ -7,13 +7,13 @@ import { accountLabel, type KdpAccount } from "./kdp";
  */
 export type AccountMatches = Record<KdpAccount, number>;
 
-const other = (account: KdpAccount): KdpAccount => (account === "main" ? "secondary" : "main");
+export const noMatches = (): AccountMatches =>
+  Object.fromEntries(KDP_ACCOUNT_VALUES.map((account) => [account, 0])) as AccountMatches;
 
-/** The account that already knows more of these items; null when undecided (e.g. a new account). */
+/** The account that knows the most of these items; null when undecided (none, or a tie). */
 export function likelyAccount(matches: AccountMatches): KdpAccount | null {
-  if (matches.main > matches.secondary) return "main";
-  if (matches.secondary > matches.main) return "secondary";
-  return null;
+  const [first, second] = [...KDP_ACCOUNT_VALUES].sort((a, b) => matches[b] - matches[a]);
+  return matches[first] > matches[second] ? first : null;
 }
 
 /** Error message when the data clearly belongs to the other account, else null. */
@@ -22,7 +22,9 @@ export function accountMismatch(
   matches: AccountMatches,
   what: "libri" | "titoli" | "ASIN",
 ): string | null {
-  const wrong = other(chosen);
+  const wrong = KDP_ACCOUNT_VALUES.filter((a) => a !== chosen).sort(
+    (a, b) => matches[b] - matches[a],
+  )[0];
   if (matches[wrong] <= matches[chosen]) return null;
   return (
     `Questi dati sembrano di «${accountLabel(wrong)}»: ${matches[wrong]} ${what} sono già ` +

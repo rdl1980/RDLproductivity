@@ -1,12 +1,12 @@
 import "server-only";
 
 import type { KdpAccount } from "@/lib/kdp";
-import type { AccountMatches } from "@/lib/kdp-accounts";
+import { type AccountMatches, noMatches } from "@/lib/kdp-accounts";
 import { storedFormatsSchema } from "@/lib/kdp-books";
 import { parseTitleKey } from "@/lib/kdp-sales";
 import { db } from "@/server/db";
 
-const empty = (): AccountMatches => ({ main: 0, secondary: 0 });
+const empty = noMatches;
 
 /** Bookshelf books (KDP ids) each account already has. */
 export async function bookMatches(kdpIds: string[]): Promise<AccountMatches> {

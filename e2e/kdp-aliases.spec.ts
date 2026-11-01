@@ -14,7 +14,7 @@ test("sales of an unimported title can be named by hand", async ({ page }) => {
     rows: [[addDays(today, -1), "Amazon.it", `DIGITAL=${asin}::`, 2, 0, 0, 0, 5, 5, 0, 0, 0]],
   });
   await page.goto(`/kdp/vendite/importa#${fragment}`);
-  await page.getByRole("radio", { name: "Account principale" }).check();
+  await page.getByRole("radio", { name: "Rosario" }).check();
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/vendite$/);
 

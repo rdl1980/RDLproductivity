@@ -133,7 +133,7 @@ test("the extension reads the KDP pages in hidden tabs and the app imports both"
       "href",
       "/kdp/estensione",
     );
-    await dialog.getByRole("radio", { name: "Account secondario" }).check();
+    await dialog.getByRole("radio", { name: "Ilaria" }).check();
     await dialog.getByTestId("extension-sync").click();
 
     // Each step ends done or in error: wait for the end, then the failure shows its message.
@@ -154,7 +154,7 @@ test("the extension reads the KDP pages in hidden tabs and the app imports both"
     // A clean run closes the dialog; the page shows the imported book with its sales.
     await expect(dialog).toBeHidden();
     await page.getByRole("combobox", { name: "Account" }).click();
-    await page.getByRole("option", { name: "Account secondario" }).click();
+    await page.getByRole("option", { name: "Ilaria" }).click();
     await expect(page.getByTestId("sales-books")).toContainText(title);
   } finally {
     server.close();

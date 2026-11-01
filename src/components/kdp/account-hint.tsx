@@ -15,9 +15,9 @@ export function AccountHint({
     <p className="text-xs text-muted-foreground" data-testid="account-hint">
       {account
         ? `Riconosciuto: ${matches[account]} ${what} già associati a «${accountLabel(account)}».`
-        : matches.main === 0 && matches.secondary === 0
+        : Object.values(matches).every((n) => n === 0)
           ? `Nessuno di questi ${what} è già in archivio: se stai collegando un account per la prima volta, scegli quale.`
-          : `I ${what} risultano in entrambi gli account: scegli tu quello giusto.`}
+          : `I ${what} risultano in più account: scegli tu quello giusto.`}
     </p>
   );
 }

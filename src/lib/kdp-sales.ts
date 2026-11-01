@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 
-import type { KdpAccount } from "@/lib/kdp";
+import { KDP_ACCOUNT_VALUES, type KdpAccount } from "@/lib/kdp";
 
 // --- Sources (formats + KENP) --------------------------------------------------
 
@@ -157,7 +157,10 @@ export type SaleBook = {
 
 /** Title families without a book, per account. */
 export function unresolvedCounts(books: SaleBook[]): Record<KdpAccount, number> {
-  const counts: Record<KdpAccount, number> = { main: 0, secondary: 0 };
+  const counts = Object.fromEntries(KDP_ACCOUNT_VALUES.map((a) => [a, 0])) as Record<
+    KdpAccount,
+    number
+  >;
   for (const book of books) if (book.unresolved) counts[book.account]++;
   return counts;
 }

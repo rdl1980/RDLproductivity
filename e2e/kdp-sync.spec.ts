@@ -26,7 +26,7 @@ test("the launcher's tab chains books and sales into one sync", async ({ page })
   ];
   await page.goto(`/kdp/libri/importa#${encodeImportHash({ v: 1, books })}`);
   await expect(page.getByTestId("sync-step")).toHaveText(/passo 1 di 2/);
-  await page.getByRole("radio", { name: "Account secondario" }).check();
+  await page.getByRole("radio", { name: "Ilaria" }).check();
   await page.getByRole("button", { name: "Importa" }).click();
   const next = page.getByTestId("sync-next-step");
   await expect(next).toContainText("Passo 1 di 2 fatto");
@@ -51,7 +51,7 @@ test("the launcher's tab chains books and sales into one sync", async ({ page })
   await page.goto(`/kdp/vendite/importa#${fragment}`);
   await expect(page.getByTestId("sync-step")).toHaveText(/passo 2 di 2/);
   await expect(page.getByTestId("account-hint")).toBeVisible();
-  await expect(page.getByRole("radio", { name: "Account secondario" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "Ilaria" })).toBeChecked();
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/vendite\?account=secondary$/);
   await expect(page.getByText("Sincronizzazione completa")).toBeVisible();

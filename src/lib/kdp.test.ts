@@ -107,6 +107,6 @@ describe("cellTasks", () => {
 
 describe("laneLabel", () => {
   it("names the account and the track", () => {
-    expect(laneLabel("secondary", "actual")).toBe("Account secondario · Reale");
+    expect(laneLabel("secondary", "actual")).toBe("Ilaria · Reale");
   });
 });

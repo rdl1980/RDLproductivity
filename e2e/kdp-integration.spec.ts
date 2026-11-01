@@ -11,7 +11,7 @@ test("this week's KDP tasks show in Today and in the calendar, and search finds 
   const title = `Caricare interni ${Date.now()}`;
   await page.goto("/kdp");
   const cell = page.getByRole("cell", {
-    name: `Account principale · Pianificato, settimana ${weekRangeLabel(week)}`,
+    name: `Rosario · Pianificato, settimana ${weekRangeLabel(week)}`,
   });
   await cell.getByRole("button", { name: /^Aggiungi attività/ }).click();
   await cell.getByRole("textbox").fill(title);
@@ -22,7 +22,7 @@ test("this week's KDP tasks show in Today and in the calendar, and search finds 
   await page.goto("/today");
   const row = page.getByTestId("kdp-week-task").filter({ hasText: title });
   await expect(row).toBeVisible();
-  await expect(row).toContainText("Account principale · Pianificato");
+  await expect(row).toContainText("Rosario · Pianificato");
   await row.getByRole("checkbox").click();
   await expect(row.getByRole("checkbox")).toBeChecked();
   await page.reload();

@@ -14,8 +14,8 @@ test("KDP imports recognise the account and refuse another account's data", asyn
     },
   ];
   const booksUrl = `/kdp/libri/importa#${encodeImportHash({ v: 1, books })}`;
-  const main = page.getByRole("radio", { name: "Account principale" });
-  const secondary = page.getByRole("radio", { name: "Account secondario" });
+  const main = page.getByRole("radio", { name: "Rosario" });
+  const secondary = page.getByRole("radio", { name: "Ilaria" });
   const importButton = page.getByRole("button", { name: "Importa" });
 
   // Unknown books: no account is preselected, so the import waits for a choice.
@@ -30,12 +30,12 @@ test("KDP imports recognise the account and refuse another account's data", asyn
 
   // The same Bookshelf again: recognised as the main account's.
   await page.goto(booksUrl);
-  await expect(page.getByTestId("account-hint")).toContainText("«Account principale»");
+  await expect(page.getByTestId("account-hint")).toContainText("«Rosario»");
   await expect(main).toBeChecked();
   // Imported as the secondary account, it is refused.
   await secondary.check();
   await importButton.click();
-  await expect(page.getByText(/Questi dati sembrano di «Account principale»/)).toBeVisible();
+  await expect(page.getByText(/Questi dati sembrano di «Rosario»/)).toBeVisible();
   await expect(page).toHaveURL(/\/kdp\/libri\/importa/);
 
   // Reports with that book's ASIN: same recognition and refusal.
@@ -49,9 +49,9 @@ test("KDP imports recognise the account and refuse another account's data", asyn
     rows: [[addDays(today, -2), "Amazon.it", `DIGITAL=${asin}::`, 1, 0, 0, 0, 2.5, 2.5, 0, 0, 0]],
   });
   await page.goto(`/kdp/vendite/importa#${fragment}`);
-  await expect(page.getByTestId("account-hint")).toContainText("«Account principale»");
+  await expect(page.getByTestId("account-hint")).toContainText("«Rosario»");
   await expect(main).toBeChecked();
   await secondary.check();
   await importButton.click();
-  await expect(page.getByText(/Questi dati sembrano di «Account principale»/)).toBeVisible();
+  await expect(page.getByText(/Questi dati sembrano di «Rosario»/)).toBeVisible();
 });
