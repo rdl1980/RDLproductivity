@@ -198,13 +198,15 @@ export function KdpCalendarView({ weeks, tasks: initialTasks, today }: Props) {
         onDragEnd={onDragEnd}
         onDragCancel={() => setDragging(null)}
       >
-        {/* Four lanes do not fit a phone: there the grid scrolls sideways, weeks stay put. */}
+        {/* The lanes do not fit a phone (nor, with three accounts, a narrow laptop): the grid
+            scrolls sideways, weeks stay put. */}
         <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
           <div
             role="table"
             aria-label="Calendario KDP"
             data-testid="kdp-calendar"
-            className="grid grid-cols-[4.5rem_repeat(4,minmax(8.5rem,1fr))] gap-1.5 sm:grid-cols-[6.5rem_repeat(4,minmax(0,1fr))] sm:gap-2"
+            className="grid grid-cols-[4.5rem_repeat(var(--lanes),minmax(8.5rem,1fr))] gap-1.5 sm:grid-cols-[6.5rem_repeat(var(--lanes),minmax(8rem,1fr))] sm:gap-2"
+            style={{ "--lanes": KDP_ACCOUNTS.length * KDP_TRACKS.length } as React.CSSProperties}
           >
             <div role="row" className="contents">
               <div

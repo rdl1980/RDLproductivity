@@ -59,7 +59,12 @@ export default async function SalesPage({ searchParams }: PageProps<"/kdp/vendit
       goals={goals}
       ads={data.ads}
       prices={data.prices}
-      monthToDate={{ main: monthToDate.main.royalty, secondary: monthToDate.secondary.royalty }}
+      monthToDate={
+        Object.fromEntries(KDP_ACCOUNT_VALUES.map((a) => [a, monthToDate[a].royalty])) as Record<
+          KdpAccount,
+          number
+        >
+      }
       today={today}
       initial={initial}
       origin={issuerFromHeaders(requestHeaders)}

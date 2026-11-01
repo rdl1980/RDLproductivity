@@ -21,7 +21,7 @@ test("goals, payouts, fiscal export and the weekly review", async ({ page }) => 
       ],
     })}`,
   );
-  await page.getByRole("radio", { name: "Account principale" }).check();
+  await page.getByRole("radio", { name: "Rosario" }).check();
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/libri$/);
 
@@ -37,7 +37,7 @@ test("goals, payouts, fiscal export and the weekly review", async ({ page }) => 
     ],
   });
   await page.goto(`/kdp/vendite/importa#${fragment}`);
-  await page.getByRole("radio", { name: "Account principale" }).check();
+  await page.getByRole("radio", { name: "Rosario" }).check();
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/vendite$/);
 
@@ -45,7 +45,7 @@ test("goals, payouts, fiscal export and the weekly review", async ({ page }) => 
   const tile = page.getByTestId("goal-tile");
   await tile.getByRole("button", { name: /Imposta|Modifica/ }).click();
   const dialog = page.getByRole("dialog", { name: "Obiettivo mensile di royalty" });
-  await dialog.getByLabel("Account principale").fill("1000");
+  await dialog.getByLabel("Rosario").fill("1000");
   await dialog.getByRole("button", { name: "Salva" }).click();
   await expect(dialog).toBeHidden();
   // Grouping depends on the ICU data of the renderer: accept both spellings.
@@ -55,7 +55,7 @@ test("goals, payouts, fiscal export and the weekly review", async ({ page }) => 
   // Payouts: every imported month is listed with its pay date; something is due.
   await page.goto("/kdp/incassi");
   await expect(page.getByTestId("payouts-due")).toBeVisible();
-  await expect(page.getByTestId("payouts-table")).toContainText("Account principale");
+  await expect(page.getByTestId("payouts-table")).toContainText("Rosario");
   await expect(page.getByTestId("payouts-table")).toContainText("in arrivo");
   // Each row breaks down into one transfer per marketplace, with its currency.
   const transfers = page.getByTestId("payout-transfers").first();
@@ -86,7 +86,7 @@ test("goals, payouts, fiscal export and the weekly review", async ({ page }) => 
   await page.goto("/riepilogo");
   await expect(page.getByTestId("review-week")).toContainText("Settimana");
   await expect(page.getByRole("region", { name: "Card completate" })).toContainText(title);
-  await expect(page.getByTestId("review-sales")).toContainText("Account principale");
+  await expect(page.getByTestId("review-sales")).toContainText("Rosario");
   await expect(page.getByTestId("review-goals")).toContainText(/1\.?000,00\s€/);
   await page.getByRole("link", { name: "Settimana precedente" }).click();
   await expect(page).toHaveURL(/week=\d{4}-\d{2}-\d{2}/);

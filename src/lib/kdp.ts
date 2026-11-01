@@ -1,12 +1,14 @@
 /**
  * KDP calendar: tasks belong to a week (its Sunday, "YYYY-MM-DD", as KDP's
- * own reporting weeks run Sunday to Saturday) and to one of two accounts. Dates here are calendar dates, computed in UTC so they do
+ * own reporting weeks run Sunday to Saturday) and to one of the accounts. Dates here are calendar dates, computed in UTC so they do
  * not depend on the machine's time zone.
  */
 
+/** The stored values stay stable; the labels are the names shown in the app. */
 export const KDP_ACCOUNTS = [
-  { value: "main", label: "Account principale" },
-  { value: "secondary", label: "Account secondario" },
+  { value: "main", label: "Rosario" },
+  { value: "secondary", label: "Ilaria" },
+  { value: "third", label: "NonnoPeppe" },
 ] as const;
 
 export type KdpAccount = (typeof KDP_ACCOUNTS)[number]["value"];
@@ -34,7 +36,7 @@ export function trackLabel(track: KdpTrack): string {
   return KDP_TRACKS.find((t) => t.value === track)?.label ?? track;
 }
 
-/** "Account principale · Reale" */
+/** "Rosario · Reale" */
 export function laneLabel(account: KdpAccount, track: KdpTrack): string {
   return `${accountLabel(account)} · ${trackLabel(track)}`;
 }

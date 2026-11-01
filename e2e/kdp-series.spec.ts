@@ -18,7 +18,7 @@ test("series read-through and price history", async ({ page }) => {
     }));
   const importBooks = async (price: string) => {
     await page.goto(`/kdp/libri/importa#${encodeImportHash({ v: 1, books: books(price) })}`);
-    await page.getByRole("radio", { name: "Account principale" }).check();
+    await page.getByRole("radio", { name: "Rosario" }).check();
     await page.getByRole("button", { name: "Importa" }).click();
     await expect(page).toHaveURL(/\/kdp\/libri$/);
   };
@@ -70,7 +70,7 @@ test("series read-through and price history", async ({ page }) => {
     ],
   });
   await page.goto(`/kdp/vendite/importa#${fragment}`);
-  await page.getByRole("radio", { name: "Account principale" }).check();
+  await page.getByRole("radio", { name: "Rosario" }).check();
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/vendite$/);
 

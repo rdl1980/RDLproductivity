@@ -37,7 +37,7 @@ test("KDP books: import from the bookmarklet link, auto-link and confirm a sugge
   };
   await page.goto(`/kdp/libri/importa#${encodeImportHash(payload)}`);
   await expect(page.getByText("Trovati 2 libri con 2 ASIN.")).toBeVisible();
-  await page.getByRole("radio", { name: "Account secondario" }).check();
+  await page.getByRole("radio", { name: "Ilaria" }).check();
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/libri$/);
 
@@ -48,7 +48,7 @@ test("KDP books: import from the bookmarklet link, auto-link and confirm a sugge
       .filter({ has: page.getByRole("heading", { name: title, exact: true }) });
   const exact = book(name);
   await expect(exact).toContainText("B0TESTAAA1");
-  await expect(exact).toContainText("Account secondario");
+  await expect(exact).toContainText("Ilaria");
   // Exact title in the same market: linked without asking.
   await expect(exact.getByRole("link", { name: exactCard })).toBeVisible();
 

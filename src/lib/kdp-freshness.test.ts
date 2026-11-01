@@ -12,6 +12,7 @@ describe("staleSources", () => {
       {
         main: { sales: daysAgo(9), books: daysAgo(31) },
         secondary: { sales: daysAgo(2), books: daysAgo(10) },
+        third: { sales: null, books: null },
       },
       now,
     );
@@ -19,7 +20,7 @@ describe("staleSources", () => {
       ["main", "sales", 9],
       ["main", "books", 31],
     ]);
-    expect(stale[0].message).toBe("Vendite di «Account principale» aggiornati 9 giorni fa.");
+    expect(stale[0].message).toBe("Vendite di «Rosario» aggiornati 9 giorni fa.");
     expect(stale[0].href).toBe("/kdp/vendite");
   });
 
@@ -28,12 +29,13 @@ describe("staleSources", () => {
       {
         main: { sales: daysAgo(1), books: null },
         secondary: { sales: null, books: null },
+        third: { sales: null, books: null },
       },
       now,
     );
     expect(stale).toHaveLength(1);
     expect(stale[0]).toMatchObject({ account: "main", kind: "books", days: null });
-    expect(stale[0].message).toBe("Libri di «Account principale» mai importati.");
+    expect(stale[0].message).toBe("Libri di «Rosario» mai importati.");
   });
 
   it("is quiet when everything is fresh", () => {
@@ -42,6 +44,7 @@ describe("staleSources", () => {
         {
           main: { sales: daysAgo(6), books: daysAgo(29) },
           secondary: { sales: daysAgo(0), books: daysAgo(0) },
+          third: { sales: daysAgo(0), books: daysAgo(0) },
         },
         now,
       ),

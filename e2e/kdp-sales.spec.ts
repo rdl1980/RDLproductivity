@@ -11,7 +11,7 @@ const asin = (prefix: string, stamp: number) => `${prefix}${String(stamp).slice(
 
 async function importBooks(
   page: import("@playwright/test").Page,
-  account: "Account principale" | "Account secondario",
+  account: "Rosario" | "Ilaria",
   books: unknown[],
 ) {
   await page.goto(`/kdp/libri/importa#${encodeImportHash({ v: 1, books })}`);
@@ -25,7 +25,7 @@ test("KDP sales: import the report history and explore the dashboard", async ({ 
   const title = `Vendite Test ${stamp}`;
   const ebook = asin("B1", stamp);
   const paper = asin("B2", stamp);
-  await importBooks(page, "Account principale", [
+  await importBooks(page, "Rosario", [
     {
       kdpId: `S${stamp}`,
       title: `${title}: Un libro di prova`,
@@ -39,9 +39,10 @@ test("KDP sales: import the report history and explore the dashboard", async ({ 
   ]);
 
   const key = `DIGITAL=${ebook}:PRINT=${paper}::`;
+  // Both today: the month to date (forecast, "Mese corrente") holds them on any day of the month.
   const rows = [
-    [addDays(today, -3), "Amazon.it", key, 1, 2, 0, 120, 10.5, 2.5, 7.5, 0, 0.5],
-    [addDays(today, -1), "Amazon.com", key, 0, 1, 0, 0, 4.25, 0, 4.25, 0, 0],
+    [today, "Amazon.it", key, 1, 2, 0, 120, 10.5, 2.5, 7.5, 0, 0.5],
+    [today, "Amazon.com", key, 0, 1, 0, 0, 4.25, 0, 4.25, 0, 0],
   ];
   const fragment = await encodeSalesHash({
     v: 1,
@@ -54,7 +55,7 @@ test("KDP sales: import the report history and explore the dashboard", async ({ 
 
   await page.goto(`/kdp/vendite/importa#${fragment}`);
   await expect(page.getByTestId("sales-import-summary")).toContainText("14,75");
-  await page.getByRole("radio", { name: "Account principale" }).check();
+  await page.getByRole("radio", { name: "Rosario" }).check();
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/vendite$/);
 
@@ -126,12 +127,12 @@ test("KDP import: a book going online is logged as actual and completes its card
     },
   ];
   // First import: drafts, linked to the cards by title. Second: one online, one blocked.
-  await importBooks(page, "Account secondario", book("Bozza", "Bozza"));
-  await importBooks(page, "Account secondario", book("Online", "Bloccato"));
+  await importBooks(page, "Ilaria", book("Bozza", "Bozza"));
+  await importBooks(page, "Ilaria", book("Online", "Bloccato"));
 
   await page.goto("/kdp");
   const actual = page.getByRole("cell", {
-    name: `Account secondario · Reale, settimana ${weekRangeLabel(weekStartOf(today)!)}`,
+    name: `Ilaria · Reale, settimana ${weekRangeLabel(weekStartOf(today)!)}`,
   });
   await actual.evaluate((cell) => cell.scrollIntoView({ block: "center" }));
   await expect(actual.getByTestId("kdp-task").filter({ hasText: `Online: ${name}` })).toBeVisible();

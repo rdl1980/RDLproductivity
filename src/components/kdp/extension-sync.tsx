@@ -7,7 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
+import { KDP_ACCOUNT_VALUES, KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
 import { decodeImportHash, importPayloadSchema } from "@/lib/kdp-books";
 import {
   EXTENSION_ACCOUNT_KEY,
@@ -36,7 +36,9 @@ const LABELS: Record<SyncStep, string> = { books: "Libri", sales: "Vendite" };
 function readAccount(): KdpAccount | null {
   try {
     const value = localStorage.getItem(EXTENSION_ACCOUNT_KEY);
-    return value === "main" || value === "secondary" ? value : null;
+    return (KDP_ACCOUNT_VALUES as readonly string[]).includes(value ?? "")
+      ? (value as KdpAccount)
+      : null;
   } catch {
     return null;
   }

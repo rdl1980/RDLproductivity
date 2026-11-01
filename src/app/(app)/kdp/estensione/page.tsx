@@ -81,11 +81,11 @@ export default async function ExtensionPage() {
       </section>
 
       <section className="flex flex-col gap-3 rounded-xl border p-5 text-sm">
-        <h2 className="text-base font-semibold">3. Due account, due browser</h2>
+        <h2 className="text-base font-semibold">3. Un account per browser</h2>
         <p>
           L&apos;estensione usa la sessione KDP del browser (o del profilo) in cui è installata.
-          Tieni l&apos;account principale in un browser e il secondario in un altro, o in un secondo
-          profilo di Chrome, installa l&apos;estensione in entrambi e in ciascuno scegli
+          Tieni ogni account (Rosario, Ilaria, NonnoPeppe) in un browser diverso, o in un altro
+          profilo di Chrome, installa l&apos;estensione in ognuno e in ciascuno scegli
           l&apos;account nel dialog di aggiornamento: niente più login e logout.
         </p>
         <p className="text-muted-foreground">

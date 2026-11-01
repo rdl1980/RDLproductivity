@@ -41,7 +41,14 @@ import {
   saveBoardAsTemplate,
   saveCardAsTemplate,
 } from "@/server/actions/templates";
-import { weekStartOf, monthWeeks, parseMonth } from "@/lib/kdp";
+import {
+  KDP_ACCOUNT_VALUES,
+  KDP_ACCOUNTS,
+  type KdpAccount,
+  monthWeeks,
+  parseMonth,
+  weekStartOf,
+} from "@/lib/kdp";
 import { createKdpTask, deleteKdpTask, moveKdpTask, updateKdpTask } from "@/server/actions/kdp";
 import { registerContentTools } from "@/server/mcp/content-tools";
 import { getSuperBoard } from "@/server/queries/aggregate";
@@ -862,8 +869,8 @@ export function registerTools(server: McpServer) {
   // ---- KDP calendar ----
 
   const kdpAccount = z
-    .enum(["main", "secondary"])
-    .describe('KDP account lane: "main" (Account principale) or "secondary" (Account secondario)');
+    .enum(KDP_ACCOUNT_VALUES)
+    .describe(`KDP account: ${KDP_ACCOUNTS.map((a) => `"${a.value}" (${a.label})`).join(", ")}`);
   const kdpTrack = z
     .enum(["planned", "actual"])
     .describe(
@@ -881,8 +888,8 @@ export function registerTools(server: McpServer) {
     {
       title: "List KDP calendar tasks",
       description:
-        "Lists the tasks of the KDP calendar (separate from boards): weekly tasks in two account lanes " +
-        '(main and secondary), each split into "planned" and "actual". Give a month (YYYY-MM, all ' +
+        "Lists the tasks of the KDP calendar (separate from boards): weekly tasks in one lane per account " +
+        `(${KDP_ACCOUNT_VALUES.join(", ")}), each split into "planned" and "actual". Give a month (YYYY-MM, all ` +
         "weeks touching it) or a range of weeks.",
       inputSchema: z.object({
         month: z.string().optional().describe("Month as YYYY-MM"),
@@ -959,7 +966,7 @@ export function registerTools(server: McpServer) {
           return moveKdpTask({
             id: taskId,
             week: week ?? task.week.toISOString().slice(0, 10),
-            account: account ?? (task.account as "main" | "secondary"),
+            account: account ?? (task.account as KdpAccount),
             track,
           });
         });

@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 
 import { auth } from "@/auth";
-import { accountLabel } from "@/lib/kdp";
+import { accountLabel, type KdpAccount } from "@/lib/kdp";
 import { payoutSchedule } from "@/lib/kdp-finance";
 import { getFiscalRows, getMonthlyRoyalties } from "@/server/queries/kdp-finance";
 
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
     const [month, account] = key.split("|");
     summary.addRow({
       month,
-      account: accountLabel(account as "main" | "secondary"),
+      account: accountLabel(account as KdpAccount),
       ...entry,
       payDate: payDates.get(key) ?? "",
     });

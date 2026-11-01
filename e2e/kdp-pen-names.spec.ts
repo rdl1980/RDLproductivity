@@ -27,7 +27,7 @@ test("the pen name tab compares pen names and lists every book of one", async ({
       ],
     })}`,
   );
-  await page.getByRole("radio", { name: "Account principale" }).check();
+  await page.getByRole("radio", { name: "Rosario" }).check();
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/libri$/);
 
@@ -40,7 +40,7 @@ test("the pen name tab compares pen names and lists every book of one", async ({
     rows: [[addDays(today, -2), "Amazon.it", `DIGITAL=${sold}:::`, 3, 0, 0, 0, 6.3, 6.3, 0, 0, 0]],
   });
   await page.goto(`/kdp/vendite/importa#${fragment}`);
-  await page.getByRole("radio", { name: "Account principale" }).check();
+  await page.getByRole("radio", { name: "Rosario" }).check();
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/vendite$/);
 

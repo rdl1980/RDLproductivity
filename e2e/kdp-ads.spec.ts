@@ -22,7 +22,7 @@ test("Amazon Ads spend: upload the report, net royalty and ACoS on the dashboard
       ],
     })}`,
   );
-  await page.getByRole("radio", { name: "Account principale" }).check();
+  await page.getByRole("radio", { name: "Rosario" }).check();
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/libri$/);
 
@@ -35,7 +35,7 @@ test("Amazon Ads spend: upload the report, net royalty and ACoS on the dashboard
     rows: [[addDays(today, -2), "Amazon.it", `DIGITAL=${asin}::`, 5, 0, 0, 0, 10, 10, 0, 0, 0]],
   });
   await page.goto(`/kdp/vendite/importa#${fragment}`);
-  await page.getByRole("radio", { name: "Account principale" }).check();
+  await page.getByRole("radio", { name: "Rosario" }).check();
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/vendite$/);
 
@@ -52,8 +52,8 @@ test("Amazon Ads spend: upload the report, net royalty and ACoS on the dashboard
     .getByLabel("Report «Prodotto pubblicizzato»")
     .setInputFiles({ name: "report.csv", mimeType: "text/csv", buffer: Buffer.from(csv, "utf-8") });
   await expect(page.getByTestId("ads-import-summary")).toContainText("5.00 EUR");
-  await expect(page.getByTestId("account-hint")).toContainText("«Account principale»");
-  await expect(page.getByRole("radio", { name: "Account principale" })).toBeChecked();
+  await expect(page.getByTestId("account-hint")).toContainText("«Rosario»");
+  await expect(page.getByRole("radio", { name: "Rosario" })).toBeChecked();
   await page.getByRole("button", { name: "Importa" }).click();
   await expect(page).toHaveURL(/\/kdp\/vendite$/);
 
@@ -79,7 +79,7 @@ test("Amazon Ads spend: upload the report, net royalty and ACoS on the dashboard
   await page
     .getByLabel("Report «Prodotto pubblicizzato»")
     .setInputFiles({ name: "report.csv", mimeType: "text/csv", buffer: Buffer.from(csv, "utf-8") });
-  await page.getByRole("radio", { name: "Account secondario" }).check();
+  await page.getByRole("radio", { name: "Ilaria" }).check();
   await page.getByRole("button", { name: "Importa" }).click();
-  await expect(page.getByText(/sembrano di «Account principale»/)).toBeVisible();
+  await expect(page.getByText(/sembrano di «Rosario»/)).toBeVisible();
 });
