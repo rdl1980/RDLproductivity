@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { KdpTabs } from "@/components/kdp/kdp-tabs";
+import { PenTabs } from "@/components/kdp/pen-tabs";
 import { PageHeader } from "@/components/page-header";
 import { BarList } from "@/components/stats/bar-list";
 import { Input } from "@/components/ui/input";
@@ -257,6 +258,7 @@ export function PenNameView({ records, books, ads, today, initial }: Props) {
         description="Quanto rende ogni pen name e come vanno i suoi libri, dai report KDP importati."
       />
       <KdpTabs current="pens" />
+      <PenTabs current="sales" />
 
       <section
         aria-label="Filtri"

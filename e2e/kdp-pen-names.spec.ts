@@ -79,3 +79,76 @@ test("the pen name tab compares pen names and lists every book of one", async ({
   await page.goto("/kdp/vendite?book=sconosciuto&period=all");
   await expect(page.getByRole("combobox", { name: "Libro" })).toHaveText("Tutti i libri");
 });
+
+test("the pen name registry keeps contacts and lists the published books by format", async ({
+  page,
+}) => {
+  const stamp = Date.now();
+  const author = `Registro ${stamp}`;
+  const asin = `R${String(stamp).slice(-9)}`;
+  await page.goto(
+    `/kdp/libri/importa#${encodeImportHash({
+      v: 1,
+      books: [
+        {
+          kdpId: `RG${stamp}`,
+          title: `Pubblicato ${stamp}`,
+          series: null,
+          author,
+          formats: [
+            { format: "ebook", status: "Live", asin, price: "€2,99 EUR" },
+            { format: "paperback", status: "Draft", asin: null, price: null },
+          ],
+        },
+      ],
+    })}`,
+  );
+  await page.getByRole("radio", { name: "Rosario" }).check();
+  await page.getByRole("button", { name: "Importa" }).click();
+  await expect(page).toHaveURL(/\/kdp\/libri$/);
+
+  // Sub-tab of Pen name.
+  await page.goto("/kdp/pen-name");
+  await page
+    .getByRole("navigation", { name: "Sezioni Pen name" })
+    .getByRole("link", { name: "Anagrafica" })
+    .click();
+  await expect(page).toHaveURL(/\/kdp\/pen-name\/anagrafica/);
+
+  const card = page
+    .getByTestId("pen-card")
+    .filter({ has: page.getByText(author, { exact: true }) });
+  // Parallel tests import Rosario's Bookshelf too, which can mark this book as gone.
+  await expect(card).toContainText(/[01]\/1 pubblicati/);
+  await expect(async () => {
+    await card.click();
+    await expect(page.getByTestId("pen-dialog")).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  const dialog = page.getByTestId("pen-dialog");
+  await expect(dialog.getByRole("heading", { name: author })).toBeVisible();
+
+  // The book with its formats (in the published list, or among the others if marked gone).
+  await expect(dialog).toContainText(`Pubblicato ${stamp}`);
+  await expect(dialog).toContainText("eBook");
+  await expect(dialog).toContainText("Online");
+  await expect(dialog).toContainText("Cartaceo");
+  await expect(dialog).toContainText(asin);
+
+  // Contacts are saved and shown on the card.
+  await dialog.getByLabel("Email di contatto", { exact: true }).fill(`autore${stamp}@example.com`);
+  await dialog
+    .getByLabel("Sito internet", { exact: true })
+    .fill(`https://registro${stamp}.example.com`);
+  await dialog.getByRole("button", { name: "Salva anagrafica" }).click();
+  await expect(page.getByText("Anagrafica salvata")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.reload();
+  await expect(card).toContainText(`autore${stamp}@example.com`);
+  await expect(card).toContainText(`registro${stamp}.example.com`);
+
+  // An invalid link is refused with its message.
+  await card.click();
+  await dialog.getByLabel("Sito internet", { exact: true }).fill("registro.example.com");
+  await dialog.getByRole("button", { name: "Salva anagrafica" }).click();
+  await expect(page.getByText(/Indirizzo non valido/)).toBeVisible();
+});

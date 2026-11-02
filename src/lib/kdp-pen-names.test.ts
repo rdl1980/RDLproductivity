@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { penBookRows, penNameTable, type PenBook } from "./kdp-pen-names";
+import {
+  penBookRows,
+  penNameTable,
+  penProfileSchema,
+  penRegistry,
+  type PenBook,
+} from "./kdp-pen-names";
 import { NO_PEN_NAME, SALE_SOURCES, type SaleRecord } from "./kdp-sales";
 
 const ALL = new Set(SALE_SOURCES);
@@ -81,3 +87,70 @@ describe("penBookRows", () => {
     ]);
   });
 });
+
+describe("penRegistry", () => {
+  const fmt = (status: "live" | "draft") => ({
+    format: "ebook" as const,
+    status,
+    statusText: null,
+    asin: null,
+    price: null,
+    url: null,
+    market: null,
+  });
+  const rb = (id: string, author: string | null, status: "live" | "draft", account = "main") => ({
+    id,
+    title: `Titolo ${id}`,
+    account: account as "main",
+    series: null,
+    author,
+    formats: [fmt(status)],
+    missing: false,
+  });
+
+  it("joins the books' author lines with the saved profiles", () => {
+    const profile = { ...emptyProfile("Zeta Nuova"), email: "zeta@example.com" };
+    const registry = penRegistry(
+      [rb("b", "Alfa", "draft"), rb("a", "Alfa", "live", "secondary"), rb("x", null, "live")],
+      [profile],
+    );
+    expect(registry.map((e) => [e.name, e.books.length, e.published])).toEqual([
+      ["Alfa", 2, 1],
+      ["Zeta Nuova", 0, 0],
+      [NO_PEN_NAME, 1, 1],
+    ]);
+    // Published first.
+    expect(registry[0].books.map((b) => b.id)).toEqual(["a", "b"]);
+    expect(registry[0].accounts).toEqual(["main", "secondary"]);
+    expect(registry[1].profile?.email).toBe("zeta@example.com");
+  });
+});
+
+describe("penProfileSchema", () => {
+  it("clears empty fields and checks email and links", () => {
+    expect(penProfileSchema.parse({ name: " Alfa ", website: "", email: "a@b.it" })).toMatchObject({
+      name: "Alfa",
+      website: null,
+      email: "a@b.it",
+    });
+    expect(penProfileSchema.safeParse({ name: "Alfa", email: "nope" }).success).toBe(false);
+    expect(penProfileSchema.safeParse({ name: "Alfa", website: "alfa.it" }).success).toBe(false);
+  });
+});
+
+function emptyProfile(name: string) {
+  return {
+    name,
+    owner: null,
+    website: null,
+    email: null,
+    amazonUrl: null,
+    instagram: null,
+    facebook: null,
+    tiktok: null,
+    languages: null,
+    genres: null,
+    bio: null,
+    notes: null,
+  };
+}

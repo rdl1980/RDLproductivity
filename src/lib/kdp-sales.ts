@@ -388,22 +388,32 @@ export function change(current: number, previous: number): number | null {
 
 // --- Formatting -------------------------------------------------------------------
 
-const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
-const euroCompact = new Intl.NumberFormat("it-IT", {
+// Thousands separator always on: by default Italian leaves 4-digit numbers ungrouped in
+// recent CLDR (browsers) but not in older ones (the server), and the page would not hydrate.
+const euro = new Intl.NumberFormat("it-IT", {
   style: "currency",
   currency: "EUR",
-  notation: "compact",
-  maximumFractionDigits: 1,
+  useGrouping: "always",
 });
-const integer = new Intl.NumberFormat("it-IT");
-const compact = new Intl.NumberFormat("it-IT", { notation: "compact", maximumFractionDigits: 1 });
+const integer = new Intl.NumberFormat("it-IT", { useGrouping: "always" });
+const decimal = new Intl.NumberFormat("it-IT", { maximumFractionDigits: 1, useGrouping: "always" });
+
+/**
+ * Short numbers for chart axes ("1,2 mila", "3 Mln"), built by hand: the Intl
+ * compact notation differs between the server's and the browser's ICU data.
+ */
+function shortNumber(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000) return `${decimal.format(value / 1_000_000)} Mln`;
+  if (abs >= 10_000) return `${decimal.format(value / 1000)} mila`;
+  return integer.format(Math.round(value));
+}
 
 export const formatEuro = (value: number) => euro.format(value);
 export const formatEuroCompact = (value: number) =>
-  Math.abs(value) < 1000 ? euro.format(value) : euroCompact.format(value);
+  Math.abs(value) < 1000 ? euro.format(value) : `${shortNumber(value)} €`;
 export const formatInt = (value: number) => integer.format(Math.round(value));
-export const formatCompact = (value: number) =>
-  Math.abs(value) < 1000 ? integer.format(Math.round(value)) : compact.format(value);
+export const formatCompact = (value: number) => shortNumber(value);
 
 const dayLabel = new Intl.DateTimeFormat("it-IT", {
   day: "numeric",
