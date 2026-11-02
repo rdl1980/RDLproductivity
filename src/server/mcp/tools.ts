@@ -57,7 +57,7 @@ import { getKdpBooks } from "@/server/queries/kdp-books";
 import { setKdpGoal } from "@/server/actions/kdp-goals";
 import { setKdpTitleAlias } from "@/server/actions/kdp-sales";
 import { weekStartOf as kdpWeekStartOf, todayIn } from "@/lib/kdp";
-import { duePayouts } from "@/lib/kdp-finance";
+import { duePayouts, yearTransfers } from "@/lib/kdp-finance";
 import { getPayouts } from "@/server/queries/kdp-finance";
 import { getKdpGoals } from "@/server/queries/kdp-goals";
 import { getWeeklyReview } from "@/server/queries/review";
@@ -1192,16 +1192,21 @@ export function registerTools(server: McpServer) {
       description:
         "Royalty per sales month and account with the expected payment date (KDP pays about 60 days " +
         "after the month ends) and whether it is already paid, plus the sums still due per pay date. " +
-        "EUR, estimates from the imported reports. Also the monthly royalty goals per account.",
-      inputSchema: z.object({}),
+        "EUR, estimates from the imported reports. Also the monthly royalty goals per account. " +
+        "With `year`, also the transfers paid in that calendar year per account (cash basis, for " +
+        "the Italian tax return 730): each transfer by marketplace and currency, received and due.",
+      inputSchema: z.object({
+        year: z.number().int().min(2000).max(2100).optional().describe("Calendar year, e.g. 2025"),
+      }),
       annotations: READ,
     },
-    async () => {
+    async ({ year }) => {
       const payouts = await getPayouts(todayIn(DEFAULT_TIME_ZONE));
       return ok({
         due: duePayouts(payouts),
         payouts: payouts.slice(0, 36),
         goals: await getKdpGoals(),
+        ...(year ? { yearTransfers: yearTransfers(payouts, year, KDP_ACCOUNT_VALUES) } : {}),
       });
     },
   );

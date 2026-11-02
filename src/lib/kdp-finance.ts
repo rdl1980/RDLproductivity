@@ -97,6 +97,59 @@ export function duePayouts(
     .map(([payDate, e]) => ({ payDate, royalty: e.royalty, transfers: e.transfers }));
 }
 
+export type YearTransfer = Transfer & {
+  account: KdpAccount;
+  /** Month of the sales the transfer pays. */
+  month: string;
+  payDate: string;
+  status: Payout["status"];
+};
+
+export type YearAccountTransfers = {
+  account: KdpAccount;
+  transfers: YearTransfer[];
+  /** Transfers already paid (pay date before today). */
+  received: number;
+  /** Transfers of the year still to come. */
+  due: number;
+};
+
+/**
+ * The transfers paid in a calendar year (cash basis, as the tax return wants
+ * them), per account: the sales of November of the year before to October.
+ */
+export function yearTransfers(
+  payouts: Payout[],
+  year: number,
+  accounts: readonly KdpAccount[],
+): YearAccountTransfers[] {
+  const inYear = payouts.filter((p) => p.payDate.startsWith(`${year}-`));
+  return accounts.map((account) => {
+    const transfers = inYear
+      .filter((p) => p.account === account)
+      .flatMap((p) =>
+        payoutTransfers(p.markets).map((t) => ({
+          ...t,
+          account,
+          month: p.month,
+          payDate: p.payDate,
+          status: p.status,
+        })),
+      )
+      .sort((a, b) => a.payDate.localeCompare(b.payDate) || b.royalty - a.royalty);
+    const sum = (status: Payout["status"]) =>
+      Math.round(
+        transfers.filter((t) => t.status === status).reduce((n, t) => n + t.royalty, 0) * 100,
+      ) / 100;
+    return { account, transfers, received: sum("paid"), due: sum("due") };
+  });
+}
+
+/** Calendar years with at least one transfer, newest first. */
+export function transferYears(payouts: Payout[]): number[] {
+  return [...new Set(payouts.map((p) => Number(p.payDate.slice(0, 4))))].sort((a, b) => b - a);
+}
+
 export type GoalProgress = {
   target: number;
   royalty: number;
