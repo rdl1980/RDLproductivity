@@ -883,7 +883,7 @@ function PieceList({
                       </span>
                     </td>
                     <td className="py-2 pr-3 text-right tabular-nums">
-                      {views(p) ? views(p).toLocaleString("it-IT") : "–"}
+                      {views(p) ? views(p).toLocaleString("it-IT", { useGrouping: "always" }) : "–"}
                     </td>
                   </tr>
                 );

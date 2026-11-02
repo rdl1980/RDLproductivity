@@ -466,3 +466,26 @@ model ContentHistory {
 
   @@index([pieceId, at])
 }
+
+// Registry of the pen names: the contact and profile details of each author
+// name the Bookshelf shows. `name` matches KdpBook.author exactly.
+model KdpPenName {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  /// Who stands behind it (person or company), for the paperwork.
+  owner     String?
+  website   String?
+  email     String?
+  /// Amazon author page (Author Central).
+  amazonUrl String?
+  instagram String?
+  facebook  String?
+  tiktok    String?
+  /// Languages written in, e.g. "IT, ES".
+  languages String?
+  genres    String?
+  bio       String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

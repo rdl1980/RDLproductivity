@@ -2,7 +2,10 @@
  * Sales by pen name: the author line of each KDP book groups its sales. Pure
  * functions over the same records as the sales dashboard, tested.
  */
+import { z } from "zod";
+
 import type { KdpAccount } from "./kdp";
+import type { KdpBookFormat } from "./kdp-books";
 import type { AdRecord } from "./kdp-ads";
 import {
   emptySums,
@@ -135,4 +138,116 @@ export function penBookRows(
     .sort(
       (a, b) => b.sums.royalty - a.sums.royalty || a.book.title.localeCompare(b.book.title, "it"),
     );
+}
+
+// --- Registry ----------------------------------------------------------------------
+
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => v || null)
+    .nullable()
+    .optional();
+const optionalUrl = optionalText(500).refine(
+  (v) => !v || /^https?:\/\/\S+$/i.test(v),
+  "Indirizzo non valido: deve iniziare con http:// o https://.",
+);
+
+/** Contact and profile details of a pen name; empty strings clear a field. */
+export const penProfileSchema = z.object({
+  name: z.string().trim().min(1, "Il pen name è obbligatorio.").max(200),
+  owner: optionalText(200),
+  website: optionalUrl,
+  email: optionalText(200).refine(
+    (v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
+    "Email non valida.",
+  ),
+  amazonUrl: optionalUrl,
+  instagram: optionalText(200),
+  facebook: optionalText(200),
+  tiktok: optionalText(200),
+  languages: optionalText(100),
+  genres: optionalText(300),
+  bio: optionalText(5000),
+  notes: optionalText(5000),
+});
+
+export type PenProfileInput = z.input<typeof penProfileSchema>;
+export type PenProfile = {
+  [K in keyof z.output<typeof penProfileSchema>]-?: K extends "name" ? string : string | null;
+};
+
+export const PEN_PROFILE_FIELDS = [
+  "owner",
+  "website",
+  "email",
+  "amazonUrl",
+  "instagram",
+  "facebook",
+  "tiktok",
+  "languages",
+  "genres",
+  "bio",
+  "notes",
+] as const;
+
+/** A registry book: its formats with status, ASIN and Amazon link. */
+export type RegistryBook = {
+  id: string;
+  title: string;
+  account: KdpAccount;
+  series: string | null;
+  author: string | null;
+  formats: KdpBookFormat[];
+  missing: boolean;
+};
+
+export type RegistryEntry = {
+  name: string;
+  /** Saved details, null when none were entered yet. */
+  profile: PenProfile | null;
+  accounts: KdpAccount[];
+  books: RegistryBook[];
+  /** Books with at least one format online. */
+  published: number;
+};
+
+const isPublished = (book: RegistryBook) =>
+  !book.missing && book.formats.some((f) => f.status === "live");
+
+/**
+ * Every pen name, from the books' author lines and from the saved profiles
+ * (a profile can exist before its first book): name order, unknown last.
+ * Within one, published books first, then by title.
+ */
+export function penRegistry(books: RegistryBook[], profiles: PenProfile[]): RegistryEntry[] {
+  const byName = new Map<string, RegistryEntry>();
+  const entry = (name: string) => {
+    let e = byName.get(name);
+    if (!e) {
+      e = { name, profile: null, accounts: [], books: [], published: 0 };
+      byName.set(name, e);
+    }
+    return e;
+  };
+  for (const profile of profiles) entry(profile.name).profile = profile;
+  for (const book of books) {
+    const e = entry(book.author || NO_PEN_NAME);
+    e.books.push(book);
+    if (!e.accounts.includes(book.account)) e.accounts.push(book.account);
+  }
+  for (const e of byName.values()) {
+    e.books.sort(
+      (a, b) =>
+        Number(isPublished(b)) - Number(isPublished(a)) || a.title.localeCompare(b.title, "it"),
+    );
+    e.published = e.books.filter(isPublished).length;
+  }
+  return [...byName.values()].sort(
+    (a, b) =>
+      Number(a.name === NO_PEN_NAME) - Number(b.name === NO_PEN_NAME) ||
+      a.name.localeCompare(b.name, "it"),
+  );
 }

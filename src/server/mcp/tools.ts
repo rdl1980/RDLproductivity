@@ -42,6 +42,7 @@ import {
   saveCardAsTemplate,
 } from "@/server/actions/templates";
 import {
+  accountLabel,
   KDP_ACCOUNT_VALUES,
   KDP_ACCOUNTS,
   type KdpAccount,
@@ -62,6 +63,8 @@ import { getPayouts } from "@/server/queries/kdp-finance";
 import { getKdpGoals } from "@/server/queries/kdp-goals";
 import { getWeeklyReview } from "@/server/queries/review";
 import { getPenNameSummary, getSalesSummary } from "@/server/queries/kdp-sales";
+import { getPenNameRegistry } from "@/server/queries/kdp-pen-names";
+import { savePenName } from "@/server/actions/kdp-pen-names";
 import { getStats } from "@/server/queries/stats";
 import { getArchive } from "@/server/queries/archive";
 import { getBoard, getBoards } from "@/server/queries/boards";
@@ -1083,6 +1086,75 @@ export function registerTools(server: McpServer) {
     },
     async ({ from, to, account }) =>
       from > to ? fail("Intervallo non valido.") : ok(await getSalesSummary(from, to, account)),
+  );
+
+  defineTool(
+    server,
+    "list_kdp_pen_name_profiles",
+    {
+      title: "List the pen name registry",
+      description:
+        "Every KDP pen name (author line of the Bookshelf books, plus registry entries without " +
+        "books yet) with its saved details (owner, website, email, Amazon author page, social, " +
+        "languages, genres, bio, notes), its accounts and its books with each format's status, " +
+        "ASIN and price. Filter by text on the name.",
+      inputSchema: z.object({ query: z.string().max(200).optional() }),
+      annotations: READ,
+    },
+    async ({ query }) => {
+      const needle = query?.trim().toLowerCase();
+      const registry = await getPenNameRegistry();
+      return ok(
+        registry
+          .filter((e) => !needle || e.name.toLowerCase().includes(needle))
+          .map((e) => ({
+            name: e.name,
+            profile: e.profile,
+            accounts: e.accounts.map(accountLabel),
+            published: e.published,
+            books: e.books.map((b) => ({
+              title: b.title,
+              account: accountLabel(b.account),
+              series: b.series,
+              stillOnBookshelf: !b.missing,
+              formats: b.formats.map((f) => ({
+                format: f.format,
+                status: f.status,
+                asin: f.asin,
+                price: f.price,
+              })),
+            })),
+          })),
+      );
+    },
+  );
+
+  defineTool(
+    server,
+    "save_kdp_pen_name_profile",
+    {
+      title: "Save a pen name's details",
+      description:
+        "Creates or updates the registry entry of a pen name (the name exactly as on the books). " +
+        "Only the given fields change; an empty string clears one. Website and Amazon page must " +
+        "be http(s) links.",
+      inputSchema: z.object({
+        name: z.string().min(1).max(200),
+        owner: z.string().max(200).optional().describe("Person or company behind it"),
+        website: z.string().max(500).optional(),
+        email: z.string().max(200).optional(),
+        amazonUrl: z.string().max(500).optional().describe("Amazon author page"),
+        instagram: z.string().max(200).optional(),
+        facebook: z.string().max(200).optional(),
+        tiktok: z.string().max(200).optional(),
+        languages: z.string().max(100).optional().describe('e.g. "IT, ES"'),
+        genres: z.string().max(300).optional(),
+        bio: z.string().max(5000).optional(),
+        notes: z.string().max(5000).optional(),
+      }),
+      annotations: WRITE,
+    },
+    (input) => savePenName(input),
   );
 
   defineTool(
