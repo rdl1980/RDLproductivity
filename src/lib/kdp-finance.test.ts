@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  transferYears,
+  yearTransfers,
   duePayouts,
   goalProgress,
   payoutCurrency,
@@ -104,4 +106,58 @@ describe("goalProgress", () => {
 
 it("weekEnd is the Sunday", () => {
   expect(weekEnd("2026-10-19")).toBe("2026-10-25");
+});
+
+describe("yearTransfers", () => {
+  const payouts = payoutSchedule(
+    [
+      // Paid in January 2026, December 2025 and January 2027: only the first counts for 2026.
+      {
+        month: "2025-11",
+        account: "main",
+        royalty: 30,
+        markets: [
+          { marketplace: "Amazon.it", royalty: 20 },
+          { marketplace: "Amazon.com", royalty: 10 },
+        ],
+      },
+      {
+        month: "2025-10",
+        account: "main",
+        royalty: 5,
+        markets: [{ marketplace: "Amazon.it", royalty: 5 }],
+      },
+      {
+        month: "2026-11",
+        account: "main",
+        royalty: 7,
+        markets: [{ marketplace: "Amazon.it", royalty: 7 }],
+      },
+      // Paid at the end of December 2026, after "today": still to come.
+      {
+        month: "2026-10",
+        account: "secondary",
+        royalty: 12,
+        markets: [{ marketplace: "Amazon.de", royalty: 12 }],
+      },
+    ],
+    "2026-11-02",
+  );
+
+  it("keeps the transfers paid in the calendar year, per account", () => {
+    const [main, secondary, third] = yearTransfers(payouts, 2026, ["main", "secondary", "third"]);
+    expect(
+      main.transfers.map((t) => [t.payDate, t.month, t.marketplace, t.currency, t.royalty]),
+    ).toEqual([
+      ["2026-01-31", "2025-11", "Amazon.it", "EUR", 20],
+      ["2026-01-31", "2025-11", "Amazon.com", "USD", 10],
+    ]);
+    expect([main.received, main.due]).toEqual([30, 0]);
+    expect([secondary.received, secondary.due]).toEqual([0, 12]);
+    expect(third.transfers).toEqual([]);
+  });
+
+  it("lists the years with transfers", () => {
+    expect(transferYears(payouts)).toEqual([2027, 2026, 2025]);
+  });
 });

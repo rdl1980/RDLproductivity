@@ -62,6 +62,15 @@ test("goals, payouts, fiscal export and the weekly review", async ({ page }) => 
   await transfers.locator("summary").click();
   await expect(transfers).toContainText(/EUR|USD|GBP/);
 
+  // Transfers of a calendar year for the tax return: one box per account, and a workbook.
+  const taxYear = page.getByTestId("tax-year");
+  await expect(taxYear).toContainText("per il 730");
+  await expect(taxYear.getByTestId("tax-account")).toHaveCount(3);
+  const thisYear = Number(today.slice(0, 4));
+  const bonifici = await page.request.get(`/api/kdp/export-bonifici?year=${thisYear}`);
+  expect(bonifici.status()).toBe(200);
+  expect(bonifici.headers()["content-disposition"]).toContain(`bonifici-kdp-${thisYear}.xlsx`);
+
   // Fiscal export: a real workbook.
   const year = Number(today.slice(0, 4));
   await expect(page.getByRole("link", { name: `Vendite ${year} (Excel)` })).toBeVisible();
