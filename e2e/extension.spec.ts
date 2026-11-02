@@ -41,7 +41,8 @@ const test = base.extend<{ context: BrowserContext }>({
   },
 });
 
-test.setTimeout(150_000);
+// Two KDP steps on a busy CI runner: room for both, and for the diagnostics when one hangs.
+test.setTimeout(300_000);
 
 test("the extension reads the KDP pages in hidden tabs and the app imports both", async ({
   context,
