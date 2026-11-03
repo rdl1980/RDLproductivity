@@ -11,11 +11,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { type TodoItem, type TodoKind, todoKey } from "@/lib/content";
 import { completeContentTodo, reopenContentTodo } from "@/server/actions/content";
 import type { ActionResult } from "@/server/actions/result";
+import type { ReminderStatus } from "@/server/content-reminder";
 import type { ContentRubricDTO, ContentTodo } from "@/server/queries/content";
 
 import { ContentTabs } from "./content-tabs";
 import { dayLabel } from "./content-ui";
 import { type PieceDraft, PieceDialog } from "./piece-dialog";
+import { ReminderSettings } from "./reminder-settings";
 
 const NETWORK = "Errore di rete, modifica annullata.";
 
@@ -31,9 +33,11 @@ const KIND_HELP: Record<TodoKind, string> = {
 export function ContentTodoView({
   todo,
   rubrics,
+  reminder,
 }: {
   todo: ContentTodo;
   rubrics: ContentRubricDTO[];
+  reminder: ReminderStatus;
 }) {
   const router = useRouter();
   // Optimistic: checked items leave the list at once, and come back on error.
@@ -151,6 +155,8 @@ export function ContentTodoView({
           </ul>
         </details>
       )}
+
+      <ReminderSettings status={reminder} />
 
       <section className="text-xs text-muted-foreground" aria-label="Come funziona">
         <h2 className="mb-1 font-semibold text-foreground">Come funziona</h2>

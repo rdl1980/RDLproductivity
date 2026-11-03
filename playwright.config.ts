@@ -3,6 +3,8 @@ import "dotenv/config";
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3000;
+/** Kept in sync with e2e/content-reminder.spec.ts. */
+const TELEGRAM_STUB_PORT = 4599;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -24,5 +26,7 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
+    // Telegram calls go to the stub started by e2e/content-reminder.spec.ts.
+    env: { TELEGRAM_API_URL: `http://localhost:${TELEGRAM_STUB_PORT}` },
   },
 });
