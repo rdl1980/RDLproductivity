@@ -198,7 +198,7 @@ export function KdpCalendarView({ weeks, tasks: initialTasks, today }: Props) {
         onDragEnd={onDragEnd}
         onDragCancel={() => setDragging(null)}
       >
-        {/* The lanes do not fit a phone (nor, with three accounts, a narrow laptop): the grid
+        {/* The lanes do not fit a phone (nor, with four accounts, a narrow laptop): the grid
             scrolls sideways, weeks stay put. */}
         <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
           <div
