@@ -13,6 +13,7 @@ describe("staleSources", () => {
         main: { sales: daysAgo(9), books: daysAgo(31) },
         secondary: { sales: daysAgo(2), books: daysAgo(10) },
         third: { sales: null, books: null },
+        fourth: { sales: null, books: null },
       },
       now,
     );
@@ -30,6 +31,7 @@ describe("staleSources", () => {
         main: { sales: daysAgo(1), books: null },
         secondary: { sales: null, books: null },
         third: { sales: null, books: null },
+        fourth: { sales: null, books: null },
       },
       now,
     );
@@ -45,6 +47,7 @@ describe("staleSources", () => {
           main: { sales: daysAgo(6), books: daysAgo(29) },
           secondary: { sales: daysAgo(0), books: daysAgo(0) },
           third: { sales: daysAgo(0), books: daysAgo(0) },
+          fourth: { sales: null, books: null },
         },
         now,
       ),

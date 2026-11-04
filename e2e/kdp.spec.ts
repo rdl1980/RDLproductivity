@@ -19,6 +19,7 @@ test("KDP calendar: add, complete, move between accounts and tracks, edit and de
   // The third account has its own lanes.
   await expect(page.getByRole("columnheader", { name: "NonnoPeppe", exact: true })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "NonnoPeppe · Pianificato" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Mario", exact: true })).toBeVisible();
 
   // Planned on the main account, then moved to what really happened on the secondary.
   const main = page.getByRole("cell", {

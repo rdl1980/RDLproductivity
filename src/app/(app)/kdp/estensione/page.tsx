@@ -2,6 +2,7 @@ import { PuzzleIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { KDP_ACCOUNTS } from "@/lib/kdp";
 import { KdpTabs } from "@/components/kdp/kdp-tabs";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -84,8 +85,8 @@ export default async function ExtensionPage() {
         <h2 className="text-base font-semibold">3. Un account per browser</h2>
         <p>
           L&apos;estensione usa la sessione KDP del browser (o del profilo) in cui è installata.
-          Tieni ogni account (Rosario, Ilaria, NonnoPeppe) in un browser diverso, o in un altro
-          profilo di Chrome, installa l&apos;estensione in ognuno e in ciascuno scegli
+          Tieni ogni account ({KDP_ACCOUNTS.map((a) => a.label).join(", ")}) in un browser diverso,
+          o in un altro profilo di Chrome, installa l&apos;estensione in ognuno e in ciascuno scegli
           l&apos;account nel dialog di aggiornamento: niente più login e logout.
         </p>
         <p className="text-muted-foreground">

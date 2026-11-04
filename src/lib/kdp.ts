@@ -9,6 +9,7 @@ export const KDP_ACCOUNTS = [
   { value: "main", label: "Rosario" },
   { value: "secondary", label: "Ilaria" },
   { value: "third", label: "NonnoPeppe" },
+  { value: "fourth", label: "Mario" },
 ] as const;
 
 export type KdpAccount = (typeof KDP_ACCOUNTS)[number]["value"];

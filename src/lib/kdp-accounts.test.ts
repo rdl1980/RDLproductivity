@@ -2,13 +2,19 @@ import { describe, expect, it } from "vitest";
 
 import { accountMismatch, likelyAccount } from "./kdp-accounts";
 
-const m = (main: number, secondary: number, third = 0) => ({ main, secondary, third });
+const m = (main: number, secondary: number, third = 0, fourth = 0) => ({
+  main,
+  secondary,
+  third,
+  fourth,
+});
 
 describe("likelyAccount", () => {
   it("picks the account that knows more items", () => {
     expect(likelyAccount(m(40, 0))).toBe("main");
     expect(likelyAccount(m(1, 12))).toBe("secondary");
     expect(likelyAccount(m(1, 2, 30))).toBe("third");
+    expect(likelyAccount(m(1, 2, 3, 40))).toBe("fourth");
   });
 
   it("stays undecided for unknown data or a tie", () => {
@@ -29,5 +35,6 @@ describe("accountMismatch", () => {
     expect(accountMismatch("secondary", m(9, 0), "titoli")).toContain("«Rosario»: 9 titoli");
     expect(accountMismatch("main", m(1, 3, 12), "ASIN")).toContain("«NonnoPeppe»: 12 ASIN");
     expect(accountMismatch("third", m(0, 0, 0), "libri")).toBeNull();
+    expect(accountMismatch("third", m(0, 0, 1, 20), "libri")).toContain("«Mario»: 20 libri");
   });
 });
