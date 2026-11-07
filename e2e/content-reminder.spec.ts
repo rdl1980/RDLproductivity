@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import { Client } from "pg";
 
 import { expect, test } from "./fixtures";
+import { addLists, createBoard } from "./helpers";
 
 // Telegram stub: the dev server points TELEGRAM_API_URL here (playwright.config.ts).
 const STUB_PORT = 4599;
@@ -62,6 +63,10 @@ test("connects the Telegram bot and sends a test reminder", async ({ page }) => 
   await box.getByPlaceholder("123456789:AAE…").fill("12345678:AAEabcdefghijklmnopqrstuvwxyz0123");
   await box.getByRole("button", { name: "Collega" }).click();
   await expect(box).toContainText(`@${BOT}`);
+  // Connecting also points the webhook at the app, for commands and captures.
+  const hook = calls.find((c) => c.method === "setWebhook");
+  expect(String(hook?.body.url)).toMatch(/\/api\/telegram\/webhook$/);
+  expect(hook?.body.secret_token).toBeTruthy();
 
   calls.length = 0;
   await box.getByRole("button", { name: "Invia ora una prova" }).click();
@@ -70,6 +75,60 @@ test("connects the Telegram bot and sends a test reminder", async ({ page }) => 
   expect(sent?.body.chat_id).toBe(String(CHAT));
   expect(sent?.body.parse_mode).toBe("HTML");
   expect(String(sent?.body.text)).toContain("Robotti &amp; Robotte");
+});
+
+test("the bot answers commands and turns messages into cards", async ({ page, request }) => {
+  const stamp = Date.now();
+  await createBoard(page, `Bot ${stamp}`);
+  await addLists(page, ["Idee"]);
+  const boardUrl = page.url();
+
+  // Connected by the previous test; the webhook secret is the one sent to setWebhook.
+  const rows = await sql(`SELECT value FROM "AppSetting" WHERE key = 'telegram.webhookSecret'`);
+  const secret = rows.rows[0]?.value as string;
+  expect(secret).toBeTruthy();
+
+  await page.goto("/connections");
+  const panel = page.getByTestId("telegram-panel");
+  await expect(panel.getByTestId("commands-on")).toBeVisible();
+  await panel.getByRole("combobox", { name: "Lista della cattura rapida" }).click();
+  await page.getByRole("option", { name: `Bot ${stamp} → Idee` }).click();
+  await expect(page.getByText("Lista salvata")).toBeVisible();
+
+  const say = (text: string, chat = CHAT, header = secret) =>
+    request.post("/api/telegram/webhook", {
+      headers: { "x-telegram-bot-api-secret-token": header },
+      data: { update_id: 1, message: { message_id: 1, chat: { id: chat, type: "private" }, text } },
+    });
+  const lastReply = () =>
+    String(calls.filter((c) => c.method === "sendMessage").at(-1)?.body.text ?? "");
+
+  expect((await say("/oggi", CHAT, "wrong")).status()).toBe(401);
+
+  calls.length = 0;
+  expect((await say("/oggi", 999)).status()).toBe(200);
+  expect(calls.filter((c) => c.method === "sendMessage")).toHaveLength(0);
+
+  await say("/oggi");
+  expect(lastReply()).toContain("<b>Oggi</b>");
+  await say("/vendite");
+  expect(lastReply()).toContain("Vendite KDP");
+  await say("/fatto");
+  expect(lastReply()).toContain("Scrivi il codice");
+  await say("/boh");
+  expect(lastReply()).toContain("sconosciuto");
+
+  await say(`Idea dal bot ${stamp}\nCon dettagli`);
+  expect(lastReply()).toContain(`Card «Idea dal bot ${stamp}» creata in Bot ${stamp} → Idee`);
+  await page.goto(boardUrl);
+  await expect(page.getByText(`Idea dal bot ${stamp}`)).toBeVisible();
+
+  // The evening summary, on demand.
+  calls.length = 0;
+  await page.goto("/connections");
+  await page.getByRole("button", { name: "Invia ora il riepilogo di oggi" }).click();
+  await expect(page.getByText("Riepilogo inviato")).toBeVisible();
+  expect(lastReply()).toContain("Vendite KDP di oggi");
 });
 
 test("the hourly endpoint needs the secret and sends once a day", async ({ request }) => {
@@ -94,7 +153,9 @@ test("the hourly endpoint needs the secret and sends once a day", async ({ reque
     });
   const first = await call();
   expect(first.status()).toBe(200);
-  const { status } = (await first.json()) as { status: string };
+  const body = (await first.json()) as { status: string; reminder: string; summary: string };
+  expect(body.status).toBe("ok");
+  const status = body.reminder;
   const romeHour = Number(
     new Intl.DateTimeFormat("en-GB", {
       timeZone: "Europe/Rome",
@@ -106,6 +167,6 @@ test("the hourly endpoint needs the secret and sends once a day", async ({ reque
     expect(status).toBe("not-yet");
   } else {
     expect(["sent", "nothing-to-do"]).toContain(status);
-    expect(((await (await call()).json()) as { status: string }).status).toBe("already-sent");
+    expect(((await (await call()).json()) as { reminder: string }).reminder).toBe("already-sent");
   }
 });
