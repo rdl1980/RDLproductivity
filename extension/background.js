@@ -23,8 +23,14 @@ const SIGN_IN = /\/ap\/signin|\/signin|\/ap\/mfa|\/ap\/cvf/;
 /** Listeners waiting for messages from the scripts, by Amazon tab id. */
 const waiting = new Map();
 
-api.runtime.onMessage.addListener((message, sender) => {
+api.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || !sender.tab) return;
+  if (message.type === "autosync") {
+    autoSyncCommand(message).then(sendResponse, (error) =>
+      sendResponse({ error: error && error.message ? error.message : String(error) }),
+    );
+    return true;
+  }
   if (message.type === "sync") {
     void runSync(sender.tab.id, message);
     return;
@@ -35,7 +41,27 @@ api.runtime.onMessage.addListener((message, sender) => {
 
 const send = (tabId, message) => api.tabs.sendMessage(tabId, message).catch(() => {});
 
+/** True while a sync (by hand or hourly) is reading KDP: they never overlap. */
+let busy = false;
+
 async function runSync(appTabId, { requestId, steps, options = {} }) {
+  if (busy) {
+    await send(appTabId, {
+      type: "rdl-kdp:done",
+      requestId,
+      error: "È in corso un aggiornamento automatico: riprova fra qualche minuto.",
+    });
+    return;
+  }
+  busy = true;
+  try {
+    await runSteps(appTabId, requestId, steps, options);
+  } finally {
+    busy = false;
+  }
+}
+
+async function runSteps(appTabId, requestId, steps, options) {
   for (const step of steps) {
     if (!STEPS[step]) continue;
     const progress = (status, message) =>
@@ -64,16 +90,19 @@ async function stepUrl(step) {
   return (stepUrls && stepUrls[step]) || STEPS[step].url;
 }
 
-async function runStep(step, options, onProgress) {
+async function runStep(step, options, onProgress, { quiet = false } = {}) {
   const { file, timeoutMs } = STEPS[step];
   // In the foreground: browsers slow timers and skip layout in background
-  // tabs, which makes reading the Bookshelf crawl or fail.
-  const tab = await api.tabs.create({ url: await stepUrl(step), active: true });
+  // tabs, which makes reading the Bookshelf crawl or fail. The hourly sync
+  // (`quiet`) reads only the Reports, whose collector just calls KDP's JSON
+  // endpoints: a background tab is enough, and it never steals the focus.
+  const tab = await api.tabs.create({ url: await stepUrl(step), active: !quiet });
   let keepOpen = false;
   try {
     await waitForLoad(tab.id);
     const loaded = await api.tabs.get(tab.id);
     if (!loaded.url || SIGN_IN.test(loaded.url)) {
+      if (quiet) throw new Error("KDP chiede di accedere: entra in KDP in questo browser.");
       keepOpen = true;
       await api.tabs.update(tab.id, { active: true });
       throw new Error("Accedi a KDP nella scheda appena aperta, poi riprova.");
@@ -140,3 +169,102 @@ function waitForResult(tabId, timeoutMs, onProgress) {
     });
   });
 }
+
+// --- Hourly sales sync --------------------------------------------------------
+// Enabled from the app's extension page, which hands over the account's token
+// (`chrome.storage.local.autoSync`: { account, label, token, appUrl }). Every
+// hour the Reports of the last days are read in a background tab and posted
+// to the app, which imports them and sends the Telegram alert of new sales.
+
+const ALARM = "rdl-autosync";
+const PERIOD_MINUTES = 60;
+
+async function autoSyncState() {
+  const { autoSync, autoSyncLastRun } = await api.storage.local.get([
+    "autoSync",
+    "autoSyncLastRun",
+  ]);
+  return {
+    config: autoSync
+      ? { account: autoSync.account, label: autoSync.label, appUrl: autoSync.appUrl }
+      : null,
+    lastRun: autoSyncLastRun || null,
+    running: busy,
+  };
+}
+
+async function autoSyncCommand({ action, config }) {
+  if (action === "set") {
+    if (config && config.token && config.account && config.appUrl) {
+      await api.storage.local.set({ autoSync: config, autoSyncLastRun: null });
+      await api.alarms.create(ALARM, {
+        periodInMinutes: PERIOD_MINUTES,
+        delayInMinutes: PERIOD_MINUTES,
+      });
+    } else {
+      await api.storage.local.remove(["autoSync", "autoSyncLastRun"]);
+      await api.alarms.clear(ALARM);
+    }
+  } else if (action === "run") {
+    await autoSyncNow();
+  }
+  return { state: await autoSyncState() };
+}
+
+async function autoSyncNow() {
+  const { autoSync } = await api.storage.local.get("autoSync");
+  if (!autoSync || busy) return;
+  busy = true;
+  const headers = {
+    authorization: `Bearer ${autoSync.token}`,
+    "content-type": "application/json",
+  };
+  const endpoint = `${autoSync.appUrl}/api/kdp/autosync`;
+  const record = (ok, message) =>
+    api.storage.local.set({ autoSyncLastRun: { at: new Date().toISOString(), ok, message } });
+  try {
+    const info = await fetch(endpoint, { headers });
+    if (info.status === 401) {
+      await record(false, "Collegamento non più valido: riattivalo dall'app.");
+      return;
+    }
+    if (!info.ok) throw new Error(`L'app non risponde (HTTP ${info.status}).`);
+    const { from } = await info.json();
+    let body;
+    try {
+      body = { hash: await runStep("sales", { salesFrom: from }, () => {}, { quiet: true }) };
+    } catch (error) {
+      body = { error: error && error.message ? error.message : String(error) };
+    }
+    const res = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(body) });
+    const reply = await res.json().catch(() => ({}));
+    if (body.error) await record(false, body.error);
+    else if (!res.ok)
+      await record(false, reply.error || `Import non riuscito (HTTP ${res.status}).`);
+    else
+      await record(
+        true,
+        reply.newUnits
+          ? `${reply.newUnits} ${reply.newUnits === 1 ? "nuova vendita" : "nuove vendite"}`
+          : "Nessuna vendita nuova",
+      );
+  } catch (error) {
+    await record(false, error && error.message ? error.message : String(error));
+  } finally {
+    busy = false;
+  }
+}
+
+api.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === ALARM) void autoSyncNow();
+});
+
+/** After a browser restart or an update the alarm must still be there. */
+async function ensureAlarm() {
+  const { autoSync } = await api.storage.local.get("autoSync");
+  if (autoSync && !(await api.alarms.get(ALARM))) {
+    await api.alarms.create(ALARM, { periodInMinutes: PERIOD_MINUTES, delayInMinutes: 1 });
+  }
+}
+api.runtime.onStartup.addListener(() => void ensureAlarm());
+api.runtime.onInstalled.addListener(() => void ensureAlarm());

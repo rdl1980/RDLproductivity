@@ -1,13 +1,10 @@
-import { mkdtemp } from "node:fs/promises";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import os from "node:os";
-import path from "node:path";
 
-import { type BrowserContext, chromium, expect, test as base } from "@playwright/test";
-import { encode } from "next-auth/jwt";
+import { expect } from "@playwright/test";
 
 import { addDays } from "../src/lib/kdp-sales";
+import { setStepUrls, test } from "./extension-fixture";
 
 /**
  * The browser extension, loaded in a persistent Chromium context, with the
@@ -15,31 +12,6 @@ import { addDays } from "../src/lib/kdp-sales";
  * the Bookshelf as HTML, the Reports endpoints as JSON. The app is the real
  * one.
  */
-
-const EXTENSION = path.resolve("extension");
-const COOKIE = "authjs.session-token";
-
-const test = base.extend<{ context: BrowserContext }>({
-  context: async ({ baseURL }, provide) => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), "rdl-ext-"));
-    const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
-    const context = await chromium.launchPersistentContext(dir, {
-      headless: true,
-      ...(executablePath ? { executablePath } : { channel: "chromium" }),
-      args: [`--disable-extensions-except=${EXTENSION}`, `--load-extension=${EXTENSION}`],
-    });
-    const secret = process.env.AUTH_SECRET;
-    if (!secret) throw new Error("AUTH_SECRET must be set to run authenticated e2e tests");
-    const value = await encode({
-      token: { sub: "e2e", name: "E2E", email: "e2e@example.com" },
-      secret,
-      salt: COOKIE,
-    });
-    await context.addCookies([{ name: COOKIE, value, url: baseURL! }]);
-    await provide(context);
-    await context.close();
-  },
-});
 
 // Two KDP steps on a busy CI runner: room for both, and for the diagnostics when one hangs.
 test.setTimeout(300_000);
@@ -103,22 +75,7 @@ test("the extension reads the KDP pages in hidden tabs and the app imports both"
 
   try {
     // Point the extension at the fake pages (a developer override in its storage).
-    let [worker] = context.serviceWorkers();
-    if (!worker) worker = await context.waitForEvent("serviceworker");
-    await worker.evaluate(
-      (urls) => {
-        const api = (
-          globalThis as unknown as {
-            chrome: { storage: { local: { set(v: unknown): Promise<void> } } };
-          }
-        ).chrome;
-        return api.storage.local.set({ stepUrls: urls });
-      },
-      {
-        books: `${fake}/bookshelf`,
-        sales: `${fake}/dashboard`,
-      },
-    );
+    await setStepUrls(context, { books: `${fake}/bookshelf`, sales: `${fake}/dashboard` });
 
     const page = await context.newPage();
     await page.goto(`${baseURL}/kdp`);

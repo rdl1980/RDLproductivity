@@ -82,3 +82,53 @@ export function runExtensionSync(
 }
 
 export const EXTENSION_ACCOUNT_KEY = "kdp.extension.account";
+
+// --- Hourly sync -------------------------------------------------------------------
+
+/** First extension version with the hourly sync. */
+export const AUTOSYNC_VERSION = "1.0.5";
+
+export type AutoSyncConfig = { account: string; label: string; token: string; appUrl: string };
+
+export type ExtensionAutoSyncState = {
+  config: { account: string; label: string; appUrl: string } | null;
+  lastRun: { at: string; ok: boolean; message: string } | null;
+  running: boolean;
+};
+
+/**
+ * Reads ("get"), changes ("set", with a config or null to turn it off) or
+ * runs now ("run") the hourly sync of this browser's extension.
+ */
+export function extensionAutoSync(
+  action: "get" | "set" | "run",
+  config: AutoSyncConfig | null = null,
+  timeoutMs = action === "run" ? 16 * 60_000 : 10_000,
+): Promise<ExtensionAutoSyncState> {
+  const requestId = crypto.randomUUID();
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      window.removeEventListener("message", listener);
+      reject(new Error("L'estensione non risponde."));
+    }, timeoutMs);
+    const listener = (event: MessageEvent) => {
+      const data = event.data as {
+        type?: string;
+        requestId?: string;
+        state?: ExtensionAutoSyncState;
+        error?: string;
+      } | null;
+      if (event.source !== window || data?.type !== "rdl-kdp:autosync-state") return;
+      if (data.requestId !== requestId) return;
+      window.clearTimeout(timer);
+      window.removeEventListener("message", listener);
+      if (data.error || !data.state) reject(new Error(data.error ?? "Risposta non valida."));
+      else resolve(data.state);
+    };
+    window.addEventListener("message", listener);
+    window.postMessage(
+      { type: "rdl-kdp:autosync", requestId, action, config },
+      window.location.origin,
+    );
+  });
+}
