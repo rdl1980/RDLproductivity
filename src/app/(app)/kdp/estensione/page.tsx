@@ -3,10 +3,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { KDP_ACCOUNTS } from "@/lib/kdp";
+import { AutoSyncPanel } from "@/components/kdp/autosync-panel";
 import { KdpTabs } from "@/components/kdp/kdp-tabs";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { db } from "@/server/db";
+import { getAutoSyncStatus } from "@/server/kdp-autosync";
+import { SALES_ALERTS_KEY } from "@/server/kdp-sales-import";
 import { requireSession } from "@/server/session";
+import { getTelegramConfig } from "@/server/telegram";
 
 export const metadata: Metadata = { title: "Estensione KDP · RDL Productivity" };
 
@@ -14,6 +19,11 @@ const CHROMIUM = "Chrome, Edge, Brave, Vivaldi, Opera o Comet";
 
 export default async function ExtensionPage() {
   await requireSession();
+  const [autoSync, alerts, telegram] = await Promise.all([
+    getAutoSyncStatus(),
+    db.appSetting.findUnique({ where: { key: SALES_ALERTS_KEY } }),
+    getTelegramConfig(),
+  ]);
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6">
       <PageHeader
@@ -100,6 +110,11 @@ export default async function ExtensionPage() {
           Torna alle vendite
         </Link>
       </p>
+      <AutoSyncPanel
+        status={autoSync}
+        alertsOn={alerts?.value !== "off"}
+        botName={telegram?.botName ?? null}
+      />
     </main>
   );
 }

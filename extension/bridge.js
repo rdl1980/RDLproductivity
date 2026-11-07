@@ -8,7 +8,24 @@
 
   window.addEventListener("message", (event) => {
     const data = event.data;
-    if (event.source !== window || !data || data.type !== "rdl-kdp:sync") return;
+    if (event.source !== window || !data) return;
+    // Hourly sync settings: get, set (config or null) and run now.
+    if (data.type === "rdl-kdp:autosync") {
+      api.runtime
+        .sendMessage({ type: "autosync", action: data.action, config: data.config ?? null })
+        .then(
+          (reply) => reply ?? { error: "Nessuna risposta dall'estensione." },
+          (error) => ({ error: String(error?.message ?? error) }),
+        )
+        .then((reply) =>
+          window.postMessage(
+            { type: "rdl-kdp:autosync-state", requestId: data.requestId, ...reply },
+            location.origin,
+          ),
+        );
+      return;
+    }
+    if (data.type !== "rdl-kdp:sync") return;
     api.runtime
       .sendMessage({
         type: "sync",

@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "RDL KDP Sync",
-  "version": "1.0.4",
-  "description": "Aggiorna libri e vendite KDP in RDL Productivity con un clic, dal browser in cui sei collegato a KDP.",
-  "permissions": ["tabs", "scripting", "storage"],
+  "version": "1.0.5",
+  "description": "Aggiorna libri e vendite KDP in RDL Productivity con un clic, o da solo ogni ora, dal browser in cui sei collegato a KDP.",
+  "permissions": ["tabs", "scripting", "storage", "alarms"],
   "host_permissions": [
     "https://kdp.amazon.com/*",
     "https://kdpreports.amazon.com/*",
+    "https://rdlproductivity.vercel.app/*",
     "http://localhost/*"
   ],
   "background": {

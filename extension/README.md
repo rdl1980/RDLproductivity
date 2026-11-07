@@ -24,6 +24,11 @@ del browser, con la sessione KDP già aperta, e importa i risultati.
   leggere, di norma 3 mesi fa) e il background lo mette in
   `globalThis.__rdlSalesFrom` prima di iniettare `sales.js`; `null` legge
   tutto lo storico.
+- Aggiornamento automatico (1.0.5): attivato dalla pagina `/kdp/estensione`
+  con un token per account (`chrome.storage.local.autoSync`); ogni ora
+  `chrome.alarms` legge i Report degli ultimi giorni in una scheda non attiva
+  e li manda a `POST /api/kdp/autosync`. L'app importa e avvisa su Telegram
+  delle copie nuove.
 - `chrome.storage.local.stepUrls` (`{ books, sales }`) sostituisce gli URL
   delle pagine KDP: lo usano i test e2e con un server finto.
 
