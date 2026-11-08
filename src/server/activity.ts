@@ -82,10 +82,18 @@ export function q(title: string): string {
 }
 
 /** Records a change; the actor is Claude when the call comes through MCP. */
+/** Who acts: the owner in the browser, Claude through MCP, or the Telegram bot. */
+export const TELEGRAM_ACTOR_EMAIL = "telegram@rdlproductivity";
+function actorOf(): string {
+  const mcp = getMcpUser();
+  if (!mcp) return "user";
+  return mcp.email === TELEGRAM_ACTOR_EMAIL ? "telegram" : "claude";
+}
+
 export async function logActivity(entry: ActivityEntry, client: Client = db): Promise<void> {
   await client.activity.create({
     data: {
-      actor: getMcpUser() ? "claude" : "user",
+      actor: actorOf(),
       kind: entry.kind,
       summary: entry.summary,
       boardId: entry.boardId ?? null,

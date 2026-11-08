@@ -245,7 +245,7 @@ export function AutoSyncPanel({
             ) : (
               <>
                 Nessun bot collegato: collegalo da{" "}
-                <Link href="/robotti/da-fare" className="text-primary hover:underline">
+                <Link href="/robotti/da-fare" className="text-primary underline underline-offset-2">
                   Robotti &amp; Robotte → Da fare
                 </Link>
                 .

@@ -1,6 +1,7 @@
 "use client";
 
 import { BellRingIcon, SendIcon, UnlinkIcon } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -15,7 +16,16 @@ import type { ReminderStatus } from "@/server/content-reminder";
 const NETWORK = "Errore di rete, riprova.";
 
 /** Telegram reminder of the list: connect the bot, test it, disconnect it. */
-export function ReminderSettings({ status }: { status: ReminderStatus }) {
+export function ReminderSettings({
+  status,
+  title = "Promemoria Telegram",
+  moreHref,
+}: {
+  status: ReminderStatus;
+  title?: string;
+  /** Where the bot's other settings are, when shown outside Integrazioni. */
+  moreHref?: string;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [token, setToken] = useState("");
@@ -52,13 +62,13 @@ export function ReminderSettings({ status }: { status: ReminderStatus }) {
 
   return (
     <section
-      aria-label="Promemoria Telegram"
+      aria-label={title}
       className="flex flex-col gap-2 rounded-xl border bg-card p-3 text-sm"
       data-testid="reminder-settings"
     >
       <h2 className="flex items-center gap-2 font-semibold">
         <BellRingIcon className="size-4 text-muted-foreground" />
-        Promemoria Telegram
+        {title}
       </h2>
       {status.connected ? (
         <>
@@ -85,6 +95,15 @@ export function ReminderSettings({ status }: { status: ReminderStatus }) {
               Scollega
             </Button>
           </div>
+          {moreHref && (
+            <p className="text-xs text-muted-foreground">
+              Riepilogo vendite, allarmi KDP, comandi e cattura rapida:{" "}
+              <Link href={moreHref} className="text-primary underline underline-offset-2">
+                impostazioni del bot in Integrazioni
+              </Link>
+              .
+            </p>
+          )}
         </>
       ) : (
         <form onSubmit={connect} className="flex flex-col gap-2">

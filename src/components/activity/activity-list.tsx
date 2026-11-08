@@ -1,6 +1,6 @@
 "use client";
 
-import { BotIcon, Undo2Icon, UserIcon } from "lucide-react";
+import { BotIcon, SendIcon, Undo2Icon, UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -15,6 +15,9 @@ import type { ActivityItem } from "@/server/activity";
 const PAGE_SIZE = 50;
 
 export function ActorIcon({ actor }: { actor: string }) {
+  if (actor === "telegram") {
+    return <SendIcon className="size-4 shrink-0 text-sky-600" aria-label="Telegram" />;
+  }
   return actor === "claude" ? (
     <BotIcon className="size-4 shrink-0 text-violet-600" aria-label="Claude" />
   ) : (

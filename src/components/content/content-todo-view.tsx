@@ -156,7 +156,7 @@ export function ContentTodoView({
         </details>
       )}
 
-      <ReminderSettings status={reminder} />
+      <ReminderSettings status={reminder} moreHref="/connections#telegram" />
 
       <section className="text-xs text-muted-foreground" aria-label="Come funziona">
         <h2 className="mb-1 font-semibold text-foreground">Come funziona</h2>
