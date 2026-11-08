@@ -2,6 +2,7 @@ import "server-only";
 
 import { type KdpAccount, KDP_ACCOUNT_VALUES, type KdpTaskItem, addWeeks } from "@/lib/kdp";
 import { type GoalProgress, goalProgress, weekEnd } from "@/lib/kdp-finance";
+import { zonedInstant } from "@/lib/content";
 import { db } from "@/server/db";
 import { getKdpTasks } from "@/server/queries/kdp";
 import { getRoyaltyBetween } from "@/server/queries/kdp-finance";
@@ -9,6 +10,7 @@ import { getKdpGoals } from "@/server/queries/kdp-goals";
 import { getSalesData } from "@/server/queries/kdp-sales";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const TIME_ZONE = process.env.DEFAULT_TIME_ZONE ?? "Europe/Rome";
 
 export type ReviewCard = {
   id: string;
@@ -68,8 +70,10 @@ function toReviewCard(card: {
  * month-to-date goals.
  */
 export async function getWeeklyReview(week: string, today: string): Promise<WeeklyReview> {
-  const from = new Date(`${week}T00:00:00Z`);
-  const to = new Date(from.getTime() + 7 * DAY_MS);
+  // The week runs in the owner's time zone: a card closed on Saturday night
+  // in Rome belongs to that week even when it is already Sunday in UTC.
+  const from = zonedInstant(week, "00:00", TIME_ZONE);
+  const to = zonedInstant(addWeeks(week, 1), "00:00", TIME_ZONE);
   const end = weekEnd(week);
   const previousWeek = addWeeks(week, -1);
   const active = { archived: false, list: { archived: false, board: { archived: false } } };

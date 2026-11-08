@@ -98,7 +98,7 @@ export function ReminderSettings({
           {moreHref && (
             <p className="text-xs text-muted-foreground">
               Riepilogo vendite, allarmi KDP, comandi e cattura rapida:{" "}
-              <Link href={moreHref} className="text-primary hover:underline">
+              <Link href={moreHref} className="text-primary underline underline-offset-2">
                 impostazioni del bot in Integrazioni
               </Link>
               .
