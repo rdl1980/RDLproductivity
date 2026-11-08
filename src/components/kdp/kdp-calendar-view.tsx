@@ -12,7 +12,13 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { BookOpenIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
+import {
+  BookOpenIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  PlusIcon,
+  SlidersHorizontalIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -35,12 +41,28 @@ import {
   weekRangeLabel,
   weekStartOf,
 } from "@/lib/kdp";
+import type { KdpFormat } from "@/lib/kdp-books";
+import {
+  adjustmentKey,
+  SLOT_FORMAT_LABELS,
+  type SlotAdjustments,
+  type SlotLimits,
+  slotUsage,
+} from "@/lib/kdp-slots";
 import { positionAfter } from "@/lib/position";
 import { cn } from "@/lib/utils";
-import { createKdpTask, deleteKdpTask, moveKdpTask, updateKdpTask } from "@/server/actions/kdp";
+import {
+  createKdpTask,
+  deleteKdpTask,
+  moveKdpTask,
+  setKdpSlotAdjustment,
+  setKdpSlotLimits,
+  updateKdpTask,
+} from "@/server/actions/kdp";
 import type { ActionResult } from "@/server/actions/result";
 
 import { KdpTabs } from "./kdp-tabs";
+import { SlotBar, SlotLimitsDialog } from "./kdp-slots";
 import { KdpTaskDialog } from "./kdp-task-dialog";
 
 const NETWORK_ERROR = "Errore di rete, modifica annullata.";
@@ -48,9 +70,21 @@ const isTemp = (id: string) => id.startsWith("temp-");
 /** The arrows move the view by this many weeks. */
 const STEP = 4;
 
-type Props = { weeks: string[]; tasks: KdpTaskItem[]; today: string };
+type Props = {
+  weeks: string[];
+  tasks: KdpTaskItem[];
+  today: string;
+  slotLimits: SlotLimits;
+  slotAdjustments: SlotAdjustments;
+};
 
-export function KdpCalendarView({ weeks, tasks: initialTasks, today }: Props) {
+export function KdpCalendarView({
+  weeks,
+  tasks: initialTasks,
+  today,
+  slotLimits,
+  slotAdjustments,
+}: Props) {
   // Local copy for optimistic changes; reset when the server sends new data.
   const [source, setSource] = useState(initialTasks);
   const [tasks, setTasks] = useState(initialTasks);
@@ -58,6 +92,16 @@ export function KdpCalendarView({ weeks, tasks: initialTasks, today }: Props) {
     setSource(initialTasks);
     setTasks(initialTasks);
   }
+  // Slot settings, optimistic like the tasks.
+  const [slotSource, setSlotSource] = useState({ slotLimits, slotAdjustments });
+  const [limits, setLimits] = useState(slotLimits);
+  const [adjustments, setAdjustments] = useState(slotAdjustments);
+  if (slotSource.slotLimits !== slotLimits || slotSource.slotAdjustments !== slotAdjustments) {
+    setSlotSource({ slotLimits, slotAdjustments });
+    setLimits(slotLimits);
+    setAdjustments(slotAdjustments);
+  }
+  const [editingLimits, setEditingLimits] = useState(false);
   const [dragging, setDragging] = useState<KdpTaskItem | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const currentWeek = weekStartOf(today);
@@ -103,6 +147,7 @@ export function KdpCalendarView({ weeks, tasks: initialTasks, today }: Props) {
       week,
       position: positionAfter(last?.position ?? null),
       done: false,
+      formats: [],
     };
     setTasks((current) => [...current, temp]);
     const result = await createKdpTask({ title, week, account, track }).catch(
@@ -120,6 +165,39 @@ export function KdpCalendarView({ weeks, tasks: initialTasks, today }: Props) {
     void optimistic(patch(task.id, { done }), patch(task.id, { done: task.done }), () =>
       updateKdpTask({ id: task.id, done }),
     );
+  }
+
+  async function adjustSlot(account: KdpAccount, week: string, format: KdpFormat, value: number) {
+    const key = adjustmentKey(account, week, format);
+    const before = adjustments[key] ?? 0;
+    const set = (v: number) =>
+      setAdjustments((current) => {
+        const next = { ...current };
+        if (v === 0) delete next[key];
+        else next[key] = v;
+        return next;
+      });
+    set(value);
+    const result = await setKdpSlotAdjustment({ account, week, format, adjustment: value }).catch(
+      (): ActionResult => ({ ok: false, error: NETWORK_ERROR }),
+    );
+    if (!result.ok) {
+      set(before);
+      toast.error(result.error);
+    }
+  }
+
+  async function saveLimits(next: SlotLimits) {
+    const before = limits;
+    setLimits(next);
+    const result = await setKdpSlotLimits(next).catch((): ActionResult => ({
+      ok: false,
+      error: NETWORK_ERROR,
+    }));
+    if (!result.ok) {
+      setLimits(before);
+      toast.error(result.error);
+    } else toast.success("Limiti salvati");
   }
 
   function onDragEnd({ active, over }: DragEndEvent) {
@@ -163,7 +241,7 @@ export function KdpCalendarView({ weeks, tasks: initialTasks, today }: Props) {
       <PageHeader
         icon={BookOpenIcon}
         title="Calendario KDP"
-        description="Attività settimanali per i due account KDP, divise fra pianificato e reale. Trascina un'attività per spostarla in un'altra settimana, colonna o account."
+        description="Attività settimanali per account KDP, divise fra pianificato e reale. Nella colonna Reale vedi gli slot di pubblicazione liberi della settimana per formato. Trascina un'attività per spostarla in un'altra settimana, colonna o account."
         actions={
           <nav aria-label="Settimane" className="flex items-center gap-1">
             <Button asChild variant="outline" size="icon" aria-label="Settimane precedenti">
@@ -187,7 +265,13 @@ export function KdpCalendarView({ weeks, tasks: initialTasks, today }: Props) {
         <h2 className="text-lg font-semibold" data-testid="kdp-range">
           {spanLabel(first, last)}
         </h2>
-        <KdpTabs current="calendar" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => setEditingLimits(true)}>
+            <SlidersHorizontalIcon />
+            Limiti slot
+          </Button>
+          <KdpTabs current="calendar" />
+        </div>
       </div>
 
       <DndContext
@@ -279,6 +363,19 @@ export function KdpCalendarView({ weeks, tasks: initialTasks, today }: Props) {
                         current={current}
                         actual={track.value === "actual"}
                         onAdd={(title) => addTask(week, account.value, track.value, title)}
+                        slots={
+                          track.value === "actual" ? (
+                            <SlotBar
+                              account={account.value}
+                              week={week}
+                              usage={slotUsage(tasks, account.value, week, limits, adjustments)}
+                              onAdjust={(format, value) =>
+                                void adjustSlot(account.value, week, format, value)
+                              }
+                              onEditLimits={() => setEditingLimits(true)}
+                            />
+                          ) : null
+                        }
                       >
                         {cellTasks(tasks, week, account.value, track.value).map((task) => (
                           <TaskItem
@@ -310,7 +407,11 @@ export function KdpCalendarView({ weeks, tasks: initialTasks, today }: Props) {
         onClose={() => setEditingId(null)}
         onSave={(fields) => {
           if (!editing) return;
-          const previous = { title: editing.title, notes: editing.notes };
+          const previous = {
+            title: editing.title,
+            notes: editing.notes,
+            formats: editing.formats,
+          };
           void optimistic(patch(editing.id, fields), patch(editing.id, previous), () =>
             updateKdpTask({ id: editing.id, ...fields }),
           );
@@ -328,7 +429,14 @@ export function KdpCalendarView({ weeks, tasks: initialTasks, today }: Props) {
           });
         }}
         accountName={editing ? laneLabel(editing.account, editing.track) : ""}
+        actual={editing?.track === "actual"}
         weekName={editing ? weekRangeLabel(editing.week) : ""}
+      />
+      <SlotLimitsDialog
+        open={editingLimits}
+        limits={limits}
+        onClose={() => setEditingLimits(false)}
+        onSave={(next) => void saveLimits(next)}
       />
     </main>
   );
@@ -340,6 +448,7 @@ function Cell({
   current,
   actual,
   onAdd,
+  slots,
   children,
 }: {
   id: string;
@@ -348,6 +457,8 @@ function Cell({
   /** "Reale" lane: tinted to tell it from the plan. */
   actual: boolean;
   onAdd: (title: string) => void;
+  /** Slots left this week (the "Reale" lane only). */
+  slots?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
@@ -374,6 +485,7 @@ function Cell({
         isOver && "ring-2 ring-ring",
       )}
     >
+      {slots}
       <ul className="flex flex-col gap-1.5 empty:hidden">{children}</ul>
       {adding ? (
         <form onSubmit={submit} className="flex flex-col gap-1.5">
@@ -469,6 +581,22 @@ function TaskItem({
       >
         {task.title}
         {task.notes && <span className="sr-only">, con note</span>}
+        {task.formats.length > 0 && (
+          <span
+            className="mt-1 flex flex-wrap gap-1"
+            aria-label={`Formati: ${task.formats.map((f) => SLOT_FORMAT_LABELS[f].short).join(", ")}`}
+          >
+            {task.formats.map((f) => (
+              <span
+                key={f}
+                aria-hidden
+                className="rounded bg-muted px-1 py-px text-[10px] font-medium text-muted-foreground"
+              >
+                {SLOT_FORMAT_LABELS[f].short}
+              </span>
+            ))}
+          </span>
+        )}
       </button>
     </li>
   );

@@ -11,9 +11,12 @@ import {
   laneLabel,
   weekStartOf,
 } from "@/lib/kdp";
+import { KDP_FORMATS, type KdpFormat } from "@/lib/kdp-books";
+import { adjustmentKey, SLOT_FORMAT_LABELS, slotLimitsSchema } from "@/lib/kdp-slots";
 import { positionAfter, positionBetween } from "@/lib/position";
 import { logActivity, q, snapshot } from "@/server/activity";
 import { db } from "@/server/db";
+import { getKdpSlotSettings, SLOT_ADJUST_KEY, SLOT_LIMITS_KEY } from "@/server/queries/kdp";
 import { isAuthenticated } from "@/server/session";
 
 import { type ActionResult, fail, idSchema, ok, parse, titleSchema, UNAUTHORIZED } from "./result";
@@ -30,6 +33,10 @@ const weekSchema = z.string().transform((value, ctx) => {
   return start;
 });
 const notesSchema = z.string().max(5000, "Le note sono troppo lunghe.").nullable();
+const formatsSchema = z
+  .array(z.enum(KDP_FORMATS))
+  .max(3)
+  .transform((formats) => KDP_FORMATS.filter((f) => formats.includes(f)));
 
 const weekDate = (week: string) => new Date(`${week}T00:00:00Z`);
 const weekKey = (date: Date) => date.toISOString().slice(0, 10);
@@ -63,6 +70,7 @@ const createSchema = z.object({
   account: accountSchema,
   track: trackSchema.default("planned"),
   notes: notesSchema.optional(),
+  formats: formatsSchema.optional(),
 });
 
 export type KdpTaskResult = {
@@ -74,6 +82,7 @@ export type KdpTaskResult = {
   week: string;
   position: string;
   done: boolean;
+  formats: KdpFormat[];
 };
 
 function toResult(task: {
@@ -85,9 +94,11 @@ function toResult(task: {
   week: Date;
   position: string;
   done: boolean;
+  formats: string[];
 }): KdpTaskResult {
   return {
     ...task,
+    formats: task.formats as KdpFormat[],
     account: task.account as KdpAccount,
     track: task.track as KdpTrack,
     week: weekKey(task.week),
@@ -110,6 +121,7 @@ export async function createKdpTask(
       track: data.track,
       week: weekDate(data.week),
       position,
+      formats: data.formats ?? [],
     },
   });
   await logActivity({
@@ -127,6 +139,7 @@ const updateSchema = z.object({
   title: titleSchema.optional(),
   notes: notesSchema.optional(),
   done: z.boolean().optional(),
+  formats: formatsSchema.optional(),
 });
 
 export async function updateKdpTask(input: z.input<typeof updateSchema>): Promise<ActionResult> {
@@ -138,7 +151,7 @@ export async function updateKdpTask(input: z.input<typeof updateSchema>): Promis
   if (changes.notes !== undefined) changes.notes = changes.notes || null;
   const before = await db.kdpTask.findUnique({
     where: { id },
-    select: { title: true, notes: true, done: true },
+    select: { title: true, notes: true, done: true, formats: true },
   });
   if (!before) return fail("Attività non trovata.");
   await db.kdpTask.update({ where: { id }, data: changes });
@@ -265,6 +278,57 @@ export async function deleteKdpTask(id: string): Promise<ActionResult> {
       },
     ],
   });
+  done();
+  return ok(undefined);
+}
+
+// --- Weekly slots ---------------------------------------------------------------
+
+const saveSetting = (key: string, value: unknown) =>
+  db.appSetting.upsert({
+    where: { key },
+    create: { key, value: JSON.stringify(value) },
+    update: { value: JSON.stringify(value) },
+  });
+
+/** The weekly slot limits: the base for every account and per-account overrides. */
+export async function setKdpSlotLimits(input: unknown): Promise<ActionResult> {
+  if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
+  const { data, error } = parse(slotLimitsSchema, input);
+  if (!data) return fail(error);
+  await saveSetting(SLOT_LIMITS_KEY, data);
+  await logActivity({
+    kind: "kdp.slots",
+    summary: `Limiti settimanali KDP: ${KDP_FORMATS.map((f) => `${data.base[f]} ${SLOT_FORMAT_LABELS[f].short.toLowerCase()}`).join(", ")}${Object.keys(data.accounts).length ? " (con eccezioni per account)" : ""}`,
+    entityIds: [],
+  });
+  done();
+  return ok(undefined);
+}
+
+const adjustSchema = z.object({
+  account: accountSchema,
+  week: weekSchema,
+  format: z.enum(KDP_FORMATS),
+  /** The correction to store (not a delta on it): used = tasks + adjustment. */
+  adjustment: z.number().int().min(-50).max(50),
+});
+
+/** Corrects by hand the used slots of a format in an account's week. */
+export async function setKdpSlotAdjustment(
+  input: z.input<typeof adjustSchema>,
+): Promise<ActionResult> {
+  if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
+  const { data, error } = parse(adjustSchema, input);
+  if (!data) return fail(error);
+  const { adjustments } = await getKdpSlotSettings();
+  const key = adjustmentKey(data.account, data.week, data.format);
+  if (data.adjustment === 0) delete adjustments[key];
+  else adjustments[key] = data.adjustment;
+  // Corrections older than a year are of no use.
+  const yearAgo = new Date(Date.now() - 370 * 24 * 3600_000).toISOString().slice(0, 10);
+  for (const k of Object.keys(adjustments)) if (k.split("|")[1] < yearAgo) delete adjustments[k];
+  await saveSetting(SLOT_ADJUST_KEY, adjustments);
   done();
   return ok(undefined);
 }

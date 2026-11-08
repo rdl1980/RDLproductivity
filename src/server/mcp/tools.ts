@@ -53,7 +53,9 @@ import {
 import { createKdpTask, deleteKdpTask, moveKdpTask, updateKdpTask } from "@/server/actions/kdp";
 import { registerContentTools } from "@/server/mcp/content-tools";
 import { getSuperBoard } from "@/server/queries/aggregate";
-import { getKdpTasks } from "@/server/queries/kdp";
+import { getKdpSlotSettings, getKdpTasks } from "@/server/queries/kdp";
+import { KDP_FORMATS } from "@/lib/kdp-books";
+import { slotUsage } from "@/lib/kdp-slots";
 import { getKdpBooks } from "@/server/queries/kdp-books";
 import { setKdpGoal } from "@/server/actions/kdp-goals";
 import { setKdpTitleAlias } from "@/server/actions/kdp-sales";
@@ -885,6 +887,12 @@ export function registerTools(server: McpServer) {
       "Any day of the week as YYYY-MM-DD; weeks run Sunday to Saturday and are stored by their Sunday",
     );
 
+  const kdpFormats = z
+    .array(z.enum(KDP_FORMATS))
+    .describe(
+      "Formats the task publishes (ebook, paperback, hardcover); in the actual lane each uses a weekly slot",
+    );
+
   defineTool(
     server,
     "list_kdp_tasks",
@@ -929,10 +937,41 @@ export function registerTools(server: McpServer) {
         account: kdpAccount,
         track: kdpTrack.optional(),
         notes: z.string().optional(),
+        formats: kdpFormats.optional(),
       }),
       annotations: WRITE,
     },
     (input) => createKdpTask(input),
+  );
+
+  defineTool(
+    server,
+    "get_kdp_slots",
+    {
+      title: "Get KDP weekly publishing slots",
+      description:
+        "Weekly KDP publishing slots per account and format (KDP allows a few new titles per format " +
+        "each week, 2 by default, editable in the app): limit, used (actual-lane tasks carrying the " +
+        "format, plus manual corrections) and left. Give any day of the week; all accounts unless one is given.",
+      inputSchema: z.object({ week: kdpWeek, account: kdpAccount.optional() }),
+      annotations: READ,
+    },
+    async ({ week, account }) => {
+      const start = weekStartOf(week);
+      if (!start) return fail("Settimana non valida (usa AAAA-MM-GG).");
+      const [tasks, { limits, adjustments }] = await Promise.all([
+        getKdpTasks(start, start),
+        getKdpSlotSettings(),
+      ]);
+      const accounts = account ? [account] : KDP_ACCOUNT_VALUES;
+      return ok({
+        week: start,
+        accounts: accounts.map((a) => ({
+          account: a,
+          slots: slotUsage(tasks, a, start, limits, adjustments),
+        })),
+      });
+    },
   );
 
   defineTool(
@@ -948,6 +987,7 @@ export function registerTools(server: McpServer) {
         title: z.string().optional(),
         notes: z.string().nullable().optional().describe("null clears the notes"),
         done: z.boolean().optional(),
+        formats: kdpFormats.optional(),
         week: kdpWeek.optional(),
         account: kdpAccount.optional(),
         track: kdpTrack.optional(),

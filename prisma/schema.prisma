@@ -221,6 +221,9 @@ model KdpTask {
   week      DateTime @db.Date
   position  String // fractional index within (week, account, track)
   done      Boolean  @default(false)
+  /// Formats the task publishes ("ebook" | "paperback" | "hardcover"): in the
+  /// "actual" lane each one uses a weekly KDP slot of that format.
+  formats   String[] @default([])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
