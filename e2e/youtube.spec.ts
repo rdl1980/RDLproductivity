@@ -77,7 +77,10 @@ test("a YouTube key brings the daily numbers of the published videos", async ({ 
   await expect(panel.getByTestId("youtube-status")).toContainText("Chiave salvata");
 
   await panel.getByRole("button", { name: "Aggiorna ora" }).click();
-  await expect(page.getByText(/video aggiornat/).first()).toBeVisible();
+  // The toast, not the status line (a previous run may already show there).
+  await expect(
+    page.locator("[data-sonner-toast]").filter({ hasText: /video aggiornat/ }),
+  ).toBeVisible();
   const metric = await sql(
     `SELECT views, likes, comments FROM "ContentMetric" WHERE "layerId" = $1`,
     [layerId],
