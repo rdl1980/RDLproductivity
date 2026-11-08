@@ -7,6 +7,8 @@ const PORT = 3000;
 const TELEGRAM_STUB_PORT = 4599;
 /** Kept in sync with e2e/youtube.spec.ts. */
 const YOUTUBE_STUB_PORT = 4600;
+/** Kept in sync with e2e/backup.spec.ts. */
+const GOOGLE_STUB_PORT = 4601;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -33,6 +35,12 @@ export default defineConfig({
     env: {
       TELEGRAM_API_URL: `http://localhost:${TELEGRAM_STUB_PORT}`,
       YOUTUBE_API_URL: `http://localhost:${YOUTUBE_STUB_PORT}`,
+      // Google Drive backup against the stub of e2e/backup.spec.ts.
+      GOOGLE_AUTH_URL: `http://localhost:${GOOGLE_STUB_PORT}`,
+      GOOGLE_TOKEN_URL: `http://localhost:${GOOGLE_STUB_PORT}`,
+      GOOGLE_API_URL: `http://localhost:${GOOGLE_STUB_PORT}`,
+      AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID ?? "e2e-google-client",
+      AUTH_GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET ?? "e2e-google-secret",
     },
   },
 });
