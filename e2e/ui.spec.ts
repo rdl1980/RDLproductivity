@@ -5,6 +5,14 @@ import { expect, test } from "./fixtures";
 import { addCards, addLists, cardIn, createBoard, list } from "./helpers";
 
 async function expectNoSeriousA11yIssues(page: Page) {
+  // A dialog still fading in reads as low contrast: let the animations end first.
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      // Spinners loop forever: only the animations that end count.
+      .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
+      .every((a) => a.playState !== "running"),
+  );
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   const serious = results.violations.filter(
     (v) => v.impact === "serious" || v.impact === "critical",
