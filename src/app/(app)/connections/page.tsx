@@ -15,14 +15,21 @@ import { db } from "@/server/db";
 import { getTelegramSettings } from "@/server/telegram-settings";
 import { YouTubePanel } from "@/components/youtube/youtube-panel";
 import { getYouTubeStatus } from "@/server/youtube";
+import { BackupPanel } from "@/components/backup/backup-panel";
+import { getBackupStatus } from "@/server/backup-job";
+import { driveClient, driveRedirectUri } from "@/server/google-drive";
 import { PlugIcon } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 
 export const metadata: Metadata = { title: "Integrazioni · RDL Productivity" };
 
-export default async function ConnectionsPage() {
+export default async function ConnectionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ drive?: string }>;
+}) {
   await requireSession();
-  const [connections, requestHeaders, feedToken, reminder, telegram, youtube, boards] =
+  const [connections, requestHeaders, feedToken, reminder, telegram, youtube, backup, boards] =
     await Promise.all([
       listConnections(),
       headers(),
@@ -30,6 +37,7 @@ export default async function ConnectionsPage() {
       getReminderStatus(),
       getTelegramSettings(),
       getYouTubeStatus(),
+      getBackupStatus(),
       db.board.findMany({
         where: { archived: false },
         orderBy: { position: "asc" },
@@ -45,6 +53,7 @@ export default async function ConnectionsPage() {
       }),
     ]);
   const origin = issuerFromHeaders(requestHeaders);
+  const { drive } = await searchParams;
   const mcpUrl = resourceOf(origin);
   const feedUrl = feedToken && `${origin}/api/calendar/${feedToken}.ics`;
 
@@ -53,7 +62,7 @@ export default async function ConnectionsPage() {
       <PageHeader
         icon={PlugIcon}
         title="Integrazioni"
-        description="Collega il calendario, Claude, il bot Telegram e YouTube a RDL Productivity."
+        description="Collega il calendario, Claude, il bot Telegram, YouTube e il backup su Drive a RDL Productivity."
       />
 
       <section id="telegram" className="flex scroll-mt-20 flex-col gap-3" aria-label="Bot Telegram">
@@ -62,6 +71,18 @@ export default async function ConnectionsPage() {
         {reminder.connected && reminder.botName && (
           <TelegramPanel settings={telegram} boards={boards} botName={reminder.botName} />
         )}
+      </section>
+
+      <section id="backup" className="flex scroll-mt-20 flex-col gap-3" aria-label="Backup">
+        <h2 className="text-lg font-semibold">Backup</h2>
+        <BackupPanel
+          connected={backup.connected}
+          driveEmail={backup.driveEmail}
+          lastRun={backup.lastRun}
+          googleConfigured={!!driveClient()}
+          redirectUri={driveRedirectUri(origin)}
+          notice={drive ?? null}
+        />
       </section>
 
       <section id="youtube" className="flex scroll-mt-20 flex-col gap-3" aria-label="YouTube">

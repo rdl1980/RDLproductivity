@@ -10,6 +10,7 @@ import { addDays } from "@/lib/kdp-sales";
 import { runContentReminder } from "@/server/content-reminder";
 import { db } from "@/server/db";
 import { runYouTubeMetrics } from "@/server/youtube";
+import { runBackupIfDue } from "@/server/backup-job";
 import { getSalesData, salesImportKey } from "@/server/queries/kdp-sales";
 import {
   getSetting,
@@ -43,6 +44,11 @@ export async function runHourlyJobs(baseUrl: string, now = new Date()) {
     result.youtube = await runYouTubeIfDue(now);
   } catch (error) {
     result.youtube = `error: ${error instanceof Error ? error.message : String(error)}`;
+  }
+  try {
+    result.backup = await runBackupIfDue(now);
+  } catch (error) {
+    result.backup = `error: ${error instanceof Error ? error.message : String(error)}`;
   }
   const config = await getTelegramConfig();
   if (!config) return { status: "not-configured" as const, ...result };
