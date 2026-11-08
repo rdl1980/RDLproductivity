@@ -2,7 +2,9 @@ import "server-only";
 
 import type { KdpAccount } from "@/lib/kdp";
 import {
+  type BookRank,
   type KdpBookFormat,
+  type KdpFormat,
   type KdpBookItem,
   type KdpBookLinkItem,
   storedFormatsSchema,
@@ -68,6 +70,7 @@ export async function getKdpBooks(): Promise<KdpBookItem[]> {
       },
     },
   });
+  const ranks = await getBookRanks();
   return books.map((book) => ({
     id: book.id,
     account: book.account as KdpAccount,
@@ -80,6 +83,7 @@ export async function getKdpBooks(): Promise<KdpBookItem[]> {
     importedAt: book.importedAt.toISOString(),
     volume: book.volume,
     links: book.links.map(toLinkItem),
+    ranks: ranks.get(book.id) ?? [],
   }));
 }
 
@@ -113,4 +117,37 @@ export async function getCardKdpBooks(cardId: string): Promise<CardKdpBook[]> {
       formats: parseFormats(link.book.formats),
     },
   }));
+}
+
+/** Latest reading per book format and marketplace, with the one a week before. */
+export async function getBookRanks(): Promise<Map<string, BookRank[]>> {
+  const since = new Date(Date.now() - 40 * 24 * 3600_000);
+  const rows = await db.kdpRank.findMany({
+    where: { date: { gte: since } },
+    orderBy: { date: "desc" },
+  });
+  const groups = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const key = `${row.bookId}|${row.format}|${row.market}`;
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  }
+  const out = new Map<string, BookRank[]>();
+  for (const [, list] of groups) {
+    const [latest] = list;
+    const weekAgo = latest.date.getTime() - 7 * 24 * 3600_000;
+    const before = list.find((r) => r.date.getTime() <= weekAgo) ?? null;
+    const entry: BookRank = {
+      format: latest.format as KdpFormat,
+      market: latest.market,
+      date: latest.date.toISOString().slice(0, 10),
+      rank: latest.rank,
+      category: latest.category,
+      reviews: latest.reviews,
+      rating: latest.rating,
+      rankBefore: before?.rank ?? null,
+      reviewsBefore: before?.reviews ?? null,
+    };
+    out.set(latest.bookId, [...(out.get(latest.bookId) ?? []), entry]);
+  }
+  return out;
 }

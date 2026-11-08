@@ -50,6 +50,10 @@ const JOB_LABELS: Record<TelegramJob, { label: string; help: string }> = {
     label: "Avviso a ogni vendita nuova",
     help: "Quando un aggiornamento (a mano o automatico) porta copie in più.",
   },
+  reviews: {
+    label: "Avviso valutazioni nuove su Amazon",
+    help: "Quando il controllo giornaliero dell'estensione trova più valutazioni di prima.",
+  },
 };
 
 const THRESHOLD_FIELDS: { key: keyof AnomalyThresholds; label: string; suffix: string }[] = [

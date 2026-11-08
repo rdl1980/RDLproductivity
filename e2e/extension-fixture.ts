@@ -40,14 +40,22 @@ export async function setStepUrls(
   context: BrowserContext,
   urls: { books?: string; sales?: string },
 ): Promise<void> {
+  await setExtensionStorage(context, { stepUrls: urls });
+}
+
+/** Writes values in the extension's `chrome.storage.local`. */
+export async function setExtensionStorage(
+  context: BrowserContext,
+  values: Record<string, unknown>,
+): Promise<void> {
   let [worker] = context.serviceWorkers();
   if (!worker) worker = await context.waitForEvent("serviceworker");
-  await worker.evaluate((stepUrls) => {
+  await worker.evaluate((stored) => {
     const api = (
       globalThis as unknown as {
         chrome: { storage: { local: { set(v: unknown): Promise<void> } } };
       }
     ).chrome;
-    return api.storage.local.set({ stepUrls });
-  }, urls);
+    return api.storage.local.set(stored);
+  }, values);
 }

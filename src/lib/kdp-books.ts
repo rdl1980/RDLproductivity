@@ -399,6 +399,21 @@ export type KdpBookItem = {
   /** Volume set by hand; null = read from the title. */
   volume: number | null;
   links: KdpBookLinkItem[];
+  /** Amazon rank and reviews, latest reading per format and marketplace. */
+  ranks?: BookRank[];
+};
+
+export type BookRank = {
+  format: KdpFormat;
+  market: string;
+  date: string;
+  rank: number | null;
+  category: string | null;
+  reviews: number | null;
+  rating: number | null;
+  /** The reading closest to 7 days before, for the trend. */
+  rankBefore: number | null;
+  reviewsBefore: number | null;
 };
 
 export type KdpBookLinkItem = {
