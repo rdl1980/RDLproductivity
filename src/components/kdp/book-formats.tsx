@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import {
   amazonUrl,
+  type BookRank,
   FORMAT_LABELS,
   type KdpBookFormat,
   type KdpStatus,
@@ -83,6 +84,56 @@ export function BookFormats({ formats }: { formats: KdpBookFormat[] }) {
                 <span className="sr-only">(si apre in una nuova scheda)</span>
               </a>
             )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+const int = (n: number) => n.toLocaleString("it-IT", { useGrouping: "always" });
+
+/** Latest Amazon rank and reviews per format, with the change over a week. */
+export function BookRanks({ ranks }: { ranks: BookRank[] | undefined }) {
+  if (!ranks?.length) return null;
+  return (
+    <ul className="flex flex-col gap-0.5 text-xs text-muted-foreground" data-testid="book-ranks">
+      {ranks.map((r) => {
+        const better = r.rank !== null && r.rankBefore !== null && r.rank < r.rankBefore;
+        const worse = r.rank !== null && r.rankBefore !== null && r.rank > r.rankBefore;
+        const newReviews =
+          r.reviews !== null && r.reviewsBefore !== null ? r.reviews - r.reviewsBefore : 0;
+        return (
+          <li key={`${r.format}-${r.market}`} className="flex flex-wrap gap-x-2">
+            <span className="font-medium text-foreground">
+              {FORMAT_LABELS[r.format]}
+              {r.market ? ` ${r.market}` : ""}
+            </span>
+            {r.rank !== null && (
+              <span>
+                BSR n.{int(r.rank)}
+                {r.category ? ` in ${r.category}` : ""}
+                {better && (
+                  <span className="text-emerald-700 dark:text-emerald-400">
+                    {" "}
+                    ▲ da {int(r.rankBefore!)}
+                  </span>
+                )}
+                {worse && (
+                  <span className="text-red-700 dark:text-red-400"> ▼ da {int(r.rankBefore!)}</span>
+                )}
+              </span>
+            )}
+            {r.reviews !== null && (
+              <span>
+                {int(r.reviews)} valutazioni
+                {r.rating !== null ? ` (${String(r.rating).replace(".", ",")}★)` : ""}
+                {newReviews > 0 ? ` +${newReviews} in 7 giorni` : ""}
+              </span>
+            )}
+            <span>
+              · {r.date.slice(8, 10)}/{r.date.slice(5, 7)}
+            </span>
           </li>
         );
       })}

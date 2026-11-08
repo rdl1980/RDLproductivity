@@ -180,15 +180,17 @@ const ALARM = "rdl-autosync";
 const PERIOD_MINUTES = 60;
 
 async function autoSyncState() {
-  const { autoSync, autoSyncLastRun } = await api.storage.local.get([
+  const { autoSync, autoSyncLastRun, rankLastRun } = await api.storage.local.get([
     "autoSync",
     "autoSyncLastRun",
+    "rankLastRun",
   ]);
   return {
     config: autoSync
       ? { account: autoSync.account, label: autoSync.label, appUrl: autoSync.appUrl }
       : null,
     lastRun: autoSyncLastRun || null,
+    rankLastRun: rankLastRun || null,
     running: busy,
   };
 }
@@ -207,11 +209,13 @@ async function autoSyncCommand({ action, config }) {
     }
   } else if (action === "run") {
     await autoSyncNow();
+  } else if (action === "ranks") {
+    await ranksNow();
   }
   return { state: await autoSyncState() };
 }
 
-async function autoSyncNow() {
+async function autoSyncNow({ ranks = false } = {}) {
   const { autoSync } = await api.storage.local.get("autoSync");
   if (!autoSync || busy) return;
   busy = true;
@@ -248,6 +252,8 @@ async function autoSyncNow() {
           ? `${reply.newUnits} ${reply.newUnits === 1 ? "nuova vendita" : "nuove vendite"}`
           : "Nessuna vendita nuova",
       );
+    // Once a day (or when asked), the Amazon ranks and reviews.
+    if (ranks) await readRanks(autoSync, headers).catch(() => {});
   } catch (error) {
     await record(false, error && error.message ? error.message : String(error));
   } finally {
@@ -256,7 +262,7 @@ async function autoSyncNow() {
 }
 
 api.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === ALARM) void autoSyncNow();
+  if (alarm.name === ALARM) void autoSyncNow({ ranks: true });
 });
 
 /** After a browser restart or an update the alarm must still be there. */
@@ -268,3 +274,90 @@ async function ensureAlarm() {
 }
 api.runtime.onStartup.addListener(() => void ensureAlarm());
 api.runtime.onInstalled.addListener(() => void ensureAlarm());
+
+// --- Daily Amazon rank and reviews ----------------------------------------------
+// Once a day, after an hourly sync, the public product page of each live
+// format is fetched (the browser's own session, a few seconds apart) and the
+// small parts around the rank and reviews markers are sent to the app, which
+// parses them (src/lib/amazon-rank.ts keeps the same labels).
+
+const RANK_LABELS = [
+  "Best Sellers Rank",
+  "Posizione nella classifica Bestseller di Amazon",
+  "Amazon Bestseller-Rang",
+  "Bestseller-Rang",
+  "Classement des meilleures ventes d'Amazon",
+  "Classement des meilleures ventes",
+  "Clasificación en los más vendidos de Amazon",
+  "Ranking dos mais vendidos",
+  "Plaats in bestsellerlijst",
+  "Amazon 売れ筋ランキング",
+];
+const REVIEWS_MARKER = 'id="acrCustomerReviewText"';
+const RATING_MARKER = 'id="acrPopover"';
+const PAGE_GAP_MS = 4000;
+const BATCH = 10;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const localDay = () => new Date().toLocaleDateString("sv-SE");
+
+function around(html, marker, after) {
+  const at = html.indexOf(marker);
+  return at < 0 ? undefined : html.slice(Math.max(0, at - 40), at + after);
+}
+
+async function ranksNow() {
+  const { autoSync } = await api.storage.local.get("autoSync");
+  if (!autoSync || busy) return;
+  busy = true;
+  try {
+    await readRanks(
+      autoSync,
+      { authorization: `Bearer ${autoSync.token}`, "content-type": "application/json" },
+      { force: true },
+    );
+  } finally {
+    busy = false;
+  }
+}
+
+async function readRanks(autoSync, headers, { force = false } = {}) {
+  const { rankDay } = await api.storage.local.get("rankDay");
+  if (!force && rankDay === localDay()) return;
+  const endpoint = `${autoSync.appUrl}/api/kdp/autosync/ranks`;
+  const res = await fetch(endpoint, { headers });
+  if (!res.ok) return;
+  const { targets } = await res.json();
+  const { rankUrls } = await api.storage.local.get("rankUrls");
+  let items = [];
+  const flush = async () => {
+    if (!items.length) return;
+    await fetch(endpoint, { method: "POST", headers, body: JSON.stringify({ items }) });
+    items = [];
+  };
+  for (const target of targets || []) {
+    // Test override of the product pages' host.
+    const url = rankUrls ? `${rankUrls}/dp/${target.asin}` : target.url;
+    let html;
+    try {
+      const page = await fetch(url, { credentials: "include" });
+      html = await page.text();
+    } catch {
+      continue;
+    }
+    // A robot check: stop for today, try again tomorrow.
+    if (/validateCaptcha|Type the characters you see/i.test(html)) break;
+    const label = RANK_LABELS.find((l) => html.includes(l));
+    items.push({
+      asin: target.asin,
+      market: target.market,
+      rank: label ? around(html, label, 900) : undefined,
+      reviews: around(html, REVIEWS_MARKER, 200),
+      rating: around(html, RATING_MARKER, 300),
+    });
+    if (items.length >= BATCH) await flush();
+    await sleep(PAGE_GAP_MS);
+  }
+  await flush();
+  await api.storage.local.set({ rankDay: localDay(), rankLastRun: new Date().toISOString() });
+}

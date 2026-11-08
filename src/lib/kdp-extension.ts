@@ -88,11 +88,16 @@ export const EXTENSION_ACCOUNT_KEY = "kdp.extension.account";
 /** First extension version with the hourly sync. */
 export const AUTOSYNC_VERSION = "1.0.5";
 
+/** First extension version that reads the Amazon ranks and reviews. */
+export const RANKS_VERSION = "1.0.6";
+
 export type AutoSyncConfig = { account: string; label: string; token: string; appUrl: string };
 
 export type ExtensionAutoSyncState = {
   config: { account: string; label: string; appUrl: string } | null;
   lastRun: { at: string; ok: boolean; message: string } | null;
+  /** Last read of the Amazon ranks and reviews (1.0.6+). */
+  rankLastRun?: string | null;
   running: boolean;
 };
 
@@ -101,9 +106,9 @@ export type ExtensionAutoSyncState = {
  * runs now ("run") the hourly sync of this browser's extension.
  */
 export function extensionAutoSync(
-  action: "get" | "set" | "run",
+  action: "get" | "set" | "run" | "ranks",
   config: AutoSyncConfig | null = null,
-  timeoutMs = action === "run" ? 16 * 60_000 : 10_000,
+  timeoutMs = action === "run" || action === "ranks" ? 16 * 60_000 : 10_000,
 ): Promise<ExtensionAutoSyncState> {
   const requestId = crypto.randomUUID();
   return new Promise((resolve, reject) => {

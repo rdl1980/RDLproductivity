@@ -12,6 +12,7 @@ export const TELEGRAM_JOBS = {
   summary: { key: "telegram.job.summary", label: "Riepilogo vendite KDP alle 21:00" },
   anomalies: { key: "telegram.job.anomalies", label: "Allarmi KDP alle 9:00" },
   sales: { key: SALES_ALERTS_KEY, label: "Avviso a ogni vendita nuova" },
+  reviews: { key: "telegram.job.reviews", label: "Avviso valutazioni nuove su Amazon" },
 } as const;
 export type TelegramJob = keyof typeof TELEGRAM_JOBS;
 

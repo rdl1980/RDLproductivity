@@ -1,6 +1,6 @@
 "use client";
 
-import { BellRingIcon, Loader2Icon, RefreshCwIcon, TimerIcon } from "lucide-react";
+import { BellRingIcon, Loader2Icon, RefreshCwIcon, StarIcon, TimerIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { accountLabel, KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
 import {
   AUTOSYNC_VERSION,
+  RANKS_VERSION,
   type ExtensionAutoSyncState,
   extensionAutoSync,
   olderVersion,
@@ -115,6 +116,20 @@ export function AutoSyncPanel({
     }
   }
 
+  async function ranksNow() {
+    setRunning(true);
+    try {
+      const state = await extensionAutoSync("ranks");
+      setLocal(state);
+      toast.success("Classifica e valutazioni lette");
+      router.refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setRunning(false);
+    }
+  }
+
   function toggleAlerts(on: boolean) {
     start(async () => {
       const result = await setKdpSalesAlerts(on).catch(() => null);
@@ -137,7 +152,8 @@ export function AutoSyncPanel({
       </h2>
       <p className="text-muted-foreground">
         Ogni ora l&apos;estensione legge da sola i Report KDP degli ultimi giorni in una scheda
-        nascosta, senza toglierti il focus, e l&apos;app ti scrive su Telegram le copie nuove. Va
+        nascosta, senza toglierti il focus, e l&apos;app ti scrive su Telegram le copie nuove. Una
+        volta al giorno legge anche classifica Amazon (BSR) e valutazioni di ogni libro online. Va
         attivato in ogni browser (o profilo) collegato a un account KDP, e funziona finché quel
         browser resta aperto. KDP aggiorna i Report con qualche ora di ritardo.
       </p>
@@ -161,12 +177,25 @@ export function AutoSyncPanel({
             {local.lastRun
               ? ` Ultimo controllo ${when(local.lastRun.at)}: ${local.lastRun.message}.`
               : " Primo controllo entro un'ora."}
+            {local.rankLastRun ? ` Classifica e valutazioni lette ${when(local.rankLastRun)}.` : ""}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" variant="outline" onClick={runNow} disabled={running}>
               {running ? <Loader2Icon className="animate-spin" /> : <RefreshCwIcon />}
               Controlla ora
             </Button>
+            {version && !olderVersion(version, RANKS_VERSION) && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={ranksNow}
+                disabled={running}
+              >
+                <StarIcon />
+                Leggi classifica e valutazioni
+              </Button>
+            )}
             <Button type="button" size="sm" variant="ghost" onClick={disable} disabled={pending}>
               Disattiva in questo browser
             </Button>

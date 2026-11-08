@@ -4,7 +4,8 @@ import type { AddressInfo } from "node:net";
 import { expect } from "@playwright/test";
 
 import { addDays } from "../src/lib/kdp-sales";
-import { setStepUrls, test } from "./extension-fixture";
+import { encodeImportHash } from "../src/lib/kdp-books";
+import { setExtensionStorage, setStepUrls, test } from "./extension-fixture";
 
 // One KDP read per check, two checks, on a busy CI runner.
 test.setTimeout(300_000);
@@ -25,8 +26,20 @@ test("the hourly sync reads the Reports in the background and counts the new sal
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify(data));
   };
+  // The public Amazon page of the book imported below.
+  const rankAsin = `R${String(stamp).slice(-9)}`;
+  const bookTitle = `Classifica ${stamp}`;
   const server = http.createServer((req, res) => {
     const url = req.url ?? "/";
+    if (url.startsWith("/dp/")) {
+      res.setHeader("content-type", "text/html");
+      return res.end(`<!doctype html><html><body>
+        <span id="acrPopover" class="reviewCountTextLinkedHistogram" title="4,5 su 5 stelle"></span>
+        <span id="acrCustomerReviewText" class="a-size-base">7 voti</span>
+        <ul><li><span class="a-text-bold">Posizione nella classifica Bestseller di Amazon:</span>
+        n.12.345 in Kindle Store (<a href="/top">Visualizza i Top 100</a>)
+        <ul><li>n.3 in Gialli</li></ul></li></ul></body></html>`);
+    }
     if (req.method !== "POST") {
       res.setHeader("content-type", "text/html");
       return res.end("<!doctype html><title>Reports</title>");
@@ -93,6 +106,39 @@ test("the hourly sync reads the Reports in the background and counts the new sal
     await expect(local).toContainText("1 nuova vendita", { timeout: 120_000 });
     await expect(panel.getByTestId("autosync-accounts")).toContainText("Mario");
     await expect(panel.getByTestId("autosync-accounts")).toContainText("1 nuova vendita: 1 ebook");
+
+    // The daily Amazon read, on demand: a live book of Mario gets its rank and reviews.
+    const payload = {
+      v: 1 as const,
+      books: [
+        {
+          kdpId: `RK${stamp}`,
+          title: bookTitle,
+          series: null,
+          author: "Mario E2E",
+          formats: [
+            { format: "ebook" as const, status: "Online", asin: rankAsin, price: "€2,99 EUR" },
+          ],
+        },
+      ],
+    };
+    await page.goto(`${baseURL}/kdp/libri/importa#${encodeImportHash(payload)}`);
+    await page.getByRole("radio", { name: "Mario" }).check();
+    await page.getByRole("button", { name: "Importa" }).click();
+    await expect(page).toHaveURL(/\/kdp\/libri$/);
+    await setExtensionStorage(context, { rankUrls: fake });
+    await page.goto(`${baseURL}/kdp/estensione`);
+    await panel.getByRole("button", { name: "Leggi classifica e valutazioni" }).click();
+    await expect(page.getByText("Classifica e valutazioni lette", { exact: true })).toBeVisible({
+      timeout: 240_000,
+    });
+    await page.goto(`${baseURL}/kdp/libri`);
+    const book = page
+      .getByTestId("kdp-book")
+      .filter({ has: page.getByRole("heading", { name: bookTitle, exact: true }) });
+    await expect(book.getByTestId("book-ranks")).toContainText("BSR n.12.345 in Kindle Store");
+    await expect(book.getByTestId("book-ranks")).toContainText("7 valutazioni (4,5★)");
+    await page.goto(`${baseURL}/kdp/estensione`);
 
     // Off: the token stops working and the browser forgets it.
     await panel.getByRole("button", { name: "Disattiva in questo browser" }).click();

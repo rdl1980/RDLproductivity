@@ -249,6 +249,7 @@ model KdpBook {
   links        KdpBookLink[]
   aliases      KdpTitleAlias[]
   prices       KdpPriceHistory[]
+  ranks        KdpRank[]
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 
@@ -356,6 +357,28 @@ model KdpPriceHistory {
   seenAt DateTime
 
   @@index([bookId, format, seenAt])
+}
+
+// Amazon Best Sellers Rank and reviews of a book format, read once a day by
+// the browser extension from the public product page.
+model KdpRank {
+  id       String   @id @default(cuid())
+  bookId   String
+  book     KdpBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  /// "ebook" | "paperback" | "hardcover"
+  format   String
+  asin     String
+  /// Marketplace code as in the formats ("IT", "US", ...), or "" when unknown.
+  market   String
+  date     DateTime @db.Date
+  /// Overall rank in its store (null when the page shows none).
+  rank     Int?
+  category String?
+  reviews  Int?
+  rating   Float?
+
+  @@unique([asin, market, date])
+  @@index([bookId, date])
 }
 
 // Robotti e Robotte: editorial calendar of the satirical channel. A piece

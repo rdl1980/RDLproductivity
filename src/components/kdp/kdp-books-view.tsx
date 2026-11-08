@@ -49,7 +49,7 @@ import {
 } from "@/server/actions/kdp-books";
 import type { ActionResult } from "@/server/actions/result";
 
-import { BookFormats } from "./book-formats";
+import { BookFormats, BookRanks } from "./book-formats";
 import { KdpTabs } from "./kdp-tabs";
 
 const NETWORK_ERROR = "Errore di rete, modifica annullata.";
@@ -359,6 +359,7 @@ function BookRow({
         </div>
       </div>
       <BookFormats formats={book.formats} />
+      <BookRanks ranks={book.ranks} />
       <div className="flex flex-wrap items-center gap-2 border-t pt-3">
         <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
           Card
