@@ -5,6 +5,8 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = 3000;
 /** Kept in sync with e2e/content-reminder.spec.ts. */
 const TELEGRAM_STUB_PORT = 4599;
+/** Kept in sync with e2e/youtube.spec.ts. */
+const YOUTUBE_STUB_PORT = 4600;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -27,6 +29,10 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
     // Telegram calls go to the stub started by e2e/content-reminder.spec.ts.
-    env: { TELEGRAM_API_URL: `http://localhost:${TELEGRAM_STUB_PORT}` },
+    // YouTube calls go to the stub of e2e/youtube.spec.ts.
+    env: {
+      TELEGRAM_API_URL: `http://localhost:${TELEGRAM_STUB_PORT}`,
+      YOUTUBE_API_URL: `http://localhost:${YOUTUBE_STUB_PORT}`,
+    },
   },
 });

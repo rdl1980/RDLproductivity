@@ -9,6 +9,7 @@ import { anomalies, summaryMessage, unsentAnomalies } from "@/lib/kdp-digest";
 import { addDays } from "@/lib/kdp-sales";
 import { runContentReminder } from "@/server/content-reminder";
 import { db } from "@/server/db";
+import { runYouTubeMetrics } from "@/server/youtube";
 import { getSalesData, salesImportKey } from "@/server/queries/kdp-sales";
 import {
   getSetting,
@@ -36,9 +37,15 @@ type JobOutcome = string;
 
 /** Every hourly job of the bot, called by pg_cron through `/api/cron/hourly`. */
 export async function runHourlyJobs(baseUrl: string, now = new Date()) {
-  const config = await getTelegramConfig();
-  if (!config) return { status: "not-configured" as const };
   const result: Record<string, JobOutcome> = {};
+  // Not a message: the YouTube numbers, once a day from 6:00, Telegram or not.
+  try {
+    result.youtube = await runYouTubeIfDue(now);
+  } catch (error) {
+    result.youtube = `error: ${error instanceof Error ? error.message : String(error)}`;
+  }
+  const config = await getTelegramConfig();
+  if (!config) return { status: "not-configured" as const, ...result };
   const run = async (name: string, job: () => Promise<JobOutcome>) => {
     try {
       result[name] = await job();
@@ -57,6 +64,18 @@ export async function runHourlyJobs(baseUrl: string, now = new Date()) {
     (await jobEnabled("anomalies")) ? runAnomalies(config, baseUrl, now) : "off",
   );
   return { status: "ok" as const, ...result };
+}
+
+const YOUTUBE_HOUR = 6;
+const YOUTUBE_DAY_KEY = "youtube.lastDay";
+
+async function runYouTubeIfDue(now: Date): Promise<JobOutcome> {
+  const today = await due(YOUTUBE_DAY_KEY, YOUTUBE_HOUR, now);
+  if (!today) return "not-due";
+  const run = await runYouTubeMetrics(now);
+  if (!run) return "off";
+  await setSetting(YOUTUBE_DAY_KEY, today);
+  return run.message;
 }
 
 async function due(key: string, hour: number, now: Date): Promise<string | null> {
