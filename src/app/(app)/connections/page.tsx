@@ -13,6 +13,8 @@ import { TelegramPanel } from "@/components/telegram/telegram-panel";
 import { getReminderStatus } from "@/server/content-reminder";
 import { db } from "@/server/db";
 import { getTelegramSettings } from "@/server/telegram-settings";
+import { YouTubePanel } from "@/components/youtube/youtube-panel";
+import { getYouTubeStatus } from "@/server/youtube";
 import { PlugIcon } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 
@@ -20,26 +22,28 @@ export const metadata: Metadata = { title: "Integrazioni · RDL Productivity" };
 
 export default async function ConnectionsPage() {
   await requireSession();
-  const [connections, requestHeaders, feedToken, reminder, telegram, boards] = await Promise.all([
-    listConnections(),
-    headers(),
-    currentFeedToken(),
-    getReminderStatus(),
-    getTelegramSettings(),
-    db.board.findMany({
-      where: { archived: false },
-      orderBy: { position: "asc" },
-      select: {
-        id: true,
-        title: true,
-        lists: {
-          where: { archived: false },
-          orderBy: { position: "asc" },
-          select: { id: true, title: true },
+  const [connections, requestHeaders, feedToken, reminder, telegram, youtube, boards] =
+    await Promise.all([
+      listConnections(),
+      headers(),
+      currentFeedToken(),
+      getReminderStatus(),
+      getTelegramSettings(),
+      getYouTubeStatus(),
+      db.board.findMany({
+        where: { archived: false },
+        orderBy: { position: "asc" },
+        select: {
+          id: true,
+          title: true,
+          lists: {
+            where: { archived: false },
+            orderBy: { position: "asc" },
+            select: { id: true, title: true },
+          },
         },
-      },
-    }),
-  ]);
+      }),
+    ]);
   const origin = issuerFromHeaders(requestHeaders);
   const mcpUrl = resourceOf(origin);
   const feedUrl = feedToken && `${origin}/api/calendar/${feedToken}.ics`;
@@ -49,7 +53,7 @@ export default async function ConnectionsPage() {
       <PageHeader
         icon={PlugIcon}
         title="Integrazioni"
-        description="Collega il calendario, Claude e il bot Telegram a RDL Productivity."
+        description="Collega il calendario, Claude, il bot Telegram e YouTube a RDL Productivity."
       />
 
       <section id="telegram" className="flex scroll-mt-20 flex-col gap-3" aria-label="Bot Telegram">
@@ -58,6 +62,11 @@ export default async function ConnectionsPage() {
         {reminder.connected && reminder.botName && (
           <TelegramPanel settings={telegram} boards={boards} botName={reminder.botName} />
         )}
+      </section>
+
+      <section id="youtube" className="flex scroll-mt-20 flex-col gap-3" aria-label="YouTube">
+        <h2 className="text-lg font-semibold">YouTube</h2>
+        <YouTubePanel connected={youtube.connected} lastRun={youtube.lastRun} />
       </section>
 
       <section className="flex flex-col gap-2" aria-label="Calendario iCal">
