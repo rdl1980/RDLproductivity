@@ -4,6 +4,8 @@
  * not depend on the machine's time zone.
  */
 
+import type { KdpFormat } from "./kdp-books";
+
 /** The stored values stay stable; the labels are the names shown in the app. */
 export const KDP_ACCOUNTS = [
   { value: "main", label: "Rosario" },
@@ -52,6 +54,8 @@ export type KdpTaskItem = {
   week: string;
   position: string;
   done: boolean;
+  /** Formats it publishes; in the "Reale" lane they use the weekly slots. */
+  formats: KdpFormat[];
 };
 
 const DAY = 24 * 60 * 60 * 1000;
