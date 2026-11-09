@@ -178,3 +178,15 @@ test("the books table sorts by any column", async ({ page }) => {
   expect(descending).toEqual(sorted(descending, true));
   await expect(header("Royalty")).toHaveAttribute("aria-sort", "none");
 });
+
+test("Vendite opens on Rosario, Ilaria and NonnoPeppe", async ({ page }) => {
+  await page.goto("/kdp/vendite");
+  const account = page.getByRole("combobox", { name: "Account" });
+  await expect(account).toHaveText("Rosario, Ilaria e NonnoPeppe");
+  await expect(async () => {
+    await account.click();
+    await page.getByRole("option", { name: "Tutti gli account" }).click({ timeout: 1000 });
+  }).toPass();
+  await expect(page).toHaveURL(/account=all/);
+  await expect(account).toHaveText("Tutti gli account");
+});

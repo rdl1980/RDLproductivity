@@ -21,6 +21,28 @@ export const KDP_ACCOUNT_VALUES = KDP_ACCOUNTS.map((account) => account.value) a
   ...KdpAccount[],
 ];
 
+/** Accounts summed by the default filter of Vendite: every account but Mario. */
+export const KDP_CORE_ACCOUNTS: readonly KdpAccount[] = ["main", "secondary", "third"];
+
+/** An account filter: one account, every account, or the core ones. */
+export type KdpAccountScope = KdpAccount | "all" | "core";
+
+export const KDP_CORE_LABEL = KDP_CORE_ACCOUNTS.map((a) => accountLabel(a))
+  .join(", ")
+  .replace(/, ([^,]*)$/, " e $1");
+
+export function scopeAccounts(scope: KdpAccountScope): readonly KdpAccount[] {
+  if (scope === "all") return KDP_ACCOUNT_VALUES;
+  if (scope === "core") return KDP_CORE_ACCOUNTS;
+  return [scope];
+}
+
+export function inAccountScope(scope: KdpAccountScope, account: KdpAccount): boolean {
+  return (
+    scope === "all" || (scope === "core" ? KDP_CORE_ACCOUNTS.includes(account) : scope === account)
+  );
+}
+
 export function accountLabel(account: KdpAccount): string {
   return KDP_ACCOUNTS.find((a) => a.value === account)?.label ?? account;
 }

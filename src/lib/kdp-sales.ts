@@ -5,7 +5,12 @@
  */
 import { z } from "zod";
 
-import { KDP_ACCOUNT_VALUES, type KdpAccount } from "@/lib/kdp";
+import {
+  inAccountScope,
+  KDP_ACCOUNT_VALUES,
+  type KdpAccount,
+  type KdpAccountScope,
+} from "@/lib/kdp";
 
 // --- Sources (formats + KENP) --------------------------------------------------
 
@@ -212,7 +217,7 @@ export function sumRecords(records: SaleRecord[], sources: ReadonlySet<SaleSourc
 export type SalesFilter = {
   from: string;
   to: string;
-  account: KdpAccount | "all";
+  account: KdpAccountScope;
   markets: ReadonlySet<string>;
   book: string | null;
 };
@@ -222,7 +227,7 @@ export function filterRecords(records: SaleRecord[], f: SalesFilter): SaleRecord
     (r) =>
       r.d >= f.from &&
       r.d <= f.to &&
-      (f.account === "all" || r.a === f.account) &&
+      inAccountScope(f.account, r.a) &&
       (f.markets.size === 0 || f.markets.has(r.m)) &&
       (f.book === null || r.book === f.book),
   );

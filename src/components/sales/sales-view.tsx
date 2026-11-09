@@ -35,7 +35,15 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 
-import { accountLabel, KDP_ACCOUNT_VALUES, KDP_ACCOUNTS, type KdpAccount } from "@/lib/kdp";
+import {
+  accountLabel,
+  inAccountScope,
+  KDP_ACCOUNT_VALUES,
+  KDP_ACCOUNTS,
+  KDP_CORE_LABEL,
+  type KdpAccount,
+  type KdpAccountScope,
+} from "@/lib/kdp";
 import { type AdRecord, acos, sumAds } from "@/lib/kdp-ads";
 import { daysSince, SALES_STALE_DAYS } from "@/lib/kdp-freshness";
 import { type PriceChange, priceImpacts } from "@/lib/kdp-prices";
@@ -167,7 +175,7 @@ export type SalesState = {
   period: Period;
   from: string;
   to: string;
-  account: KdpAccount | "all";
+  account: KdpAccountScope;
   markets: string[];
   sources: SaleSource[];
   book: string | null;
@@ -223,7 +231,7 @@ function writeUrl(state: SalesState) {
     params.set("from", state.from);
     params.set("to", state.to);
   }
-  if (state.account !== "all") params.set("account", state.account);
+  if (state.account !== "core") params.set("account", state.account);
   if (state.markets.length) params.set("markets", state.markets.join(","));
   if (state.sources.length !== SALE_SOURCES.length) params.set("sources", state.sources.join(","));
   if (state.book) params.set("book", state.book);
@@ -366,7 +374,7 @@ export function SalesView({
   const adFilter = (r: AdRecord, from: string, to: string) =>
     r.d >= from &&
     r.d <= to &&
-    (state.account === "all" || r.a === state.account) &&
+    inAccountScope(state.account, r.a) &&
     (state.book === null || r.book === state.book);
   const adsCurrent = ads.filter((r) => adFilter(r, range.from, range.to));
   const adsPrevious = ads.filter((r) => adFilter(r, prevRange.from, prevRange.to));
@@ -1566,12 +1574,13 @@ function Filters({
         <Field label="Account">
           <Select
             value={state.account}
-            onValueChange={(v) => update({ account: v as KdpAccount | "all" })}
+            onValueChange={(v) => update({ account: v as KdpAccountScope })}
           >
             <SelectTrigger className="w-48" aria-label="Account">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="core">{KDP_CORE_LABEL}</SelectItem>
               <SelectItem value="all">Tutti gli account</SelectItem>
               {KDP_ACCOUNTS.map(({ value, label }) => (
                 <SelectItem key={value} value={value}>

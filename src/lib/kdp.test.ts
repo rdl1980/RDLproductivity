@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   addWeeks,
+  inAccountScope,
+  KDP_CORE_LABEL,
+  scopeAccounts,
   cellTasks,
   laneLabel,
   isoWeekNumber,
@@ -108,5 +111,21 @@ describe("cellTasks", () => {
 describe("laneLabel", () => {
   it("names the account and the track", () => {
     expect(laneLabel("secondary", "actual")).toBe("Ilaria · Reale");
+  });
+});
+
+describe("account scopes", () => {
+  it("names the core accounts", () => {
+    expect(KDP_CORE_LABEL).toBe("Rosario, Ilaria e NonnoPeppe");
+  });
+
+  it("keeps Mario out of the core scope only", () => {
+    expect(scopeAccounts("core")).toEqual(["main", "secondary", "third"]);
+    expect(scopeAccounts("all")).toHaveLength(4);
+    expect(scopeAccounts("fourth")).toEqual(["fourth"]);
+    expect(inAccountScope("core", "fourth")).toBe(false);
+    expect(inAccountScope("core", "third")).toBe(true);
+    expect(inAccountScope("all", "fourth")).toBe(true);
+    expect(inAccountScope("main", "secondary")).toBe(false);
   });
 });

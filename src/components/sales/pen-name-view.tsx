@@ -866,7 +866,7 @@ function Detail({
       params.set("from", state.from);
       params.set("to", state.to);
     }
-    if (state.account !== "all") params.set("account", state.account);
+    params.set("account", state.account);
     return `/kdp/vendite?${params}`;
   };
 

@@ -112,7 +112,7 @@ test("the extension reads the KDP pages in hidden tabs and the app imports both"
     // A clean run closes the dialog; the page shows the imported book with its sales.
     await expect(dialog).toBeHidden();
     await page.getByRole("combobox", { name: "Account" }).click();
-    await page.getByRole("option", { name: "Ilaria" }).click();
+    await page.getByRole("option", { name: "Ilaria", exact: true }).click();
     await expect(page.getByTestId("sales-books")).toContainText(title);
   } finally {
     server.close();
