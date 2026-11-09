@@ -16,7 +16,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { accountLabel, KDP_ACCOUNTS, KDP_ACCOUNT_VALUES, type KdpAccount } from "@/lib/kdp";
+import {
+  accountLabel,
+  KDP_ACCOUNT_VALUES,
+  KDP_ACCOUNTS,
+  type KdpAccount,
+  type KdpAccountScope,
+  scopeAccounts,
+} from "@/lib/kdp";
 import { goalProgress } from "@/lib/kdp-finance";
 import { formatEuro } from "@/lib/kdp-sales";
 import { cn } from "@/lib/utils";
@@ -36,14 +43,14 @@ export function GoalTile({
   today,
 }: {
   goals: KdpGoals;
-  account: KdpAccount | "all";
+  account: KdpAccountScope;
   monthToDate: Record<KdpAccount, number>;
   /** Forecast of the month per account (see `forecastMonth`). */
   forecast?: Record<KdpAccount, number>;
   today: string;
 }) {
   const [open, setOpen] = useState(false);
-  const accounts = account === "all" ? KDP_ACCOUNT_VALUES : [account];
+  const accounts = scopeAccounts(account);
   const target = accounts.reduce((sum, a) => sum + (goals[a] ?? 0), 0);
   const royalty = accounts.reduce((sum, a) => sum + (goals[a] ? monthToDate[a] : 0), 0);
   const base = target > 0 ? goalProgress(target, royalty, today) : null;

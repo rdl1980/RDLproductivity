@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 
 import { SalesView, type SalesState } from "@/components/sales/sales-view";
-import { KDP_ACCOUNT_VALUES, type KdpAccount, todayIn } from "@/lib/kdp";
+import { KDP_ACCOUNT_VALUES, type KdpAccount, type KdpAccountScope, todayIn } from "@/lib/kdp";
 import { addDays, GRANULARITIES, SALE_SOURCES, type SaleSource } from "@/lib/kdp-sales";
 import { getRoyaltyBetween } from "@/server/queries/kdp-finance";
 import { getKdpGoals } from "@/server/queries/kdp-goals";
@@ -41,7 +41,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/kdp/vendit
     period: pick(params.period, PERIODS, "90d"),
     from: isDay(params.from) ? params.from : addDays(today, -89),
     to: isDay(params.to) ? params.to : today,
-    account: pick<KdpAccount | "all">(params.account, [...KDP_ACCOUNT_VALUES, "all"], "all"),
+    account: pick<KdpAccountScope>(params.account, [...KDP_ACCOUNT_VALUES, "all", "core"], "core"),
     markets: list(params.markets).filter((m) => /^Amazon\./.test(m)),
     sources: sources.length ? sources : [...SALE_SOURCES],
     book: typeof params.book === "string" && params.book ? params.book : null,
