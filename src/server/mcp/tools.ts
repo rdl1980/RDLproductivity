@@ -50,7 +50,13 @@ import {
   parseMonth,
   weekStartOf,
 } from "@/lib/kdp";
-import { createKdpTask, deleteKdpTask, moveKdpTask, updateKdpTask } from "@/server/actions/kdp";
+import {
+  createKdpTask,
+  deleteKdpTask,
+  moveKdpTask,
+  shiftKdpPlannedWeek,
+  updateKdpTask,
+} from "@/server/actions/kdp";
 import { registerContentTools } from "@/server/mcp/content-tools";
 import { getSuperBoard } from "@/server/queries/aggregate";
 import { getKdpSlotSettings, getKdpTasks } from "@/server/queries/kdp";
@@ -1028,6 +1034,21 @@ export function registerTools(server: McpServer) {
       annotations: DELETE,
     },
     ({ taskId }) => deleteKdpTask(taskId),
+  );
+
+  defineTool(
+    server,
+    "shift_kdp_planned_week",
+    {
+      title: "Shift a planned KDP week",
+      description:
+        'Moves every task of an account\'s "planned" lane in a week (done ones too) to the ' +
+        "following week, after the tasks already there, keeping their order. Can be undone " +
+        "from the activity log.",
+      inputSchema: z.object({ week: kdpWeek, account: kdpAccount }),
+      annotations: WRITE,
+    },
+    ({ week, account }) => shiftKdpPlannedWeek({ week, account }),
   );
 
   // ---- KDP books ----

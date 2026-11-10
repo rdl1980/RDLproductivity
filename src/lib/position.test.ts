@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { positionAfter, positionBetween, positionsFor } from "./position";
+import { positionAfter, positionBetween, positionsAfter, positionsFor } from "./position";
 
 describe("position", () => {
   it("generates ascending positions", () => {
@@ -28,5 +28,14 @@ describe("position", () => {
       expect(next < head).toBe(true);
       head = next;
     }
+  });
+});
+
+describe("positionsAfter", () => {
+  it("appends ascending positions after the last one", () => {
+    const last = positionAfter(null);
+    const next = positionsAfter(last, 3);
+    expect(next).toHaveLength(3);
+    expect([last, ...next]).toEqual([last, ...next].sort());
   });
 });

@@ -13,6 +13,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import {
+  ArrowDownToLineIcon,
   BookOpenIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -49,7 +50,7 @@ import {
   type SlotLimits,
   slotUsage,
 } from "@/lib/kdp-slots";
-import { positionAfter } from "@/lib/position";
+import { positionAfter, positionsAfter } from "@/lib/position";
 import { cn } from "@/lib/utils";
 import {
   createKdpTask,
@@ -57,6 +58,7 @@ import {
   moveKdpTask,
   setKdpSlotAdjustment,
   setKdpSlotLimits,
+  shiftKdpPlannedWeek,
   updateKdpTask,
 } from "@/server/actions/kdp";
 import type { ActionResult } from "@/server/actions/result";
@@ -165,6 +167,28 @@ export function KdpCalendarView({
     void optimistic(patch(task.id, { done }), patch(task.id, { done: task.done }), () =>
       updateKdpTask({ id: task.id, done }),
     );
+  }
+
+  /** The whole "Pianificato" cell to the following week, after what is already there. */
+  async function shiftPlanned(week: string, account: KdpAccount) {
+    const moving = cellTasks(tasks, week, account, "planned");
+    if (moving.length === 0) return;
+    const next = addWeeks(week, 1);
+    const last = cellTasks(tasks, next, account, "planned").at(-1);
+    const positions = positionsAfter(last?.position ?? null, moving.length);
+    const target = new Map(moving.map((task, i) => [task.id, positions[i]]));
+    const result = await optimistic(
+      (current) =>
+        current.map((task) =>
+          target.has(task.id) ? { ...task, week: next, position: target.get(task.id)! } : task,
+        ),
+      (current) => current.map((task) => moving.find((m) => m.id === task.id) ?? task),
+      () => shiftKdpPlannedWeek({ week, account }),
+    );
+    if (result.ok)
+      toast.success(
+        `${moving.length === 1 ? "1 attività spostata" : `${moving.length} attività spostate`} alla settimana ${weekRangeLabel(next)}`,
+      );
   }
 
   async function adjustSlot(account: KdpAccount, week: string, format: KdpFormat, value: number) {
@@ -374,6 +398,11 @@ export function KdpCalendarView({
                               }
                               onEditLimits={() => setEditingLimits(true)}
                             />
+                          ) : cellTasks(tasks, week, account.value, "planned").length > 0 ? (
+                            <ShiftButton
+                              label={`Sposta le attività pianificate di ${account.label} alla settimana dopo`}
+                              onShift={() => void shiftPlanned(week, account.value)}
+                            />
                           ) : null
                         }
                       >
@@ -442,6 +471,23 @@ export function KdpCalendarView({
   );
 }
 
+function ShiftButton({ label, onShift }: { label: string; onShift: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onShift}
+      onPointerDown={(e) => e.stopPropagation()}
+      aria-label={label}
+      title={label}
+      data-testid="kdp-shift"
+      className="flex items-center gap-1 self-end rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
+    >
+      <ArrowDownToLineIcon className="size-3.5" />
+      Settimana dopo
+    </button>
+  );
+}
+
 function Cell({
   id,
   label,
@@ -457,7 +503,7 @@ function Cell({
   /** "Reale" lane: tinted to tell it from the plan. */
   actual: boolean;
   onAdd: (title: string) => void;
-  /** Slots left this week (the "Reale" lane only). */
+  /** Slots left this week ("Reale"), or the shift to next week ("Pianificato"). */
   slots?: React.ReactNode;
   children: React.ReactNode;
 }) {
