@@ -35,7 +35,8 @@ export const SOURCE_COLORS: Record<SaleSource, string> = {
 // --- Import payload ------------------------------------------------------------
 
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data non valida.");
-const count = z.number().int().min(0).max(10_000_000);
+/** KDP nets returns into the day they happen, so a count can be negative. */
+const count = z.number().int().min(-10_000_000).max(10_000_000);
 const money = z.number().min(-1_000_000).max(10_000_000);
 
 /** [date, marketplace, titleKey, ebookUnits, paperbackUnits, hardcoverUnits, kenp,
