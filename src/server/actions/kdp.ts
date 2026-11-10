@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import {
+  accountLabel,
+  addWeeks,
   KDP_ACCOUNT_VALUES,
   KDP_TRACK_VALUES,
   type KdpAccount,
@@ -13,7 +15,7 @@ import {
 } from "@/lib/kdp";
 import { KDP_FORMATS, type KdpFormat } from "@/lib/kdp-books";
 import { adjustmentKey, SLOT_FORMAT_LABELS, slotLimitsSchema } from "@/lib/kdp-slots";
-import { positionAfter, positionBetween } from "@/lib/position";
+import { positionAfter, positionBetween, positionsAfter } from "@/lib/position";
 import { logActivity, q, snapshot } from "@/server/activity";
 import { db } from "@/server/db";
 import { getKdpSlotSettings, SLOT_ADJUST_KEY, SLOT_LIMITS_KEY } from "@/server/queries/kdp";
@@ -248,6 +250,50 @@ export async function moveKdpTask(
   });
   done();
   return ok({ position });
+}
+
+const shiftSchema = z.object({ week: weekSchema, account: accountSchema });
+
+/**
+ * Moves every task of a "Pianificato" cell to the following week, after the
+ * ones already there, keeping their order. Done tasks move too.
+ */
+export async function shiftKdpPlannedWeek(
+  input: z.input<typeof shiftSchema>,
+): Promise<ActionResult<{ week: string; tasks: KdpTaskResult[] }>> {
+  if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
+  const { data, error } = parse(shiftSchema, input);
+  if (!data) return fail(error);
+
+  const next = addWeeks(data.week, 1);
+  const tasks = await db.kdpTask.findMany({
+    where: { week: weekDate(data.week), account: data.account, track: "planned" },
+    orderBy: { position: "asc" },
+  });
+  if (tasks.length === 0) return fail("Nessuna attività pianificata in questa settimana.");
+  const positions = positionsAfter(await lastPosition(next, data.account, "planned"), tasks.length);
+
+  const moved = await db.$transaction(
+    tasks.map((task, i) =>
+      db.kdpTask.update({
+        where: { id: task.id },
+        data: { week: weekDate(next), position: positions[i] },
+      }),
+    ),
+  );
+  await logActivity({
+    kind: "kdp.shift",
+    summary: `${tasks.length === 1 ? "1 attività pianificata" : `${tasks.length} attività pianificate`} di ${q(accountLabel(data.account))} spostate dalla settimana del ${data.week} a quella del ${next}`,
+    entityIds: tasks.map((task) => task.id),
+    undo: tasks.map((task) => ({
+      op: "update" as const,
+      model: "kdpTask" as const,
+      id: task.id,
+      data: snapshot({ week: task.week, position: task.position }),
+    })),
+  });
+  done();
+  return ok({ week: next, tasks: moved.map(toResult) });
 }
 
 export async function deleteKdpTask(id: string): Promise<ActionResult> {

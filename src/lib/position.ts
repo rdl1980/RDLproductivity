@@ -19,3 +19,8 @@ export function positionAfter(last: string | null): string {
 export function positionsFor(n: number): string[] {
   return generateNKeysBetween(null, null, n);
 }
+
+/** `n` ascending positions appended after the current last one. */
+export function positionsAfter(last: string | null, n: number): string[] {
+  return generateNKeysBetween(last, null, n);
+}
