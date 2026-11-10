@@ -220,6 +220,18 @@ describe("payload", () => {
     expect(decoded.rows[0][6]).toBe(426);
   });
 
+  it("accepts the negative units of a return", () => {
+    const result = salesPayloadSchema.safeParse({
+      v: 1,
+      kind: "sales",
+      currency: "EUR",
+      from: "2026-11-01",
+      to: "2026-11-09",
+      rows: [["2026-11-08", "Amazon.com", "PRINT=B0ABCDEFGH::", 0, -1, 0, 0, -3.1, 0, -3.1, 0, 0]],
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rejects an inverted range", () => {
     const result = salesPayloadSchema.safeParse({
       v: 1,
