@@ -25,6 +25,7 @@ export function generatedScripts(): Record<string, string> {
       scraperSourceWith({
         deliver: '(hash) => finish({ type: "result", hash })',
         fail: '(message) => finish({ type: "result", error: message })',
+        progress: '(text) => send({ type: "progress", text })',
         // The background opened the page itself.
         onPage: "true",
       }),
