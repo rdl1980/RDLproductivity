@@ -21,14 +21,27 @@
     "Hardcover": "hardcover", "Copertina rigida": "hardcover",
   };
   const STATUS = /^(Draft|Bozza|Live|Online|Pubblicato|In review|In revisione|Publishing|In pubblicazione|Blocked|Bloccato|Unpublished|Non pubblicato)$/i;
-  const firstId = () => document.querySelector(ROWS)?.id;
+  const started = Date.now();
+  const elapsed = () => Math.round((Date.now() - started) / 1000) + " s";
+  // What the table shows: first and last row and how many. Switching to 50 rows
+  // keeps the first book, so the first row alone would not tell the change.
+  const shown = () => {
+    const rows = document.querySelectorAll(ROWS);
+    return rows.length + "|" + (rows[0]?.id ?? "") + "|" + (rows[rows.length - 1]?.id ?? "");
+  };
+  // Until the table changes, then until it stays the same for half a second.
   async function waitChange(before) {
-    for (let i = 0; i < 60; i++) {
+    let current = shown();
+    for (let i = 0; i < 60 && current === before; i++) {
       await sleep(250);
-      const id = firstId();
-      if (id && id !== before) break;
+      current = shown();
     }
-    await sleep(800);
+    for (let i = 0; i < 20; i++) {
+      await sleep(250);
+      const next = shown();
+      if (next === current) break;
+      current = next;
+    }
   }
   function parse() {
     return [...document.querySelectorAll(ROWS)].map((row) => {
@@ -50,22 +63,24 @@
       return { kdpId: row.id, title, series, author, formats: formats.filter((f) => f.status || f.asin) };
     }).filter((b) => b.kdpId && b.title);
   }
+  ((text) => send({ type: "progress", text }))("Bookshelf aperto (" + elapsed() + ")");
   const perPage = document.querySelector("#refreshedbookshelftable-records-per-page-dropdown-option");
   if (perPage && perPage.value !== "50") {
-    const before = firstId();
+    const before = shown();
     perPage.value = "50";
     perPage.dispatchEvent(new Event("change", { bubbles: true }));
     await waitChange(before);
-    await sleep(1500);
   }
   const page1 = document.querySelector(".a-pagination a[href='#1']");
-  if (page1 && !page1.closest(".a-selected")) { const b = firstId(); page1.click(); await waitChange(b); }
+  if (page1 && !page1.closest(".a-selected")) { const b = shown(); page1.click(); await waitChange(b); }
+  const pages = [...document.querySelectorAll(".a-pagination li")].filter((li) => /^\d+$/.test(li.innerText.trim())).length || 1;
   const books = new Map();
-  for (let guard = 0; guard < 100; guard++) {
+  for (let page = 1; page <= 100; page++) {
     for (const book of parse()) books.set(book.kdpId, book);
+    ((text) => send({ type: "progress", text }))("Pagina " + page + " di " + Math.max(pages, page) + ": " + books.size + " libri (" + elapsed() + ")");
     const next = document.querySelector(".a-pagination li.a-last:not(.a-disabled) a");
     if (!next) break;
-    const before = firstId();
+    const before = shown();
     next.click();
     await waitChange(before);
   }

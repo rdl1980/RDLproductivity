@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "RDL KDP Sync",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Aggiorna libri e vendite KDP in RDL Productivity con un clic, o da solo ogni ora, dal browser in cui sei collegato a KDP.",
   "permissions": ["tabs", "scripting", "storage", "alarms"],
   "host_permissions": [
