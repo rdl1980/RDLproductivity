@@ -107,7 +107,16 @@ const dayMonthLabel = (day: string) =>
   );
 
 type BookColumn =
-  "title" | "ebook" | "paperback" | "hardcover" | "kenp" | "royalty" | "ads" | "net" | "first";
+  | "title"
+  | "ebook"
+  | "paperback"
+  | "hardcover"
+  | "kenp"
+  | "royalty"
+  | "ads"
+  | "net"
+  | "first"
+  | "last";
 type BookSort = { column: BookColumn; desc: boolean };
 
 /** Column header of the books table: a click sorts by it, a second click reverses. */
@@ -398,6 +407,11 @@ export function SalesView({
   // --- Derived datasets ---------------------------------------------------------
   const firstSale = new Map<string, string>();
   for (const r of records) if (!firstSale.has(r.book)) firstSale.set(r.book, r.d);
+  // Last day with copies or pages read: a return alone is not a sale.
+  const lastSale = new Map<string, string>();
+  for (const r of records) if (r.eu + r.pu + r.hu > 0 || r.k > 0) lastSale.set(r.book, r.d);
+  const dayLabel = (day: string | undefined) =>
+    day ? `${bucketLabel(day, "day")} ${day.slice(0, 4)}` : "–";
   const sourceSeries = (list: SaleSource[]): Series[] =>
     list
       .filter((s) => sources.has(s))
@@ -475,6 +489,8 @@ export function SalesView({
       case "first":
         // Books without a first sale go last either way.
         return firstSale.get(key) ?? (bookSort.desc ? "" : "9999");
+      case "last":
+        return lastSale.get(key) ?? (bookSort.desc ? "" : "9999");
     }
   };
   const sortBooks = (rows: [string, Sums][]) =>
@@ -931,6 +947,12 @@ export function SalesView({
                   column="first"
                   label="Prima vendita"
                 />
+                <SortHeader
+                  sort={bookSort}
+                  onSort={setBookSort}
+                  column="last"
+                  label="Ultima vendita"
+                />
               </tr>
             </thead>
             <tbody>
@@ -1023,12 +1045,11 @@ export function SalesView({
                         label={`Tendenza di ${book?.title ?? key}`}
                       />
                     </td>
+                    <td className="py-2 pr-3 text-muted-foreground tabular-nums">
+                      {dayLabel(firstSale.get(key))}
+                    </td>
                     <td className="py-2 text-muted-foreground tabular-nums">
-                      {firstSale.get(key)
-                        ? bucketLabel(firstSale.get(key)!, "day") +
-                          " " +
-                          firstSale.get(key)!.slice(0, 4)
-                        : "–"}
+                      {dayLabel(lastSale.get(key))}
                     </td>
                   </tr>
                 );
