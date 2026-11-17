@@ -177,6 +177,15 @@ test("the books table sorts by any column", async ({ page }) => {
   const descending = await titles();
   expect(descending).toEqual(sorted(descending, true));
   await expect(header("Royalty")).toHaveAttribute("aria-sort", "none");
+
+  // Most recent sale first: every row's last sale is no later than the one above.
+  await header("Ultima vendita").getByRole("button").click();
+  await expect(header("Ultima vendita")).toHaveAttribute("aria-sort", "descending");
+  const lastSales = await table
+    .locator("tbody tr")
+    .evaluateAll((rows) => rows.map((r) => r.querySelector("td:last-child")?.textContent ?? ""));
+  expect(lastSales.length).toBeGreaterThan(0);
+  expect(lastSales[0]).toMatch(/\d{4}$/);
 });
 
 test("Vendite opens on Rosario, Ilaria and NonnoPeppe", async ({ page }) => {
