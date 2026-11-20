@@ -15,6 +15,7 @@ import {
 import {
   BotIcon,
   ChevronLeftIcon,
+  FeatherIcon,
   ChevronRightIcon,
   PaletteIcon,
   PlusIcon,
@@ -29,6 +30,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  type ContentProjectConfig,
   cycleWeekOf,
   defaultLayers,
   emptySlots,
@@ -38,10 +40,8 @@ import {
   plannedSlots,
   PLATFORM_LABELS,
   type Platform,
-  PLATFORMS,
   type PlanRow,
   SLOT_LABELS,
-  SLOTS,
   type Slot,
   textOn,
   WEEKDAYS,
@@ -55,11 +55,13 @@ import type { ContentPieceDTO, ContentRubricDTO } from "@/server/queries/content
 import { ContentTabs } from "./content-tabs";
 import { dayLabel, LayerBadge, pieceVisible, StatusText, visibleLayers } from "./content-ui";
 import { type PieceDraft, PieceDialog } from "./piece-dialog";
+import { ContentProjectProvider, useContentProject } from "./project-context";
 import { PlanDialog, RubricsDialog } from "./settings-dialogs";
 
 export type ContentView = "settimana" | "mese" | "elenco";
 
 type Props = {
+  project: ContentProjectConfig;
   view: ContentView;
   /** First day of the week shown (yesterday by default), or first day of the month shown. */
   anchor: string;
@@ -88,10 +90,20 @@ const shiftMonth = (anchor: string, step: number) => {
   const [y, m] = anchor.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1 + step, 1)).toISOString().slice(0, 10);
 };
-const href = (view: ContentView, date: string) => `/robotti?view=${view}&date=${date}`;
+const viewHref = (path: string, view: ContentView, date: string) =>
+  `${path}?view=${view}&date=${date}`;
 
 export function ContentCalendarView(props: Props) {
-  const { view, anchor, today, from, to, plan, rubrics, todoCount } = props;
+  return (
+    <ContentProjectProvider value={props.project}>
+      <CalendarView {...props} />
+    </ContentProjectProvider>
+  );
+}
+
+function CalendarView(props: Props) {
+  const { project, view, anchor, today, from, to, plan, rubrics, todoCount } = props;
+  const href = (v: ContentView, date: string) => viewHref(project.path, v, date);
   const router = useRouter();
   // Local copy for optimistic moves; reset when the server sends new data.
   const [source, setSource] = useState(props.pieces);
@@ -100,7 +112,7 @@ export function ContentCalendarView(props: Props) {
     setSource(props.pieces);
     setPieces(props.pieces);
   }
-  const [platforms, setPlatforms] = useState<ReadonlySet<Platform>>(new Set(PLATFORMS));
+  const [platforms, setPlatforms] = useState<ReadonlySet<Platform>>(new Set(project.platforms));
   const [openCode, setOpenCode] = useState<string | null>(null);
   const [draft, setDraft] = useState<PieceDraft | null>(null);
   const [rubricsOpen, setRubricsOpen] = useState(false);
@@ -124,10 +136,10 @@ export function ContentCalendarView(props: Props) {
         })),
       ).filter(
         (s) =>
-          platforms.size === 3 ||
-          defaultLayers(s.rubric, s.slot).some((l) => platforms.has(l.platform)),
+          platforms.size === project.platforms.length ||
+          defaultLayers(s.rubric, s.slot, project.value).some((l) => platforms.has(l.platform)),
       ),
-    [plan, from, to, pieces, platforms],
+    [plan, from, to, pieces, platforms, project],
   );
 
   function togglePlatform(platform: Platform) {
@@ -189,9 +201,9 @@ export function ContentCalendarView(props: Props) {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 sm:p-6">
       <PageHeader
-        icon={BotIcon}
-        title="Robotti & Robotte"
-        description="Calendario editoriale del canale: una scheda per contenuto, un layer per piattaforma. Claude crea e aggiorna le schede via MCP."
+        icon={project.value === "scrittore" ? FeatherIcon : BotIcon}
+        title={project.label}
+        description={project.description}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => setRubricsOpen(true)}>
@@ -205,7 +217,11 @@ export function ContentCalendarView(props: Props) {
             <Button
               size="sm"
               onClick={() =>
-                setDraft({ date: today, slot: "19:00", rubric: rubrics[0]?.value ?? "" })
+                setDraft({
+                  date: today,
+                  slot: project.slots[project.slots.length - 1],
+                  rubric: rubrics[0]?.value ?? "",
+                })
               }
             >
               <PlusIcon />
@@ -215,7 +231,7 @@ export function ContentCalendarView(props: Props) {
         }
       />
 
-      <ContentTabs current="calendar" todoCount={todoCount} />
+      <ContentTabs project={project} current="calendar" todoCount={todoCount} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav aria-label="Vista" className="inline-flex rounded-lg bg-muted p-[3px] text-sm">
@@ -241,25 +257,27 @@ export function ContentCalendarView(props: Props) {
             </Link>
           ))}
         </nav>
-        <div
-          role="group"
-          aria-label="Piattaforme mostrate"
-          className="inline-flex gap-1"
-          data-testid="platform-toggles"
-        >
-          {PLATFORMS.map((p) => (
-            <Button
-              key={p}
-              type="button"
-              size="sm"
-              variant={platforms.has(p) ? "default" : "outline"}
-              aria-pressed={platforms.has(p)}
-              onClick={() => togglePlatform(p)}
-            >
-              {PLATFORM_LABELS[p]}
-            </Button>
-          ))}
-        </div>
+        {project.platforms.length > 1 && (
+          <div
+            role="group"
+            aria-label="Piattaforme mostrate"
+            className="inline-flex gap-1"
+            data-testid="platform-toggles"
+          >
+            {project.platforms.map((p) => (
+              <Button
+                key={p}
+                type="button"
+                size="sm"
+                variant={platforms.has(p) ? "default" : "outline"}
+                aria-pressed={platforms.has(p)}
+                onClick={() => togglePlatform(p)}
+              >
+                {PLATFORM_LABELS[p]}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
 
       {view !== "elenco" && (
@@ -280,7 +298,7 @@ export function ContentCalendarView(props: Props) {
           <h2 className="ml-1 text-lg font-semibold" data-testid="content-range">
             {title}
           </h2>
-          {view === "settimana" && (
+          {view === "settimana" && project.cycles && (
             <span
               className="rounded-md bg-accent px-2 py-0.5 text-sm font-semibold text-accent-foreground"
               data-testid="cycle-week"
@@ -371,6 +389,7 @@ function WeekGrid({
   onMove: (code: string, date: string, slot: Slot) => void;
   onAdd: AddPiece;
 }) {
+  const project = useContentProject();
   const days = Array.from({ length: 7 }, (_, i) => addDays(from, i));
   const [dragging, setDragging] = useState<ContentPieceDTO | null>(null);
   const sensors = useSensors(
@@ -421,7 +440,7 @@ function WeekGrid({
               </div>
             ))}
           </div>
-          {SLOTS.map((slot) => (
+          {project.slots.map((slot) => (
             <div key={slot} role="row" className="contents">
               <div role="rowheader" className="px-1 py-2 text-sm font-semibold">
                 {SLOT_LABELS[slot]}
@@ -658,6 +677,7 @@ function MonthGrid({
   pieces: ContentPieceDTO[];
   rubricOf: (value: string) => ContentRubricDTO | undefined;
 }) {
+  const project = useContentProject();
   const days: string[] = [];
   for (let d = from; d <= to; d = addDays(d, 1)) days.push(d);
   const month = anchor.slice(0, 7);
@@ -674,7 +694,7 @@ function MonthGrid({
           return (
             <Link
               key={day}
-              href={href("settimana", day)}
+              href={viewHref(project.path, "settimana", day)}
               data-testid="month-day"
               aria-label={`${dayLabel(day)}: ${own.length} contenuti`}
               className={cn(

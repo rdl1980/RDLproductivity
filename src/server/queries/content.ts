@@ -1,9 +1,11 @@
 import "server-only";
 
 import {
+  CONTENT_PROJECTS,
+  type ContentProject,
   type Cycle,
   cycleWeekOf,
-  DEFAULT_PLAN,
+  DEFAULT_PLANS,
   effectiveStatus,
   emptySlots,
   type LayerDetails,
@@ -25,7 +27,9 @@ import { addDays } from "@/lib/kdp-sales";
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/server/db";
 
-export const PLAN_KEY = "content.plan";
+/** Where each project's weekly plan is saved (Robotti keeps its original key). */
+export const planKey = (project: ContentProject) =>
+  project === "robotti" ? "content.plan" : `content.plan.${project}`;
 /** To-do items marked done that leave the piece unchanged: `[{ key, at }]`. */
 export const TODO_DONE_KEY = "content.todo.done";
 
@@ -96,6 +100,8 @@ export type ContentPieceDTO = {
 export type ContentHistoryDTO = { id: string; actor: string; summary: string; at: string };
 
 export type ContentRubricDTO = { value: string; name: string; color: string };
+
+const inProject = (project?: ContentProject) => (project ? { rubricRef: { project } } : {});
 
 export const pieceInclude = {
   layers: { include: { metrics: { orderBy: { measuredAt: "asc" } } } },
@@ -182,15 +188,19 @@ export async function getContentPieces({
   from,
   to,
   includeArchived = false,
+  project,
 }: {
   from?: string;
   to?: string;
   includeArchived?: boolean;
+  /** Absent: every project. */
+  project?: ContentProject;
 } = {}): Promise<ContentPieceDTO[]> {
   const rows = await db.contentPiece.findMany({
     where: {
       releaseDate: { ...(from ? { gte: date(from) } : {}), ...(to ? { lte: date(to) } : {}) },
       ...(includeArchived ? {} : { archivedAt: null }),
+      ...inProject(project),
     },
     include: pieceInclude,
     orderBy: [{ releaseDate: "asc" }, { slot: "asc" }, { code: "asc" }],
@@ -217,31 +227,48 @@ export async function getContentPiece(
   };
 }
 
-export async function getContentRubrics(): Promise<ContentRubricDTO[]> {
+export async function getContentRubrics(project?: ContentProject): Promise<ContentRubricDTO[]> {
   return db.contentRubric.findMany({
+    where: project ? { project } : {},
     orderBy: [{ position: "asc" }, { name: "asc" }],
     select: { value: true, name: true, color: true },
   });
 }
 
-/** The saved weekly plan, or the spec's default until one is saved. */
-export async function getContentPlan(): Promise<PlanRow[]> {
-  const setting = await db.appSetting.findUnique({ where: { key: PLAN_KEY } });
-  if (!setting) return DEFAULT_PLAN;
+/** The project of a rubric, or null when it does not exist. */
+export async function rubricProject(rubric: string): Promise<ContentProject | null> {
+  const row = await db.contentRubric.findUnique({ where: { value: rubric } });
+  return row ? (row.project as ContentProject) : null;
+}
+
+/** The project of a piece, from its rubric. */
+export async function pieceProject(code: string): Promise<ContentProject | null> {
+  const row = await db.contentPiece.findUnique({
+    where: { code },
+    select: { rubricRef: { select: { project: true } } },
+  });
+  return row ? (row.rubricRef.project as ContentProject) : null;
+}
+
+/** The saved weekly plan, or the default one until one is saved. */
+export async function getContentPlan(project: ContentProject = "robotti"): Promise<PlanRow[]> {
+  const fallback = DEFAULT_PLANS[project];
+  const setting = await db.appSetting.findUnique({ where: { key: planKey(project) } });
+  if (!setting) return fallback;
   try {
     const parsed = planSchema.safeParse(JSON.parse(setting.value));
-    return parsed.success ? parsed.data : DEFAULT_PLAN;
+    return parsed.success ? parsed.data : fallback;
   } catch {
-    return DEFAULT_PLAN;
+    return fallback;
   }
 }
 
-/** Planned slots from `from` to `to` that no piece fills. */
-export async function getEmptySlots(from: string, to: string) {
+/** Planned slots of a project from `from` to `to` that no piece fills. */
+export async function getEmptySlots(from: string, to: string, project: ContentProject = "robotti") {
   const [plan, pieces] = await Promise.all([
-    getContentPlan(),
+    getContentPlan(project),
     db.contentPiece.findMany({
-      where: { releaseDate: { gte: date(from), lte: date(to) } },
+      where: { releaseDate: { gte: date(from), lte: date(to) }, ...inProject(project) },
       select: { releaseDate: true, slot: true, rubric: true, status: true, archivedAt: true },
     }),
   ]);
@@ -273,12 +300,16 @@ export async function getTodoDone(): Promise<TodoDone[]> {
 
 export type ContentTodo = { open: TodoItem[]; done: (TodoItem & { doneAt: string })[] };
 
-/** The "Da fare" tab: pieces of the last 60 days and the next 7, and empty slots. */
-export async function getContentTodo(now: Date, today: string): Promise<ContentTodo> {
+/** The "Da fare" tab of a project: pieces of the last 60 days and the next 7, and empty slots. */
+export async function getContentTodo(
+  now: Date,
+  today: string,
+  project: ContentProject,
+): Promise<ContentTodo> {
   const [pieces, empty, rubrics, doneList] = await Promise.all([
-    getContentPieces({ from: addDays(today, -60), to: addDays(today, 7) }),
-    getEmptySlots(today, addDays(today, 7)),
-    getContentRubrics(),
+    getContentPieces({ from: addDays(today, -60), to: addDays(today, 7), project }),
+    getEmptySlots(today, addDays(today, 7), project),
+    getContentRubrics(project),
     getTodoDone(),
   ]);
   const names = new Map(rubrics.map((r) => [r.value, r.name]));
@@ -315,4 +346,17 @@ export async function getContentTodo(now: Date, today: string): Promise<ContentT
       return at ? [{ ...item, doneAt: at }] : [];
     }),
   };
+}
+
+/** Open to-do items of every project, each with its project (Telegram reminder and bot). */
+export async function getAllContentTodo(
+  now: Date,
+  today: string,
+): Promise<{ project: ContentProject; todo: ContentTodo }[]> {
+  return Promise.all(
+    CONTENT_PROJECTS.map(async (project) => ({
+      project,
+      todo: await getContentTodo(now, today, project),
+    })),
+  );
 }

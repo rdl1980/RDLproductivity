@@ -1,27 +1,30 @@
 import { CalendarRangeIcon, ListChecksIcon } from "lucide-react";
 import Link from "next/link";
 
+import type { ContentProjectConfig } from "@/lib/content";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { key: "calendar", href: "/robotti", label: "Calendario", icon: CalendarRangeIcon },
-  { key: "todo", href: "/robotti/da-fare", label: "Da fare", icon: ListChecksIcon },
+  { key: "calendar", suffix: "", label: "Calendario", icon: CalendarRangeIcon },
+  { key: "todo", suffix: "/da-fare", label: "Da fare", icon: ListChecksIcon },
 ] as const;
 
-/** Switches between the content calendar and the to-do list, as the KDP tabs do. */
+/** Switches between a content calendar and its to-do list, as the KDP tabs do. */
 export function ContentTabs({
+  project,
   current,
   todoCount,
 }: {
+  project: ContentProjectConfig;
   current: (typeof TABS)[number]["key"];
   todoCount: number;
 }) {
   return (
-    <nav aria-label="Sezioni Robotti & Robotte" className="flex flex-wrap gap-1">
-      {TABS.map(({ key, href, label, icon: Icon }) => (
+    <nav aria-label={`Sezioni ${project.label}`} className="flex flex-wrap gap-1">
+      {TABS.map(({ key, suffix, label, icon: Icon }) => (
         <Link
           key={key}
-          href={href}
+          href={`${project.path}${suffix}`}
           aria-current={key === current ? "page" : undefined}
           className={cn(
             "flex items-center gap-1.5 border-b-2 px-3 py-0.5 text-sm font-medium transition-colors",

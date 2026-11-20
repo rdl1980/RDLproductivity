@@ -389,11 +389,15 @@ model KdpRank {
 model ContentRubric {
   /// Stable key, e.g. "il-trono".
   value    String         @id
+  /// "robotti" | "scrittore": the calendar the rubric (and its pieces) belong to. Checked in the database.
+  project  String         @default("robotti")
   name     String
   /// "#RRGGBB"
   color    String
   position Int            @default(0)
   pieces   ContentPiece[]
+
+  @@index([project])
 }
 
 model ContentPiece {
@@ -404,7 +408,7 @@ model ContentPiece {
   rubric          String
   rubricRef       ContentRubric    @relation(fields: [rubric], references: [value], onUpdate: Cascade)
   releaseDate     DateTime         @db.Date
-  /// "13:00" | "19:00". Checked in the database.
+  /// "13:00" | "18:00" | "19:00". Checked in the database.
   slot            String
   /// Manual status: idea … pronto, or scartato ("programmato"/"pubblicato" come from the layers).
   status          String           @default("idea")

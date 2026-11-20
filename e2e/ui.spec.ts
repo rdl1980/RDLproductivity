@@ -76,6 +76,8 @@ test("accessibility: no serious axe violations on the main pages", async ({ page
     "/robotti?view=mese",
     "/robotti?view=elenco",
     "/robotti/da-fare",
+    "/scrittore",
+    "/scrittore/da-fare",
     "/riepilogo",
   ]) {
     await page.goto(path);

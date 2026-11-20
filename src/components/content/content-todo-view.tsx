@@ -1,6 +1,6 @@
 "use client";
 
-import { BotIcon, RotateCcwIcon } from "lucide-react";
+import { BotIcon, FeatherIcon, RotateCcwIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { type TodoItem, type TodoKind, todoKey } from "@/lib/content";
+import { type ContentProjectConfig, type TodoItem, type TodoKind, todoKey } from "@/lib/content";
 import { completeContentTodo, reopenContentTodo } from "@/server/actions/content";
 import type { ActionResult } from "@/server/actions/result";
 import type { ReminderStatus } from "@/server/content-reminder";
@@ -17,6 +17,7 @@ import type { ContentRubricDTO, ContentTodo } from "@/server/queries/content";
 import { ContentTabs } from "./content-tabs";
 import { dayLabel } from "./content-ui";
 import { type PieceDraft, PieceDialog } from "./piece-dialog";
+import { ContentProjectProvider } from "./project-context";
 import { ReminderSettings } from "./reminder-settings";
 
 const NETWORK = "Errore di rete, modifica annullata.";
@@ -30,15 +31,22 @@ const KIND_HELP: Record<TodoKind, string> = {
   slot: "Slot vuoto: il piano prevede una rubrica e nessuna scheda la copre.",
 };
 
-export function ContentTodoView({
-  todo,
-  rubrics,
-  reminder,
-}: {
+type Props = {
+  project: ContentProjectConfig;
   todo: ContentTodo;
   rubrics: ContentRubricDTO[];
   reminder: ReminderStatus;
-}) {
+};
+
+export function ContentTodoView(props: Props) {
+  return (
+    <ContentProjectProvider value={props.project}>
+      <TodoView {...props} />
+    </ContentProjectProvider>
+  );
+}
+
+function TodoView({ project, todo, rubrics, reminder }: Props) {
   const router = useRouter();
   // Optimistic: checked items leave the list at once, and come back on error.
   const [source, setSource] = useState(todo);
@@ -87,11 +95,11 @@ export function ContentTodoView({
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
       <PageHeader
-        icon={BotIcon}
-        title="Robotti & Robotte"
+        icon={project.value === "scrittore" ? FeatherIcon : BotIcon}
+        title={project.label}
         description="Cosa c'è da fare sul calendario editoriale: dagli ultimi 60 giorni ai prossimi 7."
       />
-      <ContentTabs current="todo" todoCount={open.length} />
+      <ContentTabs project={project} current="todo" todoCount={open.length} />
 
       <section aria-label="Da fare" className="rounded-xl border bg-card">
         {open.length === 0 ? (

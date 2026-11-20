@@ -1,20 +1,9 @@
 import type { Metadata } from "next";
 
-import { ContentTodoView } from "@/components/content/content-todo-view";
-import { CONTENT_TIME_ZONE, dayIn } from "@/lib/content";
-import { getReminderStatus } from "@/server/content-reminder";
-import { getContentRubrics, getContentTodo } from "@/server/queries/content";
-import { requireSession } from "@/server/session";
+import { ContentTodoPage } from "@/components/content/content-pages";
 
 export const metadata: Metadata = { title: "Da fare · Robotti & Robotte · RDL Productivity" };
 
-export default async function ContentTodoPage() {
-  await requireSession();
-  const now = new Date();
-  const [todo, rubrics, reminder] = await Promise.all([
-    getContentTodo(now, dayIn(now, CONTENT_TIME_ZONE)),
-    getContentRubrics(),
-    getReminderStatus(),
-  ]);
-  return <ContentTodoView todo={todo} rubrics={rubrics} reminder={reminder} />;
+export default function RobottiTodoPage() {
+  return <ContentTodoPage project="robotti" />;
 }
