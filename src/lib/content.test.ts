@@ -6,6 +6,8 @@ import {
   DEFAULT_PLAN,
   defaultLayers,
   effectiveStatus,
+  PROJECTS,
+  WRITER_DEFAULT_PLAN,
   emptySlots,
   isoInZone,
   isoWeekday,
@@ -244,5 +246,29 @@ describe("to-do keys", () => {
     expect(todoKey({ kind: "slot", code: null, platform: null, date: slot.date, slot })).toBe(
       "slot|||2026-11-02|19:00|il-trono",
     );
+  });
+});
+
+describe("writer project", () => {
+  it("gives every piece one Instagram layer, its format from the rubric", () => {
+    expect(defaultLayers("notizia-ai-dal-loop", "18:00", "scrittore")).toEqual([
+      { platform: "instagram", details: { kind: "Carosello" } },
+    ]);
+    expect(defaultLayers("dietro-le-quinte", "18:00", "scrittore")).toEqual([
+      { platform: "instagram", details: { kind: "Reel" } },
+    ]);
+    // A rubric added later: a post.
+    expect(defaultLayers("nuova-rubrica", "18:00", "scrittore")).toEqual([
+      { platform: "instagram", details: { kind: "Post" } },
+    ]);
+  });
+
+  it("plans one rubric a day at 18:00, every week", () => {
+    const week = plannedSlots(WRITER_DEFAULT_PLAN, "2026-11-23", "2026-11-29");
+    expect(week).toHaveLength(7);
+    expect(new Set(week.map((s) => s.slot))).toEqual(new Set(["18:00"]));
+    expect(new Set(week.map((s) => s.rubric)).size).toBe(7);
+    expect(week.every((s) => PROJECTS.scrittore.slots.includes(s.slot))).toBe(true);
+    expect(codePrefix("la-parola-della-settimana")).toBe("parola");
   });
 });

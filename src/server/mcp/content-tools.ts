@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 
 import {
+  CONTENT_PROJECTS,
   CYCLES,
   isoInZone,
   LAYER_STATUSES,
@@ -41,7 +42,8 @@ import {
 } from "@/server/queries/content";
 
 /**
- * MCP tools of the Robotti e Robotte calendar. Names and fields are the
+ * MCP tools of the content calendars (Robotti e Robotte, and Rosario Di
+ * Leva's writer profile on Instagram). Names and fields are the
  * Italian ones of the spec (docs/specifiche-calendario-contenuti.md); they map
  * onto the app's actions, so every write is logged with "claude" as author.
  */
@@ -65,6 +67,13 @@ const dateTime = z.iso
   .describe("Data e ora ISO 8601 con fuso, es. 2026-11-02T19:00:00+01:00");
 const code = z.string().min(1).max(60).describe("Codice della scheda, es. ep002");
 const platform = z.enum(PLATFORMS).describe("tiktok, youtube o instagram");
+const progetto = z
+  .enum(CONTENT_PROJECTS)
+  .default("robotti")
+  .describe(
+    "Calendario: robotti (Robotti e Robotte, TikTok/YouTube/Instagram, 13:00 e 19:00) o " +
+      "scrittore (profilo Instagram da scrittore di Rosario Di Leva, 18:00)",
+  );
 
 // --- Input (Italian) → actions ----------------------------------------------------------
 
@@ -129,7 +138,7 @@ const layerSchema = z
     tipo: z
       .string()
       .optional()
-      .describe("YouTube: Short | Video lungo; Instagram: Reel | Carosello | Storia"),
+      .describe("YouTube: Short | Video lungo; Instagram: Post | Carosello | Reel | Storia"),
     titolo_yt: z.string().max(100).optional(),
     descrizione: z.string().optional(),
     capitoli: z.string().optional(),
@@ -323,12 +332,13 @@ export function registerContentTools(define: Define) {
   define(
     "calendario_elenco",
     {
-      title: "Robotti e Robotte: list calendar pieces",
+      title: "Content calendar: list calendar pieces",
       description:
-        "Pieces (schede) of the Robotti e Robotte content calendar between two dates, with their " +
+        "Pieces (schede) of a content calendar between two dates, with their " +
         "platform layers and the latest metrics reading of each. Optional filters: platform " +
         "(active layer), shown status, rubric.",
       inputSchema: z.object({
+        progetto,
         dal: day,
         al: day,
         piattaforma: platform.optional(),
@@ -337,10 +347,10 @@ export function registerContentTools(define: Define) {
       }),
       annotations: READ,
     },
-    async ({ dal, al, piattaforma, stato, rubrica }) => {
+    async ({ progetto, dal, al, piattaforma, stato, rubrica }) => {
       const invalid = range(dal, al);
       if (invalid) return fail(invalid);
-      const pieces = (await getContentPieces({ from: dal, to: al })).filter(
+      const pieces = (await getContentPieces({ from: dal, to: al, project: progetto })).filter(
         (p) =>
           (!piattaforma || p.layers.some((l) => l.platform === piattaforma && l.active)) &&
           (!stato || p.shown.status === stato) &&
@@ -353,17 +363,20 @@ export function registerContentTools(define: Define) {
   define(
     "calendario_slot_vuoti",
     {
-      title: "Robotti e Robotte: empty planned slots",
+      title: "Content calendar: empty planned slots",
       description:
         "Slots the weekly plan expects between two dates (day, time slot, rubric) that no piece " +
         "fills yet, with the A/B/C/D cycle rotation and activation dates applied.",
-      inputSchema: z.object({ dal: day, al: day }),
+      inputSchema: z.object({ progetto, dal: day, al: day }),
       annotations: READ,
     },
-    async ({ dal, al }) => {
+    async ({ progetto, dal, al }) => {
       const invalid = range(dal, al);
       if (invalid) return fail(invalid);
-      const [slots, rubrics] = await Promise.all([getEmptySlots(dal, al), getContentRubrics()]);
+      const [slots, rubrics] = await Promise.all([
+        getEmptySlots(dal, al, progetto),
+        getContentRubrics(progetto),
+      ]);
       const names = new Map(rubrics.map((r) => [r.value, r.name]));
       return ok(
         slots.map((s) => ({
@@ -379,7 +392,7 @@ export function registerContentTools(define: Define) {
   define(
     "contributo_leggi",
     {
-      title: "Robotti e Robotte: read a piece",
+      title: "Content calendar: read a piece",
       description:
         "One piece by code: common fields, every layer with all its metrics readings, vote " +
         "totals and the change history.",
@@ -392,14 +405,16 @@ export function registerContentTools(define: Define) {
   define(
     "contributo_salva",
     {
-      title: "Robotti e Robotte: create or update a piece",
+      title: "Content calendar: create or update a piece",
       description:
         "Creates the piece with this code, or updates it (idempotent, partial: fields not " +
         "passed stay as they are). Creating needs titolo, rubrica, data_uscita and fascia; the " +
-        "default layers follow the rubric and slot (19:00 TikTok+YouTube Short+Instagram Reel, " +
-        "13:00 TikTok+YouTube Short, compilation YouTube long video, carosello Instagram " +
-        "carousel). `layers` updates or activates single platforms. Fields may also be nested " +
-        "in `campi`. Returns the saved piece.",
+        "rubric decides the calendar (see rubriche_elenco) and the fascia must be one of that " +
+        "calendar (robotti 13:00/19:00, scrittore 18:00). Robotti default layers follow the " +
+        "rubric and slot (19:00 TikTok+YouTube Short+Instagram Reel, 13:00 TikTok+YouTube " +
+        "Short, compilation YouTube long video, carosello Instagram carousel); scrittore pieces " +
+        "get one Instagram layer whose tipo follows the rubric. `layers` updates or activates " +
+        "single platforms. Fields may also be nested in `campi`. Returns the saved piece.",
       inputSchema: z
         .object({
           codice: code,
@@ -427,7 +442,7 @@ export function registerContentTools(define: Define) {
   define(
     "layer_aggiorna",
     {
-      title: "Robotti e Robotte: update one platform layer",
+      title: "Content calendar: update one platform layer",
       description:
         "Updates one platform layer of a piece (texts, publication status, times, URL, " +
         "checklist); activates it if it is not active. Returns the saved piece.",
@@ -447,7 +462,7 @@ export function registerContentTools(define: Define) {
   define(
     "metriche_aggiungi",
     {
-      title: "Robotti e Robotte: add a metrics reading",
+      title: "Content calendar: add a metrics reading",
       description:
         "Adds a reading of a layer's numbers (earlier readings stay): views, likes, comments, " +
         "shares, saves, completion %, new followers, watch hours. rilevato_il defaults to now.",
@@ -493,7 +508,7 @@ export function registerContentTools(define: Define) {
   define(
     "voto_registra",
     {
-      title: "Robotti e Robotte: record votes",
+      title: "Content calendar: record votes",
       description:
         "Saves the vote counts per platform (option → count; replaces that platform's counts) " +
         "and, if given, the outcome (esito).",
@@ -520,7 +535,7 @@ export function registerContentTools(define: Define) {
   define(
     "contributo_archivia",
     {
-      title: "Robotti e Robotte: archive a piece",
+      title: "Content calendar: archive a piece",
       description:
         "Hides a piece from the calendar. Nothing is deleted: contributo_ripristina undoes it.",
       inputSchema: z.object({ codice: code }),
@@ -532,7 +547,7 @@ export function registerContentTools(define: Define) {
   define(
     "contributo_ripristina",
     {
-      title: "Robotti e Robotte: restore a piece",
+      title: "Content calendar: restore a piece",
       description: "Brings an archived piece back into the calendar.",
       inputSchema: z.object({ codice: code }),
       annotations: { ...WRITE, idempotentHint: true },
@@ -543,14 +558,14 @@ export function registerContentTools(define: Define) {
   define(
     "rubriche_elenco",
     {
-      title: "Robotti e Robotte: list rubrics",
-      description: "The rubrics (formats) of the channel: value, name and color.",
-      inputSchema: z.object({}),
+      title: "Content calendar: list rubrics",
+      description: "The rubrics (formats) of a calendar: value, name and color.",
+      inputSchema: z.object({ progetto }),
       annotations: READ,
     },
-    async () =>
+    async ({ progetto }) =>
       ok(
-        (await getContentRubrics()).map((r) => ({
+        (await getContentRubrics(progetto)).map((r) => ({
           valore: r.value,
           nome: r.name,
           colore: r.color,
@@ -561,18 +576,25 @@ export function registerContentTools(define: Define) {
   define(
     "rubrica_salva",
     {
-      title: "Robotti e Robotte: add or edit a rubric",
+      title: "Content calendar: add or edit a rubric",
       description:
-        "Adds a rubric, or renames / recolors an existing one (by value). Color as #RRGGBB.",
+        "Adds a rubric to a calendar, or renames / recolors an existing one (by value). Color " +
+        "as #RRGGBB. Values are unique across calendars.",
       inputSchema: z.object({
+        progetto,
         valore: z.string().min(1).max(60).describe("Chiave stabile, es. il-trono"),
         nome: z.string().min(1).max(100),
         colore: z.string().describe("#RRGGBB"),
       }),
       annotations: { ...WRITE, idempotentHint: true },
     },
-    async ({ valore, nome, colore }) => {
-      const result = await saveContentRubric({ value: valore, name: nome, color: colore });
+    async ({ progetto, valore, nome, colore }) => {
+      const result = await saveContentRubric({
+        value: valore,
+        name: nome,
+        color: colore,
+        project: progetto,
+      });
       return result.ok
         ? ok(result.data.map((r) => ({ valore: r.value, nome: r.name, colore: r.color })))
         : result;
@@ -582,16 +604,16 @@ export function registerContentTools(define: Define) {
   define(
     "piano_leggi",
     {
-      title: "Robotti e Robotte: read the weekly plan",
+      title: "Content calendar: read the weekly plan",
       description:
         "The weekly plan that generates the empty slots: one row per day (1 = Monday … 7 = " +
         "Sunday), time slot and rubric, with optional A/B/C/D cycle weeks and activation date.",
-      inputSchema: z.object({}),
+      inputSchema: z.object({ progetto }),
       annotations: READ,
     },
-    async () =>
+    async ({ progetto }) =>
       ok(
-        (await getContentPlan()).map((row) => ({
+        (await getContentPlan(progetto)).map((row) => ({
           giorno: row.weekday,
           nome_giorno: WEEKDAYS[row.weekday - 1],
           fascia: row.slot,
@@ -605,14 +627,14 @@ export function registerContentTools(define: Define) {
   define(
     "piano_salva",
     {
-      title: "Robotti e Robotte: replace the weekly plan",
+      title: "Content calendar: replace the weekly plan",
       description:
         "Replaces the whole weekly plan (read it first with piano_leggi). Two rows in the same " +
         "day and slot mean two pieces there (e.g. Sunday 19:00 compilation and carousel).",
-      inputSchema: z.object({ modello: z.array(planRowIn).max(100) }),
+      inputSchema: z.object({ progetto, modello: z.array(planRowIn).max(100) }),
       annotations: WRITE,
     },
-    async ({ modello }) => {
+    async ({ progetto, modello }) => {
       const result = await saveContentPlan(
         modello.map((row) => ({
           weekday: row.giorno,
@@ -621,6 +643,7 @@ export function registerContentTools(define: Define) {
           ...(row.settimane_ciclo?.length ? { cycles: row.settimane_ciclo } : {}),
           ...(row.attivo_dal ? { activeFrom: row.attivo_dal } : {}),
         })),
+        progetto,
       );
       return result.ok ? ok({ righe: result.data.length }) : result;
     },

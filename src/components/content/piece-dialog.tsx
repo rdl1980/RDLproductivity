@@ -21,14 +21,13 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   CYCLES,
   cycleWeekOf,
+  INSTAGRAM_KINDS,
   LAYER_STATUSES,
   MANUAL_STATUSES,
   PLATFORM_LABELS,
   type Platform,
-  PLATFORMS,
   publishTexts,
   SLOT_LABELS,
-  SLOTS,
   type Slot,
   VIDEO_FORMATS,
   voteTotals,
@@ -43,6 +42,7 @@ import {
   restoreContentPiece,
   saveContentPiece,
 } from "@/server/actions/content";
+import { useContentProject } from "./project-context";
 import type { ActionResult } from "@/server/actions/result";
 import type {
   ContentHistoryDTO,
@@ -294,6 +294,7 @@ function CreateForm({
   pending: boolean;
   onCreate: (input: { code: string; fields: PieceFields }) => void;
 }) {
+  const project = useContentProject();
   return (
     <form
       className="flex flex-col gap-4"
@@ -348,7 +349,7 @@ function CreateForm({
         </Field>
         <Field label="Fascia" htmlFor="new-slot">
           <select id="new-slot" name="slot" defaultValue={draft.slot} className={selectClass}>
-            {SLOTS.map((s) => (
+            {project.slots.map((s) => (
               <option key={s} value={s}>
                 {SLOT_LABELS[s]}
               </option>
@@ -374,6 +375,7 @@ function CommonForm({
   pending: boolean;
   onSave: (fields: PieceFields) => void;
 }) {
+  const project = useContentProject();
   return (
     <form
       className="flex flex-col gap-3"
@@ -388,7 +390,7 @@ function CommonForm({
           releaseDate: String(form.get("releaseDate")),
           slot: String(form.get("slot")) as Slot,
           status: String(form.get("status")) as PieceFields["status"],
-          cycleWeek: cycle as PieceFields["cycleWeek"],
+          ...(project.cycles ? { cycleWeek: cycle as PieceFields["cycleWeek"] } : {}),
           durationSeconds: num(form, "durationSeconds"),
           videoFormat: str(form, "videoFormat") as PieceFields["videoFormat"],
           summary: str(form, "summary"),
@@ -433,28 +435,30 @@ function CommonForm({
         </Field>
         <Field label="Fascia" htmlFor="f-slot">
           <select id="f-slot" name="slot" defaultValue={piece.slot} className={selectClass}>
-            {SLOTS.map((s) => (
+            {project.slots.map((s) => (
               <option key={s} value={s}>
                 {SLOT_LABELS[s]}
               </option>
             ))}
           </select>
         </Field>
-        <Field label="Settimana del ciclo" htmlFor="f-cycle">
-          <select
-            id="f-cycle"
-            name="cycleWeek"
-            defaultValue={piece.cycleOverride ?? ""}
-            className={selectClass}
-          >
-            <option value="">Automatica ({cycleWeekOf(piece.date)})</option>
-            {CYCLES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </Field>
+        {project.cycles && (
+          <Field label="Settimana del ciclo" htmlFor="f-cycle">
+            <select
+              id="f-cycle"
+              name="cycleWeek"
+              defaultValue={piece.cycleOverride ?? ""}
+              className={selectClass}
+            >
+              <option value="">Automatica ({cycleWeekOf(piece.date)})</option>
+              {CYCLES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field label="Formato" htmlFor="f-format">
           <select
             id="f-format"
@@ -534,7 +538,8 @@ function Layers({
   ) => void;
 }) {
   const active = piece.layers.filter((l) => l.active);
-  const inactive = PLATFORMS.filter((p) => !active.some((l) => l.platform === p));
+  const project = useContentProject();
+  const inactive = project.platforms.filter((p) => !active.some((l) => l.platform === p));
   const [tab, setTab] = useState<string>(active[0]?.platform ?? "");
   const current = active.some((l) => l.platform === tab) ? tab : (active[0]?.platform ?? "");
 
@@ -806,9 +811,9 @@ function LayerPanel({
                     defaultValue={d.kind ?? "Reel"}
                     className={selectClass}
                   >
-                    <option>Reel</option>
-                    <option>Carosello</option>
-                    <option>Storia</option>
+                    {INSTAGRAM_KINDS.map((kind) => (
+                      <option key={kind}>{kind}</option>
+                    ))}
                   </select>
                 </Field>
                 <Field label="Numero di immagini" htmlFor={id("images")}>

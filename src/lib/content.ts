@@ -3,9 +3,10 @@ import { z } from "zod";
 import { addDays, daysBetween } from "./kdp-sales";
 
 /**
- * Robotti e Robotte editorial calendar: pieces (schede) on a date and slot,
- * one layer per platform. Pure logic shared by the app, the actions and the
- * MCP tools. Days are "YYYY-MM-DD" strings; weeks run Monday to Sunday.
+ * Editorial calendars (Robotti e Robotte, and Rosario Di Leva's writer
+ * profile): pieces (schede) on a date and slot, one layer per platform. Pure
+ * logic shared by the app, the actions and the MCP tools. Days are
+ * "YYYY-MM-DD" strings; weeks run Monday to Sunday.
  */
 
 export const CONTENT_TIME_ZONE = "Europe/Rome";
@@ -20,11 +21,53 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
   instagram: "Instagram",
 };
 
-export const SLOTS = ["13:00", "19:00"] as const;
+export const SLOTS = ["13:00", "18:00", "19:00"] as const;
 export type Slot = (typeof SLOTS)[number];
 export const SLOT_LABELS: Record<Slot, string> = {
   "13:00": "13:00 extra",
+  "18:00": "18:00",
   "19:00": "19:00 principale",
+};
+
+// --- Projects ------------------------------------------------------------------------
+
+/** Each project is a calendar of its own: rubrics, plan, pieces, page. */
+export const CONTENT_PROJECTS = ["robotti", "scrittore"] as const;
+export type ContentProject = (typeof CONTENT_PROJECTS)[number];
+
+export type ContentProjectConfig = {
+  value: ContentProject;
+  label: string;
+  /** Page of the calendar; the to-do list is `${path}/da-fare`. */
+  path: string;
+  description: string;
+  platforms: readonly Platform[];
+  slots: readonly Slot[];
+  /** Whether the A/B/C/D rotation of the weeks matters. */
+  cycles: boolean;
+};
+
+export const PROJECTS: Record<ContentProject, ContentProjectConfig> = {
+  robotti: {
+    value: "robotti",
+    label: "Robotti & Robotte",
+    path: "/robotti",
+    description:
+      "Calendario editoriale del canale: una scheda per contenuto, un layer per piattaforma. Claude crea e aggiorna le schede via MCP.",
+    platforms: ["tiktok", "youtube", "instagram"],
+    slots: ["13:00", "19:00"],
+    cycles: true,
+  },
+  scrittore: {
+    value: "scrittore",
+    label: "Rosario Di Leva",
+    path: "/scrittore",
+    description:
+      "Calendario Instagram del profilo da scrittore: un contenuto al giorno, una rubrica per giorno. Claude crea e aggiorna le schede via MCP.",
+    platforms: ["instagram"],
+    slots: ["18:00"],
+    cycles: false,
+  },
 };
 
 /** Every piece status, in workflow order. */
@@ -97,8 +140,9 @@ export const youtubeDetailsSchema = z.object({
   syntheticDeclared: z.boolean().optional(),
   notForKids: z.boolean().optional(),
 });
+export const INSTAGRAM_KINDS = ["Post", "Carosello", "Reel", "Storia"] as const;
 export const instagramDetailsSchema = z.object({
-  kind: z.enum(["Reel", "Carosello", "Storia"]).optional(),
+  kind: z.enum(INSTAGRAM_KINDS).optional(),
   caption: text(4000).optional(),
   imageCount: z.number().int().min(1).max(20).nullable().optional(),
 });
@@ -197,11 +241,26 @@ export function dayIn(instant: Date, timeZone = CONTENT_TIME_ZONE): string {
 
 // --- Layers and status -----------------------------------------------------------------
 
+/** Instagram format of the writer profile's rubrics; other rubrics get a post. */
+const WRITER_KINDS: Record<string, (typeof INSTAGRAM_KINDS)[number]> = {
+  "notizia-ai-dal-loop": "Carosello",
+  "la-parola-della-settimana": "Post",
+  "l-intervista": "Carosello",
+  "dal-mio-libro": "Post",
+  "il-libro-dal-passato": "Carosello",
+  "l-immagine-della-settimana": "Post",
+  "dietro-le-quinte": "Reel",
+};
+
 /** Layers a new piece gets (section 4 of the spec), with their kinds. */
 export function defaultLayers(
   rubric: string,
   slot: Slot,
+  project: ContentProject = "robotti",
 ): { platform: Platform; details: LayerDetails }[] {
+  if (project === "scrittore") {
+    return [{ platform: "instagram", details: { kind: WRITER_KINDS[rubric] ?? "Post" } }];
+  }
   if (rubric === "compilation") return [{ platform: "youtube", details: { kind: "Video lungo" } }];
   if (rubric === "carosello") return [{ platform: "instagram", details: { kind: "Carosello" } }];
   const layers: { platform: Platform; details: LayerDetails }[] = [
@@ -305,6 +364,22 @@ export const DEFAULT_PLAN: PlanRow[] = [
   { weekday: 7, slot: "19:00", rubric: "compilation", activeFrom: from19 },
   { weekday: 7, slot: "19:00", rubric: "carosello", activeFrom: from19 },
 ];
+
+/** The writer profile: one piece a day at 18:00, a rubric per weekday. */
+export const WRITER_DEFAULT_PLAN: PlanRow[] = [
+  { weekday: 1, slot: "18:00", rubric: "notizia-ai-dal-loop" },
+  { weekday: 2, slot: "18:00", rubric: "la-parola-della-settimana" },
+  { weekday: 3, slot: "18:00", rubric: "l-intervista" },
+  { weekday: 4, slot: "18:00", rubric: "dal-mio-libro" },
+  { weekday: 5, slot: "18:00", rubric: "il-libro-dal-passato" },
+  { weekday: 6, slot: "18:00", rubric: "l-immagine-della-settimana" },
+  { weekday: 7, slot: "18:00", rubric: "dietro-le-quinte" },
+];
+
+export const DEFAULT_PLANS: Record<ContentProject, PlanRow[]> = {
+  robotti: DEFAULT_PLAN,
+  scrittore: WRITER_DEFAULT_PLAN,
+};
 
 export type PlannedSlot = { date: string; slot: Slot; rubric: string };
 
@@ -507,6 +582,13 @@ const CODE_PREFIXES: Record<string, string> = {
   compilation: "comp",
   carosello: "car",
   speciale: "spec",
+  "notizia-ai-dal-loop": "ai",
+  "la-parola-della-settimana": "parola",
+  "l-intervista": "int",
+  "dal-mio-libro": "estratto",
+  "il-libro-dal-passato": "libro",
+  "l-immagine-della-settimana": "img",
+  "dietro-le-quinte": "dlq",
 };
 
 /** Prefix of the generated codes of a rubric; unknown rubrics use their value without dashes. */

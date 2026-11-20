@@ -71,10 +71,16 @@ test("connects the Telegram bot and sends a test reminder", async ({ page }) => 
   calls.length = 0;
   await box.getByRole("button", { name: "Invia ora una prova" }).click();
   await expect(page.getByText(/^Inviato/)).toBeVisible();
-  const sent = calls.find((c) => c.method === "sendMessage");
-  expect(sent?.body.chat_id).toBe(String(CHAT));
-  expect(sent?.body.parse_mode).toBe("HTML");
-  expect(String(sent?.body.text)).toContain("Robotti &amp; Robotte");
+  // One message per calendar with something to do (or one saying there is nothing).
+  const sent = calls.filter((c) => c.method === "sendMessage");
+  expect(sent.length).toBeGreaterThan(0);
+  for (const message of sent) {
+    expect(message.body.chat_id).toBe(String(CHAT));
+    expect(message.body.parse_mode).toBe("HTML");
+    expect(String(message.body.text)).toMatch(
+      /^(<b>(Robotti &amp; Robotte|Rosario Di Leva): \d+ da fare<\/b>|Contenuti: niente da fare)/,
+    );
+  }
 });
 
 test("the bot answers commands and turns messages into cards", async ({ page, request }) => {

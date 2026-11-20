@@ -8,6 +8,8 @@ import {
   codePrefix,
   codeSchema,
   colorSchema,
+  CONTENT_PROJECTS,
+  type ContentProject,
   CYCLES,
   daySchema,
   defaultLayers,
@@ -20,6 +22,7 @@ import {
   type Platform,
   PLATFORMS,
   planSchema,
+  PROJECTS,
   SLOTS,
   type Slot,
   TODO_KINDS_WITH_ACTION,
@@ -37,8 +40,8 @@ import {
   getContentPlan,
   getContentRubrics,
   getTodoDone,
-  PLAN_KEY,
   pieceInclude,
+  planKey,
   TODO_DONE_KEY,
   toPieceDTO,
 } from "@/server/queries/content";
@@ -57,7 +60,7 @@ const pieceFieldsSchema = z
     title: z.string().trim().min(1, "Il titolo non può essere vuoto.").max(200),
     rubric: z.string().min(1).max(60),
     releaseDate: daySchema,
-    slot: z.enum(SLOTS, "Fascia non valida (13:00 o 19:00)."),
+    slot: z.enum(SLOTS, "Fascia non valida (13:00, 18:00 o 19:00)."),
     status: z.enum(MANUAL_STATUSES, {
       message:
         "Stato non valido: idea, in scrittura, da approvare, approvato, pronto o scartato (programmato e pubblicato si calcolano dai layer).",
@@ -159,7 +162,7 @@ type Tx = Prisma.TransactionClient;
 type LayerRow = Prisma.ContentLayerGetPayload<object>;
 
 function done() {
-  revalidatePath("/robotti", "layout");
+  for (const project of CONTENT_PROJECTS) revalidatePath(PROJECTS[project].path, "layout");
 }
 
 async function result(code: string): Promise<ActionResult<ContentPieceDTO>> {
@@ -167,8 +170,18 @@ async function result(code: string): Promise<ActionResult<ContentPieceDTO>> {
   return row ? ok(toPieceDTO(row)) : fail(`Scheda «${code}» non trovata.`);
 }
 
-async function rubricExists(tx: Tx, rubric: string) {
-  return !!(await tx.contentRubric.findUnique({ where: { value: rubric } }));
+/** The project of a rubric, or null when it does not exist. */
+async function rubricProject(tx: Tx, rubric: string): Promise<ContentProject | null> {
+  const row = await tx.contentRubric.findUnique({ where: { value: rubric } });
+  return row ? (row.project as ContentProject) : null;
+}
+
+/** Why `slot` does not fit the project, or null. */
+function slotError(project: ContentProject, slot: string): string | null {
+  const { label, slots } = PROJECTS[project];
+  return slots.includes(slot as Slot)
+    ? null
+    : `Fascia ${slot} non prevista per ${label}: usa ${slots.join(" o ")}.`;
 }
 
 /** Validates the platform fields of `details` and merges them into `current`. */
@@ -192,13 +205,15 @@ function mergeDetails(
 async function applyLayer(
   tx: Tx,
   piece: { id: string; rubric: string; releaseDate: Date; slot: string },
+  project: ContentProject,
   existing: LayerRow | undefined,
   platform: Platform,
   fields: z.output<typeof layerFieldsSchema>,
   activate: boolean,
 ): Promise<{ changed: string[] } | { error: string }> {
   const fallback =
-    defaultLayers(piece.rubric, piece.slot as Slot).find((l) => l.platform === platform)?.details ??
+    defaultLayers(piece.rubric, piece.slot as Slot, project).find((l) => l.platform === platform)
+      ?.details ??
     (platform === "youtube"
       ? { kind: "Short", notForKids: true }
       : platform === "instagram"
@@ -283,11 +298,22 @@ export async function saveContentPiece(
   const { code, fields } = data;
 
   const outcome = await db.$transaction(async (tx): Promise<string | null> => {
-    if (fields.rubric && !(await rubricExists(tx, fields.rubric))) {
+    const newProject = fields.rubric ? await rubricProject(tx, fields.rubric) : null;
+    if (fields.rubric && !newProject) {
       return `Rubrica sconosciuta: «${fields.rubric}». Vedi l'elenco delle rubriche.`;
     }
     let piece = await tx.contentPiece.findUnique({ where: { code }, include: { layers: true } });
     const notes: string[] = [];
+    // The calendar of the piece: its rubric's. A piece never changes calendar.
+    const project = piece ? (await rubricProject(tx, piece.rubric))! : newProject!;
+    if (piece && newProject && newProject !== project) {
+      return `La rubrica «${fields.rubric}» è di ${PROJECTS[newProject].label}, la scheda di ${PROJECTS[project].label}.`;
+    }
+    const slot = fields.slot ?? piece?.slot;
+    if (project && slot) {
+      const wrong = slotError(project, slot);
+      if (wrong) return wrong;
+    }
 
     if (!piece) {
       if (!fields.title || !fields.rubric || !fields.releaseDate || !fields.slot) {
@@ -308,7 +334,7 @@ export async function saveContentPiece(
         },
       });
       const plannedAt = zonedInstant(releaseDate, fields.slot);
-      for (const layer of defaultLayers(fields.rubric, fields.slot)) {
+      for (const layer of defaultLayers(fields.rubric, fields.slot, project)) {
         await tx.contentLayer.create({
           data: {
             pieceId: created.id,
@@ -364,6 +390,7 @@ export async function saveContentPiece(
       const applied = await applyLayer(
         tx,
         piece,
+        project,
         piece.layers.find((l) => l.platform === platform),
         platform,
         layerFields,
@@ -622,6 +649,8 @@ const rubricSchema = z.object({
     .regex(/^[a-z0-9][a-z0-9-]{0,59}$/, "Valore non valido: minuscole, cifre e trattini."),
   name: z.string().trim().min(1, "Il nome non può essere vuoto.").max(100),
   color: colorSchema,
+  /** For a new rubric; an existing one keeps its calendar. */
+  project: z.enum(CONTENT_PROJECTS).default("robotti"),
 });
 
 /** Adds a rubric, or renames / recolors an existing one. */
@@ -631,6 +660,12 @@ export async function saveContentRubric(
   if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
   const { data, error } = parse(rubricSchema, input);
   if (!data) return fail(error);
+  const existing = await db.contentRubric.findUnique({ where: { value: data.value } });
+  if (existing && existing.project !== data.project) {
+    return fail(
+      `La rubrica «${data.value}» esiste già in ${PROJECTS[existing.project as ContentProject].label}.`,
+    );
+  }
   const last = await db.contentRubric.aggregate({ _max: { position: true } });
   await db.contentRubric.upsert({
     where: { value: data.value },
@@ -638,23 +673,34 @@ export async function saveContentRubric(
     update: { name: data.name, color: data.color },
   });
   done();
-  return ok(await getContentRubrics());
+  return ok(await getContentRubrics(data.project));
 }
 
 /** Replaces the weekly plan that generates the empty slots. */
 export async function saveContentPlan(
   rows: z.input<typeof planSchema>,
+  project: ContentProject = "robotti",
 ): Promise<ActionResult<Awaited<ReturnType<typeof getContentPlan>>>> {
   if (!(await isAuthenticated())) return fail(UNAUTHORIZED);
+  if (!CONTENT_PROJECTS.includes(project)) return fail("Calendario sconosciuto.");
   const { data, error } = parse(planSchema, rows);
   if (!data) return fail(error);
-  const known = new Set((await getContentRubrics()).map((r) => r.value));
+  const known = new Set((await getContentRubrics(project)).map((r) => r.value));
   const unknown = data.find((row) => !known.has(row.rubric));
-  if (unknown) return fail(`Rubrica sconosciuta nel piano: «${unknown.rubric}».`);
+  if (unknown) {
+    return fail(
+      `Rubrica sconosciuta nel piano di ${PROJECTS[project].label}: «${unknown.rubric}».`,
+    );
+  }
+  for (const row of data) {
+    const wrong = slotError(project, row.slot);
+    if (wrong) return fail(wrong);
+  }
+  const key = planKey(project);
   const value = JSON.stringify(data);
   await db.appSetting.upsert({
-    where: { key: PLAN_KEY },
-    create: { key: PLAN_KEY, value },
+    where: { key },
+    create: { key, value },
     update: { value },
   });
   done();

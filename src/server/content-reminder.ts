@@ -2,10 +2,10 @@ import "server-only";
 
 import { timingSafeEqual } from "node:crypto";
 
-import { CONTENT_TIME_ZONE, dayIn } from "@/lib/content";
+import { CONTENT_TIME_ZONE, dayIn, PROJECTS } from "@/lib/content";
 import { reminderDue, reminderItems, reminderMessage } from "@/lib/content-reminder";
 import { db } from "@/server/db";
-import { getContentTodo } from "@/server/queries/content";
+import { getAllContentTodo } from "@/server/queries/content";
 import { getTelegramConfig, sendTelegram } from "@/server/telegram";
 
 /** Day (Rome) of the last reminder sent, so hourly runs send it once. */
@@ -50,17 +50,24 @@ export async function runContentReminder(
     if (last?.value === today) return { status: "already-sent" };
     if (!reminderDue(now, today, last?.value ?? null)) return { status: "not-yet" };
   }
-  const todo = await getContentTodo(now, today);
-  const items = reminderItems(todo.open, today);
-  const url = `${baseUrl}/robotti/da-fare`;
-  if (items.length === 0) {
-    if (test) await sendTelegram(config, `Robotti &amp; Robotte: niente da fare oggi. 👍`);
+  // One message per calendar with something to do.
+  const lists = (await getAllContentTodo(now, today))
+    .map(({ project, todo }) => ({
+      project: PROJECTS[project],
+      items: reminderItems(todo.open, today),
+    }))
+    .filter((list) => list.items.length > 0);
+  if (lists.length === 0) {
+    if (test) await sendTelegram(config, `Contenuti: niente da fare oggi. 👍`);
     else await markSent(today);
     return { status: "nothing-to-do" };
   }
-  await sendTelegram(config, reminderMessage(items, today, url));
+  for (const { project, items } of lists) {
+    const url = `${baseUrl}${project.path}/da-fare`;
+    await sendTelegram(config, reminderMessage(items, today, url, project.label));
+  }
   if (!test) await markSent(today);
-  return { status: "sent", items: items.length };
+  return { status: "sent", items: lists.reduce((n, list) => n + list.items.length, 0) };
 }
 
 async function markSent(today: string) {

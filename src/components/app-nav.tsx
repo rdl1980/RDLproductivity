@@ -4,6 +4,7 @@ import {
   BookOpenIcon,
   BotIcon,
   CalendarDaysIcon,
+  FeatherIcon,
   FlameIcon,
   LayoutGridIcon,
   SunIcon,
@@ -20,6 +21,7 @@ const LINKS = [
   { href: "/calendar", label: "Calendario", icon: CalendarDaysIcon },
   { href: "/kdp", label: "KDP", icon: BookOpenIcon },
   { href: "/robotti", label: "Robotti&Robotte", icon: BotIcon },
+  { href: "/scrittore", label: "Rosario Di Leva", icon: FeatherIcon },
 ] as const;
 
 /** Main navigation; the current section is highlighted and announced. */

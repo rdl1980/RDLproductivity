@@ -2,7 +2,7 @@ import "server-only";
 
 import { timingSafeEqual } from "node:crypto";
 
-import { CONTENT_TIME_ZONE, dayIn, zonedInstant } from "@/lib/content";
+import { CONTENT_TIME_ZONE, dayIn, PROJECTS, zonedInstant } from "@/lib/content";
 import { escapeHtml } from "@/lib/content-reminder";
 import { accountLabel, KDP_ACCOUNT_VALUES } from "@/lib/kdp";
 import { euro } from "@/lib/kdp-digest";
@@ -16,7 +16,7 @@ import { TELEGRAM_ACTOR_EMAIL } from "@/server/activity";
 import { db } from "@/server/db";
 import { runAsMcpUser } from "@/server/mcp-context";
 import { getCalendarCards } from "@/server/queries/calendar";
-import { getContentTodo } from "@/server/queries/content";
+import { getAllContentTodo } from "@/server/queries/content";
 import { getSalesData } from "@/server/queries/kdp-sales";
 import { getTelegramConfig, sendTelegram } from "@/server/telegram";
 import { CAPTURE_LIST_KEY, getSetting, WEBHOOK_SECRET_KEY } from "@/server/telegram-settings";
@@ -79,10 +79,9 @@ async function todayText(baseUrl: string): Promise<string> {
       from: zonedInstant(addDays(today, -30), "00:00"),
       to: zonedInstant(today, "23:59"),
     }),
-    getContentTodo(now, today),
+    getAllContentTodo(now, today),
   ]);
   const open = cards.filter((c) => !c.completed);
-  const items = todo.open.filter((i) => i.date <= today);
   const lines = [`<b>Oggi</b>`];
   lines.push("", `<b>Card in scadenza o scadute (${open.length})</b>`);
   if (open.length === 0) lines.push("Nessuna.");
@@ -92,12 +91,15 @@ async function todayText(baseUrl: string): Promise<string> {
       `• ${late}${escapeHtml(c.title)} · ${escapeHtml(c.board.title)} (${hhmm(c.dueDate)})`,
     );
   }
-  lines.push("", `<b>Robotti &amp; Robotte da fare (${items.length})</b>`);
-  if (items.length === 0) lines.push("Niente in sospeso.");
-  for (const i of items.slice(0, 25)) {
-    lines.push(
-      `• ${i.date < today ? "⚠️ " : ""}${escapeHtml(i.text)}${i.code ? ` [${i.code}]` : ""}`,
-    );
+  for (const { project, todo: list } of todo) {
+    const items = list.open.filter((i) => i.date <= today);
+    lines.push("", `<b>${escapeHtml(PROJECTS[project].label)} da fare (${items.length})</b>`);
+    if (items.length === 0) lines.push("Niente in sospeso.");
+    for (const i of items.slice(0, 25)) {
+      lines.push(
+        `• ${i.date < today ? "⚠️ " : ""}${escapeHtml(i.text)}${i.code ? ` [${i.code}]` : ""}`,
+      );
+    }
   }
   lines.push("", `<a href="${baseUrl}/today">Apri Oggi</a>`);
   return lines.join("\n");
@@ -139,8 +141,9 @@ async function doneText(code: string): Promise<string> {
   if (!code) return "Scrivi il codice della scheda, per esempio /fatto ep001.";
   const now = new Date();
   const today = dayIn(now, CONTENT_TIME_ZONE);
-  const todo = await getContentTodo(now, today);
-  const items = todo.open.filter((i) => i.code?.toLowerCase() === code && i.date <= today);
+  const items = (await getAllContentTodo(now, today)).flatMap(({ todo }) =>
+    todo.open.filter((i) => i.code?.toLowerCase() === code && i.date <= today),
+  );
   if (items.length === 0) return `Nessuna voce da fare per ${escapeHtml(code)} fino a oggi.`;
   const done: string[] = [];
   const failed: string[] = [];

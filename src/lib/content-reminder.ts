@@ -41,10 +41,15 @@ const shortDay = (day: string) => {
 };
 
 /** Telegram message (HTML parse mode): today's items, then the overdue ones. */
-export function reminderMessage(items: TodoItem[], today: string, url: string): string {
+export function reminderMessage(
+  items: TodoItem[],
+  today: string,
+  url: string,
+  project = "Robotti & Robotte",
+): string {
   const todays = items.filter((i) => i.date === today);
   const late = items.filter((i) => i.date < today);
-  const lines = [`<b>Robotti &amp; Robotte: ${items.length} da fare</b>`];
+  const lines = [`<b>${escapeHtml(project)}: ${items.length} da fare</b>`];
   if (todays.length) {
     lines.push("", "<b>Oggi</b>", ...todays.map((i) => `• ${escapeHtml(i.text)}`));
   }

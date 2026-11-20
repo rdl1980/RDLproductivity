@@ -14,9 +14,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { CYCLES, type PlanRow, SLOT_LABELS, SLOTS, textOn, WEEKDAYS } from "@/lib/content";
+import { CYCLES, type PlanRow, SLOT_LABELS, textOn, WEEKDAYS } from "@/lib/content";
 import { saveContentPlan, saveContentRubric } from "@/server/actions/content";
 import type { ContentRubricDTO } from "@/server/queries/content";
+
+import { useContentProject } from "./project-context";
 
 const NETWORK = "Errore di rete, riprova.";
 const selectClass =
@@ -33,11 +35,12 @@ export function RubricsDialog({
   rubrics: ContentRubricDTO[];
 }) {
   const router = useRouter();
+  const project = useContentProject();
   const [pending, start] = useTransition();
 
   function save(input: ContentRubricDTO, message: string) {
     start(async () => {
-      const r = await saveContentRubric(input).catch(() => null);
+      const r = await saveContentRubric({ ...input, project: project.value }).catch(() => null);
       if (!r?.ok) return void toast.error(r?.error ?? NETWORK);
       toast.success(message);
       router.refresh();
@@ -157,6 +160,7 @@ export function PlanDialog({
   rubrics: ContentRubricDTO[];
 }) {
   const router = useRouter();
+  const project = useContentProject();
   const [rows, setRows] = useState<PlanRow[]>(plan);
   const [source, setSource] = useState(plan);
   const [pending, start] = useTransition();
@@ -179,9 +183,9 @@ export function PlanDialog({
         <DialogHeader>
           <DialogTitle>Piano settimanale</DialogTitle>
           <DialogDescription>
-            Ogni riga è uno slot ricorrente. Le settimane del ciclo (A, B, C, D; la settimana del 2
-            novembre 2026 è A) limitano la riga a quelle settimane; «attivo dal» la fa comparire da
-            quella data. Due righe nello stesso giorno e fascia sono due schede.
+            {project.cycles
+              ? "Ogni riga è uno slot ricorrente. Le settimane del ciclo (A, B, C, D; la settimana del 2 novembre 2026 è A) limitano la riga a quelle settimane; «attivo dal» la fa comparire da quella data. Due righe nello stesso giorno e fascia sono due schede."
+              : "Ogni riga è uno slot ricorrente, ogni settimana; «attivo dal» la fa comparire da quella data. Due righe nello stesso giorno e fascia sono due schede."}
           </DialogDescription>
         </DialogHeader>
         <div className="overflow-x-auto">
@@ -191,7 +195,7 @@ export function PlanDialog({
                 <th className="py-1 pr-2 font-medium">Giorno</th>
                 <th className="py-1 pr-2 font-medium">Fascia</th>
                 <th className="py-1 pr-2 font-medium">Rubrica</th>
-                <th className="py-1 pr-2 font-medium">Settimane</th>
+                {project.cycles && <th className="py-1 pr-2 font-medium">Settimane</th>}
                 <th className="py-1 pr-2 font-medium">Attivo dal</th>
                 <th className="py-1" />
               </tr>
@@ -220,7 +224,7 @@ export function PlanDialog({
                       value={row.slot}
                       onChange={(e) => patch(index, { slot: e.target.value as PlanRow["slot"] })}
                     >
-                      {SLOTS.map((s) => (
+                      {project.slots.map((s) => (
                         <option key={s} value={s}>
                           {SLOT_LABELS[s]}
                         </option>
@@ -245,29 +249,31 @@ export function PlanDialog({
                       ))}
                     </select>
                   </td>
-                  <td className="py-1 pr-2">
-                    <span className="flex gap-1.5">
-                      {CYCLES.map((c) => (
-                        <label key={c} className="flex items-center gap-0.5 text-xs">
-                          <input
-                            type="checkbox"
-                            className="size-3.5 accent-primary"
-                            checked={!row.cycles?.length || row.cycles.includes(c)}
-                            onChange={(e) => {
-                              const current = row.cycles?.length ? row.cycles : [...CYCLES];
-                              const next = e.target.checked
-                                ? [...new Set([...current, c])]
-                                : current.filter((x) => x !== c);
-                              patch(index, {
-                                cycles: next.length === CYCLES.length ? undefined : next,
-                              });
-                            }}
-                          />
-                          {c}
-                        </label>
-                      ))}
-                    </span>
-                  </td>
+                  {project.cycles && (
+                    <td className="py-1 pr-2">
+                      <span className="flex gap-1.5">
+                        {CYCLES.map((c) => (
+                          <label key={c} className="flex items-center gap-0.5 text-xs">
+                            <input
+                              type="checkbox"
+                              className="size-3.5 accent-primary"
+                              checked={!row.cycles?.length || row.cycles.includes(c)}
+                              onChange={(e) => {
+                                const current = row.cycles?.length ? row.cycles : [...CYCLES];
+                                const next = e.target.checked
+                                  ? [...new Set([...current, c])]
+                                  : current.filter((x) => x !== c);
+                                patch(index, {
+                                  cycles: next.length === CYCLES.length ? undefined : next,
+                                });
+                              }}
+                            />
+                            {c}
+                          </label>
+                        ))}
+                      </span>
+                    </td>
+                  )}
                   <td className="py-1 pr-2">
                     <Input
                       type="date"
@@ -300,7 +306,11 @@ export function PlanDialog({
             onClick={() =>
               setRows((current) => [
                 ...current,
-                { weekday: 1, slot: "19:00", rubric: rubrics[0]?.value ?? "" },
+                {
+                  weekday: 1,
+                  slot: project.slots[project.slots.length - 1],
+                  rubric: rubrics[0]?.value ?? "",
+                },
               ])
             }
           >
@@ -312,7 +322,7 @@ export function PlanDialog({
             disabled={pending}
             onClick={() =>
               start(async () => {
-                const r = await saveContentPlan(rows).catch(() => null);
+                const r = await saveContentPlan(rows, project.value).catch(() => null);
                 if (!r?.ok) return void toast.error(r?.error ?? NETWORK);
                 toast.success("Piano salvato");
                 onOpenChange(false);
