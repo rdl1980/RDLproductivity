@@ -97,8 +97,9 @@ test("today view groups due cards and completes them", async ({ page }) => {
 
   await page
     .getByRole("navigation", { name: "Principale" })
-    .getByRole("link", { name: "Oggi" })
+    .getByRole("button", { name: /^Altro/ })
     .click();
+  await page.getByRole("menuitem", { name: "Oggi" }).click();
   await expect(page).toHaveURL(/\/today$/);
   const today = page.getByRole("region", { name: "Oggi" });
   const item = today.getByTestId("agenda-card").filter({ hasText: title });
