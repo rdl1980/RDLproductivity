@@ -21,6 +21,9 @@ function dayKeyIn(page: import("@playwright/test").Page, offset: number) {
 }
 
 test("calendar shows due cards, moves them by drag and filters by board", async ({ page }) => {
+  // The whole month grid on screen: on a Sunday "tomorrow" opens the next row,
+  // which a 720 px window can leave below the fold, out of the mouse's reach.
+  await page.setViewportSize({ width: 1280, height: 1400 });
   const stamp = Date.now();
   const boardTitle = `Calendario ${stamp}`;
   const cardTitle = `Riunione ${stamp}`;
