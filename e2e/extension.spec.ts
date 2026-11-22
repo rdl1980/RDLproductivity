@@ -94,26 +94,23 @@ test("the extension reads the KDP pages in hidden tabs and the app imports both"
     await dialog.getByRole("radio", { name: "Ilaria" }).check();
     await dialog.getByTestId("extension-sync").click();
 
-    // Each step ends done or in error: wait for the end, then the failure shows its message.
-    const steps = dialog.getByTestId("extension-steps");
-    for (const [step, text] of [
-      ["sales", "2 copie, 4,50 € di royalty"],
-      ["books", "1 nuovi"],
-    ]) {
-      const row = steps.locator(`[data-step="${step}"]`);
-      await expect(row)
-        .toHaveAttribute("data-status", /done|error/, { timeout: 90_000 })
-        .catch(async (error: Error) => {
-          throw new Error(`${step} still running: ${await row.innerText()}\n${error.message}`);
-        });
-      await expect(row).toContainText(text);
-      await expect(row).toHaveAttribute("data-status", "done");
-    }
-    // A clean run closes the dialog; the page shows the imported book with its sales.
-    await expect(dialog).toBeHidden();
+    // A clean run closes the dialog, often before a step row can be read: wait for
+    // that, and when it stays open (a step in error) report what the steps say.
+    await expect(dialog)
+      .toBeHidden({ timeout: 180_000 })
+      .catch(async (error: Error) => {
+        const steps = await dialog
+          .getByTestId("extension-steps")
+          .innerText({ timeout: 1_000 })
+          .catch(() => "");
+        throw new Error(`sync did not end cleanly: ${steps}\n${error.message}`);
+      });
+    // The page shows the imported book with its sales.
     await page.getByRole("combobox", { name: "Account" }).click();
     await page.getByRole("option", { name: "Ilaria", exact: true }).click();
-    await expect(page.getByTestId("sales-books")).toContainText(title);
+    const book = page.getByTestId("sales-books").getByRole("row").filter({ hasText: title });
+    // Bookshelf import (title and pen name), sales import (royalty of yesterday).
+    await expect(book).toContainText("4,50 €");
   } finally {
     server.close();
   }
