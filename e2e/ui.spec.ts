@@ -1,26 +1,6 @@
-import AxeBuilder from "@axe-core/playwright";
-import type { Page } from "@playwright/test";
-
+import { expectNoSeriousA11yIssues } from "./a11y";
 import { expect, test } from "./fixtures";
 import { addCards, addLists, cardIn, createBoard, list } from "./helpers";
-
-async function expectNoSeriousA11yIssues(page: Page) {
-  // A dialog still fading in reads as low contrast: let the animations end first.
-  await page.waitForFunction(() =>
-    document
-      .getAnimations()
-      // Spinners loop forever: only the animations that end count.
-      .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
-      .every((a) => a.playState !== "running"),
-  );
-  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
-  const serious = results.violations.filter(
-    (v) => v.impact === "serious" || v.impact === "critical",
-  );
-  expect(
-    serious.map((v) => `${v.id}: ${v.help} (${v.nodes.map((n) => n.target.join(" ")).join(", ")})`),
-  ).toEqual([]);
-}
 
 test("theme can be switched to dark and back, and persists across reloads", async ({ page }) => {
   await createBoard(page, `Tema ${Date.now()}`);
@@ -45,7 +25,7 @@ test("theme can be switched to dark and back, and persists across reloads", asyn
 });
 
 test("accessibility: no serious axe violations on the main pages", async ({ page }) => {
-  // Sixteen pages, each with a full axe run.
+  // Every main page, each with a full axe run.
   test.slow();
   await createBoard(page, `A11y ${Date.now()}`);
   await addLists(page, ["Uno"]);
@@ -72,6 +52,7 @@ test("accessibility: no serious axe violations on the main pages", async ({ page
     "/kdp/incassi",
     "/kdp/pen-name",
     "/kdp/estensione",
+    "/collane",
     "/robotti",
     "/robotti?view=mese",
     "/robotti?view=elenco",
@@ -154,10 +135,14 @@ test.describe("mobile", () => {
       "/activity",
       "/templates",
       "/stats",
+      "/collane",
     ]) {
       await page.goto(path);
       await page.waitForLoadState("networkidle");
       expect(await pageOverflow(), path).toBeLessThanOrEqual(0);
     }
+    // Every main menu entry fits beside the search and the user menu.
+    const menu = (await page.getByRole("button", { name: "Menu utente" }).boundingBox())!;
+    expect(menu.x + menu.width).toBeLessThanOrEqual(390);
   });
 });

@@ -7,6 +7,7 @@ import {
   FeatherIcon,
   FlameIcon,
   LayoutGridIcon,
+  LibraryIcon,
   SunIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -20,6 +21,7 @@ const LINKS = [
   { href: "/priority", label: "Priorità", icon: FlameIcon },
   { href: "/calendar", label: "Calendario", icon: CalendarDaysIcon },
   { href: "/kdp", label: "KDP", icon: BookOpenIcon },
+  { href: "/collane", label: "Collane", icon: LibraryIcon },
   { href: "/robotti", label: "Robotti&Robotte", icon: BotIcon },
   { href: "/scrittore", label: "Rosario Di Leva", icon: FeatherIcon },
 ] as const;
@@ -37,7 +39,7 @@ export function AppNav() {
             href={href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-1.5 rounded-md px-2 py-1.5 font-medium transition-colors md:px-2.5",
+              "flex items-center gap-1.5 rounded-md px-1.5 py-1.5 font-medium transition-colors sm:px-2 md:px-2.5",
               active
                 ? "bg-accent text-accent-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
