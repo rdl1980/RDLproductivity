@@ -70,8 +70,15 @@ export function parseReportDate(value: unknown, dayFirst: boolean): string | nul
     const [, a, b, y] = match;
     return dayFirst ? check(y, b, a) : check(y, a, b);
   }
+  // A zone-less text like "Oct 3, 2026" parses as local midnight: read the local
+  // calendar day, otherwise toISOString shifts it back a day east of UTC.
   const parsed = new Date(text);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return check(
+    String(parsed.getFullYear()),
+    String(parsed.getMonth() + 1),
+    String(parsed.getDate()),
+  );
 }
 
 function check(y: string, m: string, d: string): string | null {
