@@ -42,18 +42,20 @@ test("calendar shows due cards, moves them by drag and filters by board", async 
 
   await page
     .getByRole("navigation", { name: "Principale" })
-    .getByRole("link", { name: "Calendario" })
+    .getByRole("button", { name: /^Altro/ })
     .click();
+  await page.getByRole("menuitem", { name: "Calendario" }).click();
   await expect(page).toHaveURL(/\/calendar$/);
   const today = await dayKeyIn(page, 0);
   const chip = page.getByTestId("calendar-card").filter({ hasText: cardTitle });
   await expect(page.locator(`[data-day="${today}"]`)).toContainText(cardTitle);
 
-  // Drag to a neighbouring day that is visible in the month grid.
+  // Drag to a neighbouring day in the same week row: on the last day of the week
+  // tomorrow starts the next row, which can sit below the fold.
+  const todayTop = (await page.locator(`[data-day="${today}"]`).boundingBox())!.y;
   const tomorrow = await dayKeyIn(page, 1);
-  const target = (await page.locator(`[data-day="${tomorrow}"]`).count())
-    ? tomorrow
-    : await dayKeyIn(page, -1);
+  const tomorrowBox = await page.locator(`[data-day="${tomorrow}"]`).boundingBox();
+  const target = tomorrowBox?.y === todayTop ? tomorrow : await dayKeyIn(page, -1);
   await dragTo(page, chip, page.locator(`[data-day="${target}"]`));
   await expect(page.locator(`[data-day="${target}"]`)).toContainText(cardTitle);
   await expectPersisted(page, () =>
