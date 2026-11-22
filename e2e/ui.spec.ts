@@ -117,6 +117,43 @@ test("the board fits the window: lists scroll inside, the horizontal scrollbar s
   expect(await cards.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
 });
 
+test("main navigation: «Altro» groups the agenda views and works from the keyboard", async ({
+  page,
+}) => {
+  await page.goto("/boards");
+  // Keys pressed before hydration reach a plain button, not the menu.
+  await page.waitForLoadState("networkidle");
+  const nav = page.getByRole("navigation", { name: "Principale" });
+  for (const name of ["Board", "KDP", "Robotti&Robotte", "Rosario Di Leva"]) {
+    await expect(nav.getByRole("link", { name })).toBeVisible();
+  }
+  const more = nav.getByRole("button", { name: "Altro" });
+  await more.focus();
+  await page.keyboard.press("Enter");
+  const menu = page.getByRole("menu");
+  await expect(menu.getByRole("menuitem")).toHaveText(["Oggi", "Priorità", "Calendario"]);
+  await expect(menu.getByRole("menuitem", { name: "Oggi" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+  await expect(more).toBeFocused();
+
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("ArrowDown");
+  await expect(menu.getByRole("menuitem", { name: "Priorità" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/priority$/);
+
+  // The trigger names the current agenda view; the menu marks it as the current page.
+  const current = nav.getByRole("button", { name: "Altro: Priorità" });
+  await expect(current).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Board" })).not.toHaveAttribute("aria-current");
+  await current.click();
+  await expect(page.getByRole("menuitem", { name: "Priorità" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+});
+
 test.describe("mobile", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
@@ -159,5 +196,18 @@ test.describe("mobile", () => {
       await page.waitForLoadState("networkidle");
       expect(await pageOverflow(), path).toBeLessThanOrEqual(0);
     }
+
+    // The «Altro» menu opens inside the screen.
+    await page
+      .getByRole("navigation", { name: "Principale" })
+      .getByRole("button", { name: /^Altro/ })
+      .tap();
+    const menu = page.getByRole("menu");
+    await expect(menu).toBeVisible();
+    const menuBox = (await menu.boundingBox())!;
+    expect(menuBox.x).toBeGreaterThanOrEqual(0);
+    expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(390);
+    expect(await pageOverflow()).toBeLessThanOrEqual(0);
+    await page.keyboard.press("Escape");
   });
 });
