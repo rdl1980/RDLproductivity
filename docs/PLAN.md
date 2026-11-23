@@ -95,6 +95,7 @@ Stato: `[ ]` da fare · `[~]` in corso · `[x]` fatto
 - [x] KDP integrato: attività della settimana in Oggi, chip settimanale nel calendario, ricerca estesa a libri, ASIN e attività KDP
 - [x] Spesa Amazon Ads: import del report «Prodotto pubblicizzato» (CSV o Excel), tassi di cambio, margine netto, ACoS e spesa per libro nella dashboard Vendite e nel tool MCP
 - [x] Collane: volume letto dal titolo o impostato a mano, read-through fra i volumi in Vendite; storico dei prezzi di listino dagli import del Bookshelf con l'effetto sulle vendite
+- [x] Collane: voce di menu per le serie pubblicate e in lavorazione (account e pen name per collana, libri pianificati collegabili al libro KDP, a card e attività, data di pubblicazione a mano o ricavata), 6 tool MCP
 - [x] Robotti&Robotte: calendario editoriale del canale (specifica in `docs/specifiche-calendario-contenuti.md`) con schede, layer per piattaforma, metriche, voti, piano settimanale A/B/C/D, pannello «Da fare» e 13 tool MCP
 
 ## Dopo l'MVP (idee)

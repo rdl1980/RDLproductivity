@@ -21,6 +21,14 @@ import {
   setKdpBookVolume,
 } from "@/server/actions/kdp-books";
 import {
+  deleteKdpSeries,
+  deleteKdpSeriesBook,
+  importKdpSeries,
+  saveKdpSeries,
+  saveKdpSeriesBook,
+} from "@/server/actions/kdp-series";
+import { getSeriesCatalog } from "@/server/queries/kdp-series";
+import {
   createChecklist,
   createChecklistItem,
   deleteChecklist,
@@ -1375,6 +1383,193 @@ export function registerTools(server: McpServer) {
       annotations: { ...WRITE, idempotentHint: true },
     },
     (input) => setKdpBookVolume(input),
+  );
+
+  // ---- Collane (book series) ----
+  const accountEnum = z
+    .enum(KDP_ACCOUNT_VALUES)
+    .describe("KDP account: main=Rosario, secondary=Ilaria, third=NonnoPeppe, fourth=Mario");
+
+  defineTool(
+    server,
+    "list_kdp_series",
+    {
+      title: "List book series (Collane)",
+      description:
+        "Every managed book series with its account, pen name, Bookshelf series name, status and " +
+        "its books in reading order: Bookshelf books (formats, ASIN, status) and planned or " +
+        "in-progress ones (stage idea/working/ready/published, planned date), with publication " +
+        "date (manual, or derived from the 'Online' task week or the first sale; before=true " +
+        "means on or before that day), linked card and KDP task. Also the Bookshelf series names " +
+        "not managed yet. Filter by text (series, pen name, title) and account.",
+      inputSchema: z.object({
+        query: z.string().max(200).optional(),
+        account: accountEnum.optional(),
+      }),
+      annotations: READ,
+    },
+    async ({ query, account }) => {
+      const needle = query?.trim().toLowerCase();
+      const catalog = await getSeriesCatalog();
+      const series = catalog.series.filter(
+        (s) =>
+          (!account || s.account === account) &&
+          (!needle ||
+            [s.name, s.penName, s.kdpName, ...s.rows.map((r) => r.title)]
+              .filter(Boolean)
+              .some((v) => v!.toLowerCase().includes(needle))),
+      );
+      return ok({
+        series: series.map((s) => ({
+          id: s.id,
+          name: s.name,
+          account: s.account,
+          accountName: accountLabel(s.account),
+          penName: s.penName,
+          kdpName: s.kdpName,
+          status: s.status,
+          plannedVolumes: s.plannedVolumes,
+          language: s.language,
+          genre: s.genre,
+          description: s.description,
+          notes: s.notes,
+          counts: s.counts,
+          lastPublished: s.lastPublished,
+          nextPlanned: s.nextPlanned,
+          books: s.rows.map((r) => ({
+            entryId: r.entryId,
+            bookId: r.book?.id ?? null,
+            title: r.title,
+            volume: r.volume,
+            stage: r.stage,
+            plannedDate: r.plannedDate,
+            published: r.published,
+            stillOnBookshelf: r.book ? !r.book.missing : null,
+            penNameOnKdp: r.book?.author ?? null,
+            formats: r.book?.formats.map((f) => ({
+              format: f.format,
+              status: f.status,
+              asin: f.asin,
+              price: f.price,
+            })),
+            card: r.card,
+            task: r.task,
+            notes: r.notes,
+            possibleKdpBook: r.suggestion,
+          })),
+        })),
+        unmanagedKdpSeries: catalog.unmanaged.filter((u) => !account || u.account === account),
+      });
+    },
+  );
+
+  defineTool(
+    server,
+    "save_kdp_series",
+    {
+      title: "Create or update a book series",
+      description:
+        "Without id creates a series (name and account required). With id updates only the " +
+        "given fields; an empty string clears a text. A series has one account and one pen name. " +
+        "kdpName is the series name as on the KDP Bookshelf: the account's books with it join the " +
+        "series automatically.",
+      inputSchema: z.object({
+        id: id("series").optional(),
+        name: z.string().max(200).optional(),
+        account: accountEnum.optional(),
+        penName: z.string().max(200).optional(),
+        kdpName: z.string().max(300).optional(),
+        status: z.enum(["active", "paused", "completed"]).optional(),
+        plannedVolumes: z.number().int().min(1).max(999).nullable().optional(),
+        language: z.string().max(50).optional(),
+        genre: z.string().max(200).optional(),
+        description: z.string().max(5000).optional(),
+        notes: z.string().max(5000).optional(),
+      }),
+      annotations: WRITE,
+    },
+    (input) => saveKdpSeries(input),
+  );
+
+  defineTool(
+    server,
+    "import_kdp_series",
+    {
+      title: "Add series from the KDP Bookshelf",
+      description:
+        "Creates a series for each Bookshelf series name no series covers yet (see " +
+        "unmanagedKdpSeries in list_kdp_series), optionally only for one account or one name. " +
+        "The pen name is the most frequent author of its books.",
+      inputSchema: z.object({
+        account: accountEnum.optional(),
+        kdpName: z.string().max(300).optional(),
+      }),
+      annotations: WRITE,
+    },
+    (input) => importKdpSeries(input),
+  );
+
+  defineTool(
+    server,
+    "delete_kdp_series",
+    {
+      title: "Delete a book series",
+      description:
+        "Deletes a series and its planned books. Bookshelf books are not touched. Cannot be undone.",
+      inputSchema: z.object({ id: id("series") }),
+      annotations: DELETE,
+    },
+    (input) => deleteKdpSeries(input),
+  );
+
+  defineTool(
+    server,
+    "save_kdp_series_book",
+    {
+      title: "Add or update a book of a series",
+      description:
+        "Without id and bookId adds a planned book (title required). With bookId adds a KDP " +
+        "Bookshelf book of the same account (or updates its details). With id (entryId from " +
+        "list_kdp_series) updates it; passing bookId then links a planned book to the book it " +
+        "became on KDP. volume and publishedAt of a linked book are saved on the KDP book. Only " +
+        "given fields change; null clears. Dates are YYYY-MM-DD.",
+      inputSchema: z.object({
+        id: id("series book entry").optional(),
+        seriesId: id("series"),
+        bookId: id("imported KDP book").nullable().optional(),
+        title: z.string().max(300).optional(),
+        volume: z.number().int().min(1).max(999).nullable().optional(),
+        status: z
+          .enum(["idea", "working", "ready", "published"])
+          .optional()
+          .describe("Idea, In lavorazione, Pronto, Pubblicato"),
+        plannedDate: z.string().nullable().optional().describe("Planned release, YYYY-MM-DD"),
+        publishedAt: z
+          .string()
+          .nullable()
+          .optional()
+          .describe("Publication date set by hand on the KDP book, YYYY-MM-DD; null = derived"),
+        notes: z.string().max(5000).optional(),
+        cardId: id("card").nullable().optional(),
+        taskId: id("KDP calendar task (same account)").nullable().optional(),
+      }),
+      annotations: WRITE,
+    },
+    (input) => saveKdpSeriesBook(input),
+  );
+
+  defineTool(
+    server,
+    "delete_kdp_series_book",
+    {
+      title: "Remove a book from a series",
+      description:
+        "Deletes a planned book, or the details kept for a Bookshelf book (it stays in the series " +
+        "if KDP lists it under the series name). Undoable from the activity log.",
+      inputSchema: z.object({ id: id("series book entry") }),
+      annotations: DELETE,
+    },
+    (input) => deleteKdpSeriesBook(input),
   );
 
   // ---- Robotti e Robotte content calendar ----

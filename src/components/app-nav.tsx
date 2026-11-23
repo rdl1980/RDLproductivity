@@ -8,6 +8,7 @@ import {
   FlameIcon,
   LayoutGridIcon,
   EllipsisIcon,
+  LibraryIcon,
   SunIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +25,7 @@ import {
 const PRIMARY_LINKS = [
   { href: "/boards", label: "Board", icon: LayoutGridIcon },
   { href: "/kdp", label: "KDP", icon: BookOpenIcon },
+  { href: "/collane", label: "Collane", icon: LibraryIcon },
   { href: "/robotti", label: "Robotti&Robotte", icon: BotIcon },
   { href: "/scrittore", label: "Rosario Di Leva", icon: FeatherIcon },
 ] as const;

@@ -147,7 +147,15 @@ test("an MCP client authorizes via OAuth and edits boards through tools", async 
     tools: { name: string }[];
   };
   expect(tools.map((tool) => tool.name)).toEqual(
-    expect.arrayContaining(["list_boards", "get_board", "create_card", "update_card", "move_card"]),
+    expect.arrayContaining([
+      "list_boards",
+      "get_board",
+      "create_card",
+      "update_card",
+      "move_card",
+      "list_kdp_series",
+      "save_kdp_series_book",
+    ]),
   );
 
   const title = `MCP ${Date.now()}`;

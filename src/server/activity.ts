@@ -5,12 +5,25 @@ import { getMcpUser } from "@/server/mcp-context";
 
 /** Models whose fields an undo may restore. */
 export type UndoModel =
-  "board" | "list" | "card" | "label" | "checklist" | "checklistItem" | "kdpTask" | "kdpBook";
+  | "board"
+  | "list"
+  | "card"
+  | "label"
+  | "checklist"
+  | "checklistItem"
+  | "kdpTask"
+  | "kdpBook"
+  | "kdpSeries"
+  | "kdpSeriesBook";
 
 /** Inverse operations, applied in order to undo an activity. */
 export type UndoOp =
   | { op: "update"; model: UndoModel; id: string; data: Record<string, unknown> }
-  | { op: "delete"; model: "label" | "checklist" | "checklistItem" | "kdpTask"; id: string }
+  | {
+      op: "delete";
+      model: "label" | "checklist" | "checklistItem" | "kdpTask" | "kdpSeries" | "kdpSeriesBook";
+      id: string;
+    }
   | { op: "cardLabel"; cardId: string; labelId: string; assigned: boolean }
   | {
       op: "restoreLabel";
@@ -52,6 +65,23 @@ export type UndoOp =
       bookId: string;
       cardId: string;
       previous: { status: string; auto: boolean; score: number } | null;
+    }
+  | {
+      /** Recreates a deleted book of a series. */
+      op: "restoreKdpSeriesBook";
+      entry: {
+        id: string;
+        seriesId: string;
+        title: string;
+        volume: number | null;
+        status: string;
+        /** "YYYY-MM-DD" */
+        plannedDate: string | null;
+        bookId: string | null;
+        taskId: string | null;
+        cardId: string | null;
+        notes: string | null;
+      };
     }
   | {
       /** Puts a sales title alias back as it was; `previous: null` removes it. */
@@ -110,7 +140,15 @@ export async function logActivity(entry: ActivityEntry, client: Client = db): Pr
   }
 }
 
-const DATE_FIELDS = new Set(["startDate", "dueDate", "completedAt", "listEnteredAt", "week"]);
+const DATE_FIELDS = new Set([
+  "startDate",
+  "dueDate",
+  "completedAt",
+  "listEnteredAt",
+  "week",
+  "plannedDate",
+  "publishedAt",
+]);
 
 /** JSON-safe snapshot of fields, for an update op. */
 export function snapshot<T extends Record<string, unknown>>(fields: T): Record<string, unknown> {
@@ -182,6 +220,13 @@ async function applyOp(tx: Prisma.TransactionClient, op: UndoOp) {
     case "restoreKdpTask":
       await tx.kdpTask.create({ data: { ...op.task, week: new Date(op.task.week) } });
       return;
+    case "restoreKdpSeriesBook": {
+      const { plannedDate, ...entry } = op.entry;
+      await tx.kdpSeriesBook.create({
+        data: { ...entry, plannedDate: plannedDate ? new Date(plannedDate) : null },
+      });
+      return;
+    }
     case "kdpAlias": {
       const key = { account: op.account, titleKey: op.titleKey };
       if (op.previous === null) {

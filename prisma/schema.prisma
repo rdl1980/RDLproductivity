@@ -36,32 +36,33 @@ model List {
 }
 
 model Card {
-  id            String        @id @default(cuid())
-  listId        String
-  list          List          @relation(fields: [listId], references: [id], onDelete: Cascade)
-  title         String
-  description   String? // markdown
-  position      String // fractional index
-  startDate     DateTime?
-  dueDate       DateTime?
-  completed     Boolean       @default(false)
+  id             String          @id @default(cuid())
+  listId         String
+  list           List            @relation(fields: [listId], references: [id], onDelete: Cascade)
+  title          String
+  description    String? // markdown
+  position       String // fractional index
+  startDate      DateTime?
+  dueDate        DateTime?
+  completed      Boolean         @default(false)
   /// When the card was last completed (statistics); null while open.
-  completedAt   DateTime?
+  completedAt    DateTime?
   /// When the card entered its current list (time-in-list statistics).
-  listEnteredAt DateTime      @default(now())
+  listEnteredAt  DateTime        @default(now())
   /// 0 (highest) to 4 (lowest); null = no priority. Checked in the database.
-  priority      Int?
+  priority       Int?
   /// { rule, interval, timeZone }: completing the card creates the next occurrence.
-  recurrence    Json?
-  coverId       String?       @unique
-  cover         Attachment?   @relation("CardCover", fields: [coverId], references: [id], onDelete: SetNull)
-  attachments   Attachment[]  @relation("CardAttachments")
-  kdpBookLinks  KdpBookLink[]
-  archived      Boolean       @default(false)
-  labels        CardLabel[]
-  checklists    Checklist[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  recurrence     Json?
+  coverId        String?         @unique
+  cover          Attachment?     @relation("CardCover", fields: [coverId], references: [id], onDelete: SetNull)
+  attachments    Attachment[]    @relation("CardAttachments")
+  kdpBookLinks   KdpBookLink[]
+  kdpSeriesBooks KdpSeriesBook[]
+  archived       Boolean         @default(false)
+  labels         CardLabel[]
+  checklists     Checklist[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@index([listId, position])
   @@index([dueDate])
@@ -210,22 +211,23 @@ model Attachment {
 // KDP publishing calendar: weekly tasks in two lanes (main and secondary
 // account), independent from boards.
 model KdpTask {
-  id        String   @id @default(cuid())
-  title     String
-  notes     String?
+  id          String          @id @default(cuid())
+  title       String
+  notes       String?
   /// "main" | "secondary". Checked in the database.
-  account   String
+  account     String
   /// "planned" (Pianificato) | "actual" (Reale): the sub-lane within the account. Checked in the database.
-  track     String   @default("planned")
+  track       String          @default("planned")
   /// Sunday of the task's week (date only).
-  week      DateTime @db.Date
-  position  String // fractional index within (week, account, track)
-  done      Boolean  @default(false)
+  week        DateTime        @db.Date
+  position    String // fractional index within (week, account, track)
+  done        Boolean         @default(false)
   /// Formats the task publishes ("ebook" | "paperback" | "hardcover"): in the
   /// "actual" lane each one uses a weekly KDP slot of that format.
-  formats   String[] @default([])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  formats     String[]        @default([])
+  seriesBooks KdpSeriesBook[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   @@index([week, account, track, position])
 }
@@ -253,6 +255,9 @@ model KdpBook {
   aliases      KdpTitleAlias[]
   prices       KdpPriceHistory[]
   ranks        KdpRank[]
+  /// Publication date set by hand; null = derived (see src/lib/kdp-series-catalog.ts).
+  publishedAt  DateTime?         @db.Date
+  seriesEntry  KdpSeriesBook?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 
@@ -518,4 +523,58 @@ model KdpPenName {
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// A book series managed in Collane: one account and one pen name. Books on
+/// the Bookshelf join it by their series name (`kdpName`) or by an entry.
+model KdpSeries {
+  id             String          @id @default(cuid())
+  name           String
+  /// KDP account of every book. Checked in the database.
+  account        String
+  /// Pen name of every book, as in KdpBook.author / KdpPenName.name.
+  penName        String?
+  /// Series name on the Bookshelf, lowercased: books of the account with it belong here.
+  kdpName        String?
+  /// "active" | "paused" | "completed". Checked in the database.
+  status         String          @default("active")
+  /// Volumes planned in all; null = open-ended.
+  plannedVolumes Int?
+  language       String?
+  genre          String?
+  description    String?
+  notes          String?
+  books          KdpSeriesBook[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([account, kdpName])
+}
+
+/// A book of a series: planned or in progress (no KdpBook yet), or a
+/// Bookshelf book added by hand or carrying details (card, task, notes).
+model KdpSeriesBook {
+  id          String    @id @default(cuid())
+  seriesId    String
+  series      KdpSeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  /// Working title; the KdpBook's title wins once linked.
+  title       String
+  /// Volume of a planned book; once linked, KdpBook.volume holds it.
+  volume      Int?
+  /// "idea" | "working" | "ready" | "published". Checked in the database.
+  status      String    @default("idea")
+  plannedDate DateTime? @db.Date
+  bookId      String?   @unique
+  book        KdpBook?  @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  taskId      String?
+  task        KdpTask?  @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  cardId      String?
+  card        Card?     @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([seriesId])
+  @@index([cardId])
+  @@index([taskId])
 }
