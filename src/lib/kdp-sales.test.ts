@@ -4,6 +4,7 @@ import {
   autoGranularity,
   bucketStart,
   change,
+  coveredDays,
   decodeSalesHash,
   encodeSalesHash,
   filterRecords,
@@ -186,6 +187,33 @@ describe("change", () => {
     expect(change(5, 0)).toBeNull();
     expect(change(0, 0)).toBe(0);
     expect(change(15, 10)).toBe(50);
+  });
+});
+
+describe("coveredDays", () => {
+  const recs = [
+    rec("2026-10-05", { a: "main" }),
+    rec("2026-10-20", { a: "main", book: "b2" }),
+    rec("2026-10-25", { a: "secondary" }),
+  ];
+
+  it("ends on the last reported day, not on today", () => {
+    expect(coveredDays(recs, "main", "2026-10-01", "2026-10-31")).toBe(16);
+  });
+
+  it("starts on the first report when the period begins earlier", () => {
+    expect(coveredDays(recs, "main", "2026-01-01", "2026-10-31")).toBe(16);
+    expect(coveredDays(recs, "main", "2026-10-10", "2026-10-31")).toBe(11);
+  });
+
+  it("reads the account scope and ignores days after the period", () => {
+    expect(coveredDays(recs, "all", "2026-10-01", "2026-10-31")).toBe(21);
+    expect(coveredDays(recs, "all", "2026-10-01", "2026-10-20")).toBe(16);
+  });
+
+  it("is zero without reports in the period", () => {
+    expect(coveredDays(recs, "main", "2026-09-01", "2026-09-30")).toBe(0);
+    expect(coveredDays([], "all", "2026-10-01", "2026-10-31")).toBe(0);
   });
 });
 

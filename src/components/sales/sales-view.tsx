@@ -55,6 +55,7 @@ import {
   autoGranularity,
   bucketLabel,
   change,
+  coveredDays,
   daysBetween,
   emptySums,
   filterRecords,
@@ -308,6 +309,8 @@ export function SalesView({
   );
   const totals = sumRecords(current, sources);
   const prevTotals = sumRecords(previous, sources);
+  // Daily average over the days the reports cover, not the ones KDP has yet to send.
+  const days = coveredDays(records, state.account, range.from, range.to);
   // Marketplace where each book sold most: the Amazon site to look an ASIN up on.
   const topMarket = useMemo(() => {
     const units = new Map<string, Map<string, number>>();
@@ -644,6 +647,19 @@ export function SalesView({
           <span className="text-sm text-muted-foreground">Royalty nel periodo</span>
           <span className="text-5xl font-semibold tracking-tight" data-testid="sales-hero">
             {formatEuro(totals.royalty)}
+          </span>
+          <span className="text-sm text-muted-foreground" data-testid="sales-daily-average">
+            {days ? (
+              <>
+                Media giornaliera{" "}
+                <span className="font-medium text-foreground tabular-nums">
+                  {formatEuro(totals.royalty / days)}
+                </span>{" "}
+                su {formatInt(days)} {days === 1 ? "giorno" : "giorni"}
+              </>
+            ) : (
+              "Media giornaliera –"
+            )}
           </span>
           <Delta
             value={change(totals.royalty, prevTotals.royalty)}

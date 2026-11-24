@@ -64,6 +64,10 @@ test("KDP sales: import the report history and explore the dashboard", async ({ 
   await page.getByRole("option", { name: title }).click();
   await expect(page).toHaveURL(/book=/);
   await expect(page.getByTestId("sales-hero")).toHaveText("14,75 €");
+  // The daily average divides by the days the reports cover, whatever else the database holds.
+  await expect(page.getByTestId("sales-daily-average")).toHaveText(
+    /^Media giornaliera \d+,\d{2}\s€ su \d+ giorn[oi]$/,
+  );
   const kpis = page.getByTestId("sales-kpis");
   await expect(kpis.getByTestId("stat-tile").filter({ hasText: "Copie vendute" })).toContainText(
     "4",

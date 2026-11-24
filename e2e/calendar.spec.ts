@@ -20,6 +20,10 @@ function dayKeyIn(page: import("@playwright/test").Page, offset: number) {
   }, offset);
 }
 
+// Six week rows of a month fit with room to spare: a drop on the last rows of a
+// 720px window falls in dnd-kit's auto-scroll band and misses its day.
+test.use({ viewport: { width: 1280, height: 1100 } });
+
 test("calendar shows due cards, moves them by drag and filters by board", async ({ page }) => {
   const stamp = Date.now();
   const boardTitle = `Calendario ${stamp}`;
@@ -51,7 +55,7 @@ test("calendar shows due cards, moves them by drag and filters by board", async 
   await expect(page.locator(`[data-day="${today}"]`)).toContainText(cardTitle);
 
   // Drag to a neighbouring day in the same week row: on the last day of the week
-  // tomorrow starts the next row, which can sit below the fold.
+  // tomorrow starts the next row.
   const todayTop = (await page.locator(`[data-day="${today}"]`).boundingBox())!.y;
   const tomorrow = await dayKeyIn(page, 1);
   const tomorrowBox = await page.locator(`[data-day="${tomorrow}"]`).boundingBox();
