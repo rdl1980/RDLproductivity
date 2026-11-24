@@ -265,6 +265,31 @@ export function daysBetween(from: string, to: string): number {
 }
 
 /**
+ * Days of `from`–`to` that the reports cover: from the first reported day of
+ * the account scope to the last one, so days KDP has not reported yet (today,
+ * a late import) and days before the first report do not dilute a daily
+ * average. Book and marketplace filters do not apply: a day without a sale of
+ * one book is still a covered day.
+ */
+export function coveredDays(
+  records: SaleRecord[],
+  account: KdpAccountScope,
+  from: string,
+  to: string,
+): number {
+  let first = "";
+  let last = "";
+  for (const r of records) {
+    if (!inAccountScope(account, r.a)) continue;
+    if (first === "" || r.d < first) first = r.d;
+    if (r.d <= to && r.d > last) last = r.d;
+  }
+  if (!first || !last) return 0;
+  const start = first > from ? first : from;
+  return last < start ? 0 : daysBetween(start, last) + 1;
+}
+
+/**
  * The same days of the previous month: "2026-10-27" → 1–27 September. Days the
  * previous month lacks are dropped ("2026-03-31" → 1–28 or 29 February).
  */
